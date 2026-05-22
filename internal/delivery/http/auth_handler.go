@@ -6,6 +6,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/semmidev/restful-template/internal/domain"
+	"github.com/semmidev/restful-template/internal/shared/wideevent"
 )
 
 type RegisterBody struct {
@@ -41,8 +42,10 @@ func RegisterAuthRoutes(api huma.API, auth domain.AuthUsecase) {
 	}, func(ctx context.Context, in *struct{ Body RegisterBody }) (*TokenResp, error) {
 		pair, err := auth.Register(ctx, domain.RegisterInput{Email: in.Body.Email, Password: in.Body.Password})
 		if err != nil {
+			wideevent.Add(ctx, "error", err.Error())
 			return nil, toHumaErr(err)
 		}
+		wideevent.Add(ctx, "user_email", in.Body.Email)
 		return tokenResp(pair), nil
 	})
 
@@ -55,8 +58,10 @@ func RegisterAuthRoutes(api huma.API, auth domain.AuthUsecase) {
 	}, func(ctx context.Context, in *struct{ Body LoginBody }) (*TokenResp, error) {
 		pair, err := auth.Login(ctx, domain.LoginInput{Email: in.Body.Email, Password: in.Body.Password})
 		if err != nil {
+			wideevent.Add(ctx, "error", err.Error())
 			return nil, toHumaErr(err)
 		}
+		wideevent.Add(ctx, "user_email", in.Body.Email)
 		return tokenResp(pair), nil
 	})
 

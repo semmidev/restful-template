@@ -7,7 +7,9 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/semmidev/restful-template/internal/domain"
+	"github.com/semmidev/restful-template/internal/shared/wideevent"
 )
+
 
 type ctxKey string
 
@@ -40,6 +42,12 @@ func AuthMiddleware(api huma.API, tokens domain.TokenService) func(ctx huma.Cont
 			huma.WriteErr(api, ctx, http.StatusUnauthorized, "invalid or expired token")
 			return
 		}
+
+		// Enrich the canonical wide event with the authenticated user's identity.
+		// This means every log line for an authenticated request carries user_id
+		// and user_email without any handler needing to log it explicitly.
+		wideevent.Add(ctx.Context(), "user_id", claims.UserID.String())
+		wideevent.Add(ctx.Context(), "user_email", claims.Email)
 
 		ctx = huma.WithValue(ctx, userIDCtxKey, claims.UserID.String())
 		ctx = huma.WithValue(ctx, userEmailCtxKey, claims.Email)

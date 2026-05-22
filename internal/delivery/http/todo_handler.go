@@ -10,6 +10,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
 	"github.com/semmidev/restful-template/internal/domain"
+	"github.com/semmidev/restful-template/internal/shared/wideevent"
 )
 
 type CreateTodoForm struct {
@@ -80,8 +81,11 @@ func RegisterTodoRoutes(api huma.API, todos domain.TodoUsecase) {
 			SortDir: in.SortDir,
 		})
 		if err != nil {
+			wideevent.Add(ctx, "error", err.Error())
 			return nil, toHumaErr(err)
 		}
+		wideevent.Add(ctx, "todo_count", len(items))
+		wideevent.Add(ctx, "todo_total", total)
 		resp := &ListResp{}
 		resp.Body.Data.Items = items
 		resp.Body.Data.Total = total
@@ -152,8 +156,11 @@ func RegisterTodoRoutes(api huma.API, todos domain.TodoUsecase) {
 			Cover:       coverBase64,
 		})
 		if err != nil {
+			wideevent.Add(ctx, "error", err.Error())
 			return nil, toHumaErr(err)
 		}
+		wideevent.Add(ctx, "todo_id", t.ID.String())
+		wideevent.Add(ctx, "todo_title", t.Title)
 		resp := &TodoResp{}
 		resp.Body.Data = t
 		return resp, nil
@@ -175,8 +182,11 @@ func RegisterTodoRoutes(api huma.API, todos domain.TodoUsecase) {
 		}
 		t, err := todos.Get(ctx, userID, in.ID)
 		if err != nil {
+			wideevent.Add(ctx, "todo_id", in.ID.String())
+			wideevent.Add(ctx, "error", err.Error())
 			return nil, toHumaErr(err)
 		}
+		wideevent.Add(ctx, "todo_id", t.ID.String())
 		resp := &TodoResp{}
 		resp.Body.Data = t
 		return resp, nil
@@ -235,8 +245,13 @@ func RegisterTodoRoutes(api huma.API, todos domain.TodoUsecase) {
 			Status:      status,
 		})
 		if err != nil {
+			wideevent.Add(ctx, "todo_id", in.ID.String())
+			wideevent.Add(ctx, "error", err.Error())
 			return nil, toHumaErr(err)
 		}
+		wideevent.Add(ctx, "todo_id", t.ID.String())
+		wideevent.Add(ctx, "todo_title", t.Title)
+		wideevent.Add(ctx, "todo_status", string(t.Status))
 		resp := &TodoResp{}
 		resp.Body.Data = t
 		return resp, nil
@@ -258,8 +273,11 @@ func RegisterTodoRoutes(api huma.API, todos domain.TodoUsecase) {
 			return nil, toHumaErr(err)
 		}
 		if err := todos.Delete(ctx, userID, in.ID); err != nil {
+			wideevent.Add(ctx, "todo_id", in.ID.String())
+			wideevent.Add(ctx, "error", err.Error())
 			return nil, toHumaErr(err)
 		}
+		wideevent.Add(ctx, "todo_id", in.ID.String())
 		return &struct{}{}, nil
 	})
 }
