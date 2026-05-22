@@ -9,20 +9,20 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-type AuthServiceDecorator struct {
+type AuthDecorator struct {
 	base   domain.AuthUsecase
 	tracer trace.Tracer
 }
 
-func NewAuthServiceDecorator(base domain.AuthUsecase) *AuthServiceDecorator {
-	return &AuthServiceDecorator{
+func NewAuthDecorator(base domain.AuthUsecase) *AuthDecorator {
+	return &AuthDecorator{
 		base:   base,
 		tracer: otel.Tracer("auth_service"),
 	}
 }
 
-func (d *AuthServiceDecorator) Register(ctx context.Context, in domain.RegisterInput) (domain.TokenPair, error) {
-	ctx, span := d.tracer.Start(ctx, "AuthService.Register")
+func (d *AuthDecorator) Register(ctx context.Context, in domain.RegisterInput) (domain.TokenPair, error) {
+	ctx, span := d.tracer.Start(ctx, "Auth.Register")
 	defer span.End()
 
 	res, err := d.base.Register(ctx, in)
@@ -33,8 +33,8 @@ func (d *AuthServiceDecorator) Register(ctx context.Context, in domain.RegisterI
 	return res, err
 }
 
-func (d *AuthServiceDecorator) Login(ctx context.Context, in domain.LoginInput) (domain.TokenPair, error) {
-	ctx, span := d.tracer.Start(ctx, "AuthService.Login")
+func (d *AuthDecorator) Login(ctx context.Context, in domain.LoginInput) (domain.TokenPair, error) {
+	ctx, span := d.tracer.Start(ctx, "Auth.Login")
 	defer span.End()
 
 	res, err := d.base.Login(ctx, in)
@@ -45,8 +45,8 @@ func (d *AuthServiceDecorator) Login(ctx context.Context, in domain.LoginInput) 
 	return res, err
 }
 
-func (d *AuthServiceDecorator) Refresh(ctx context.Context, refreshToken string) (domain.TokenPair, error) {
-	ctx, span := d.tracer.Start(ctx, "AuthService.Refresh")
+func (d *AuthDecorator) Refresh(ctx context.Context, refreshToken string) (domain.TokenPair, error) {
+	ctx, span := d.tracer.Start(ctx, "Auth.Refresh")
 	defer span.End()
 
 	res, err := d.base.Refresh(ctx, refreshToken)

@@ -10,20 +10,20 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-type TodoServiceDecorator struct {
+type TodoDecorator struct {
 	base   domain.TodoUsecase
 	tracer trace.Tracer
 }
 
-func NewTodoServiceDecorator(base domain.TodoUsecase) *TodoServiceDecorator {
-	return &TodoServiceDecorator{
+func NewTodoDecorator(base domain.TodoUsecase) *TodoDecorator {
+	return &TodoDecorator{
 		base:   base,
 		tracer: otel.Tracer("todo_service"),
 	}
 }
 
-func (d *TodoServiceDecorator) Create(ctx context.Context, in domain.CreateTodoInput) (*domain.Todo, error) {
-	ctx, span := d.tracer.Start(ctx, "TodoService.Create")
+func (d *TodoDecorator) Create(ctx context.Context, in domain.CreateTodoInput) (*domain.Todo, error) {
+	ctx, span := d.tracer.Start(ctx, "Todo.Create")
 	defer span.End()
 
 	res, err := d.base.Create(ctx, in)
@@ -34,8 +34,8 @@ func (d *TodoServiceDecorator) Create(ctx context.Context, in domain.CreateTodoI
 	return res, err
 }
 
-func (d *TodoServiceDecorator) Get(ctx context.Context, userID, id uuid.UUID) (*domain.Todo, error) {
-	ctx, span := d.tracer.Start(ctx, "TodoService.Get")
+func (d *TodoDecorator) Get(ctx context.Context, userID, id uuid.UUID) (*domain.Todo, error) {
+	ctx, span := d.tracer.Start(ctx, "Todo.Get")
 	defer span.End()
 
 	res, err := d.base.Get(ctx, userID, id)
@@ -46,8 +46,8 @@ func (d *TodoServiceDecorator) Get(ctx context.Context, userID, id uuid.UUID) (*
 	return res, err
 }
 
-func (d *TodoServiceDecorator) List(ctx context.Context, q domain.ListTodosQuery) ([]*domain.Todo, int, error) {
-	ctx, span := d.tracer.Start(ctx, "TodoService.List")
+func (d *TodoDecorator) List(ctx context.Context, q domain.ListTodosQuery) ([]*domain.Todo, int, error) {
+	ctx, span := d.tracer.Start(ctx, "Todo.List")
 	defer span.End()
 
 	res, count, err := d.base.List(ctx, q)
@@ -58,8 +58,8 @@ func (d *TodoServiceDecorator) List(ctx context.Context, q domain.ListTodosQuery
 	return res, count, err
 }
 
-func (d *TodoServiceDecorator) Update(ctx context.Context, in domain.UpdateTodoInput) (*domain.Todo, error) {
-	ctx, span := d.tracer.Start(ctx, "TodoService.Update")
+func (d *TodoDecorator) Update(ctx context.Context, in domain.UpdateTodoInput) (*domain.Todo, error) {
+	ctx, span := d.tracer.Start(ctx, "Todo.Update")
 	defer span.End()
 
 	res, err := d.base.Update(ctx, in)
@@ -70,8 +70,8 @@ func (d *TodoServiceDecorator) Update(ctx context.Context, in domain.UpdateTodoI
 	return res, err
 }
 
-func (d *TodoServiceDecorator) Delete(ctx context.Context, userID, id uuid.UUID) error {
-	ctx, span := d.tracer.Start(ctx, "TodoService.Delete")
+func (d *TodoDecorator) Delete(ctx context.Context, userID, id uuid.UUID) error {
+	ctx, span := d.tracer.Start(ctx, "Todo.Delete")
 	defer span.End()
 
 	err := d.base.Delete(ctx, userID, id)

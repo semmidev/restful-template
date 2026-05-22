@@ -11,19 +11,19 @@ import (
 	"github.com/semmidev/restful-template/internal/shared/uuidgen"
 )
 
-// AuthService implements domain.AuthUsecase.
-type AuthService struct {
+// Auth implements domain.AuthUsecase.
+type Auth struct {
 	users     domain.UserRepository
 	tokens    domain.TokenService
 	tokenRepo domain.TokenRepository
 	tracer    domain.Tracer
 }
 
-func NewAuthService(users domain.UserRepository, tokens domain.TokenService, tokenRepo domain.TokenRepository, tracer domain.Tracer) *AuthService {
-	return &AuthService{users: users, tokens: tokens, tokenRepo: tokenRepo, tracer: tracer}
+func NewAuth(users domain.UserRepository, tokens domain.TokenService, tokenRepo domain.TokenRepository, tracer domain.Tracer) *Auth {
+	return &Auth{users: users, tokens: tokens, tokenRepo: tokenRepo, tracer: tracer}
 }
 
-func (s *AuthService) Register(ctx context.Context, in domain.RegisterInput) (domain.TokenPair, error) {
+func (s *Auth) Register(ctx context.Context, in domain.RegisterInput) (domain.TokenPair, error) {
 	if in.Email == "" || in.Password == "" {
 		return domain.TokenPair{}, domain.ErrInvalidInput
 	}
@@ -49,7 +49,7 @@ func (s *AuthService) Register(ctx context.Context, in domain.RegisterInput) (do
 	return s.issuePair(ctx, u)
 }
 
-func (s *AuthService) Login(ctx context.Context, in domain.LoginInput) (domain.TokenPair, error) {
+func (s *Auth) Login(ctx context.Context, in domain.LoginInput) (domain.TokenPair, error) {
 	u, err := s.users.FindByEmail(ctx, in.Email)
 	if err != nil {
 		return domain.TokenPair{}, domain.ErrUnauthorized
@@ -62,7 +62,7 @@ func (s *AuthService) Login(ctx context.Context, in domain.LoginInput) (domain.T
 	return s.issuePair(ctx, u)
 }
 
-func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (domain.TokenPair, error) {
+func (s *Auth) Refresh(ctx context.Context, refreshToken string) (domain.TokenPair, error) {
 	claims, err := s.tokens.ParseRefresh(ctx, refreshToken)
 	if err != nil {
 		return domain.TokenPair{}, domain.ErrUnauthorized
@@ -82,7 +82,7 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (domain.
 	return s.issuePair(ctx, u)
 }
 
-func (s *AuthService) issuePair(ctx context.Context, u *domain.User) (domain.TokenPair, error) {
+func (s *Auth) issuePair(ctx context.Context, u *domain.User) (domain.TokenPair, error) {
 	access, refresh, exp, refreshExp, err := s.tokens.GeneratePair(ctx, u.ID, u.Email)
 	if err != nil {
 		return domain.TokenPair{}, err

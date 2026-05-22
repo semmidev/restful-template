@@ -9,18 +9,18 @@ import (
 	"github.com/semmidev/restful-template/internal/shared/uuidgen"
 )
 
-// TodoService implements domain.TodoUsecase.
-type TodoService struct {
+// Todo implements domain.TodoUsecase.
+type Todo struct {
 	repo   domain.TodoRepository
 	cache  domain.CacheRepository
 	tracer domain.Tracer
 }
 
-func NewTodoService(repo domain.TodoRepository, cache domain.CacheRepository, tracer domain.Tracer) *TodoService {
-	return &TodoService{repo: repo, cache: cache, tracer: tracer}
+func NewTodo(repo domain.TodoRepository, cache domain.CacheRepository, tracer domain.Tracer) *Todo {
+	return &Todo{repo: repo, cache: cache, tracer: tracer}
 }
 
-func (s *TodoService) Create(ctx context.Context, in domain.CreateTodoInput) (*domain.Todo, error) {
+func (s *Todo) Create(ctx context.Context, in domain.CreateTodoInput) (*domain.Todo, error) {
 	now := time.Now().UTC()
 	t := &domain.Todo{
 		ID:          uuidgen.New(), // UUID v7 — time-ordered, sortable
@@ -38,7 +38,7 @@ func (s *TodoService) Create(ctx context.Context, in domain.CreateTodoInput) (*d
 
 	// Example: tracing a heavy internal block manually
 	if s.tracer != nil {
-		_, span := s.tracer.Start(ctx, "TodoService.validateAndFormat")
+		_, span := s.tracer.Start(ctx, "Todo.validateAndFormat")
 		// perform some heavy logic or formatting
 		span.End()
 	}
@@ -49,11 +49,11 @@ func (s *TodoService) Create(ctx context.Context, in domain.CreateTodoInput) (*d
 	return t, nil
 }
 
-func (s *TodoService) Get(ctx context.Context, userID, id uuid.UUID) (*domain.Todo, error) {
+func (s *Todo) Get(ctx context.Context, userID, id uuid.UUID) (*domain.Todo, error) {
 	return s.repo.FindByID(ctx, userID, id)
 }
 
-func (s *TodoService) List(ctx context.Context, q domain.ListTodosQuery) ([]*domain.Todo, int, error) {
+func (s *Todo) List(ctx context.Context, q domain.ListTodosQuery) ([]*domain.Todo, int, error) {
 	if q.Limit <= 0 || q.Limit > 100 {
 		q.Limit = 20
 	}
@@ -66,7 +66,7 @@ func (s *TodoService) List(ctx context.Context, q domain.ListTodosQuery) ([]*dom
 	return s.repo.ListByUser(ctx, q)
 }
 
-func (s *TodoService) Update(ctx context.Context, in domain.UpdateTodoInput) (*domain.Todo, error) {
+func (s *Todo) Update(ctx context.Context, in domain.UpdateTodoInput) (*domain.Todo, error) {
 	t, err := s.repo.FindByID(ctx, in.UserID, in.ID)
 	if err != nil {
 		return nil, err
@@ -93,6 +93,6 @@ func (s *TodoService) Update(ctx context.Context, in domain.UpdateTodoInput) (*d
 	return t, nil
 }
 
-func (s *TodoService) Delete(ctx context.Context, userID, id uuid.UUID) error {
+func (s *Todo) Delete(ctx context.Context, userID, id uuid.UUID) error {
 	return s.repo.Delete(ctx, userID, id)
 }
