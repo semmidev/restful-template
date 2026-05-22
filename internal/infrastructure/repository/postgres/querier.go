@@ -6,7 +6,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/semmidev/restful-template/internal/database"
+	"github.com/semmidev/restful-template/internal/infrastructure/database"
 )
 
 // Querier defines the common methods between *pgxpool.Pool and pgx.Tx.

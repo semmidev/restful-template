@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/semmidev/restful-template/internal/config"
-	"github.com/semmidev/restful-template/internal/database"
+	"github.com/semmidev/restful-template/internal/infrastructure/database"
 	"github.com/semmidev/restful-template/internal/infrastructure/observability"
 )
 
