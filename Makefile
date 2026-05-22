@@ -1,4 +1,4 @@
-.PHONY: run test lint migrate-up migrate-down docker-up docker-down tidy vet
+.PHONY: run test test-integration lint migrate-up migrate-down docker-up docker-down tidy vet
 
 # ── Dev ───────────────────────────────────────────────────────────────────────
 run:
@@ -10,6 +10,9 @@ test:
 
 test-verbose:
 	go test ./... -race -v -cover
+
+test-integration:
+	go test ./tests/... -v -timeout 120s
 
 coverage:
 	go tool cover -html=coverage.out

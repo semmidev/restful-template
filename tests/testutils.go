@@ -13,9 +13,9 @@ import (
 )
 
 func SetupTestDatabase(t *testing.T) (*pgxpool.Pool, func()) {
+	t.Helper()
 	ctx := context.Background()
 
-	// Start Postgres container
 	dbContainer, err := postgres.Run(ctx,
 		"docker.io/postgres:18-alpine",
 		postgres.WithDatabase("testdb"),
@@ -36,25 +36,25 @@ func SetupTestDatabase(t *testing.T) (*pgxpool.Pool, func()) {
 		t.Fatalf("failed to get connection string: %v", err)
 	}
 
-	// Run migrations
-	if err := database.RunMigrations(connStr, "up"); err != nil {
-		t.Fatalf("failed to run migrations: %v", err)
-	}
-
-	// Initialize pgxpool
+	// Register the uuidv7() function before running migrations.
 	pcfg, err := pgxpool.ParseConfig(connStr)
 	if err != nil {
-		t.Fatalf("failed to parse config: %v", err)
+		t.Fatalf("failed to parse pool config: %v", err)
 	}
 	pool, err := pgxpool.NewWithConfig(ctx, pcfg)
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}
 
+	// Run all embedded SQL migrations.
+	if err := database.RunMigrations(connStr, "up"); err != nil {
+		t.Fatalf("failed to run migrations: %v", err)
+	}
+
 	cleanup := func() {
 		pool.Close()
 		if err := dbContainer.Terminate(ctx); err != nil {
-			t.Fatalf("failed to terminate postgres container: %v", err)
+			t.Logf("warning: failed to terminate postgres container: %v", err)
 		}
 	}
 

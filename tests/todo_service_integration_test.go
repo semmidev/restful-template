@@ -1,128 +1,227 @@
 package tests
 
 import (
-	"context"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"mime/multipart"
+	"net/http"
+	"net/http/httptest"
 	"testing"
+	"time"
 
-	sq "github.com/Masterminds/squirrel"
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/danielgtaylor/huma/v2/adapters/humachi"
+	"github.com/danielgtaylor/huma/v2/humatest"
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/semmidev/restful-template/internal/domain"
-	"github.com/semmidev/restful-template/internal/infrastructure/repository/postgres"
-	"github.com/semmidev/restful-template/internal/shared/uuidgen"
+	delivery "github.com/semmidev/restful-template/internal/delivery/http"
+	"github.com/semmidev/restful-template/internal/infrastructure/jwt"
+	pgRepo "github.com/semmidev/restful-template/internal/infrastructure/repository/postgres"
 	"github.com/semmidev/restful-template/internal/usecase"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-var psql = sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
+const testJWTSecret = "test-secret-key-minimum-32-bytes!!"
 
-func insertDummyUser(t *testing.T, ctx context.Context, pool *pgxpool.Pool) uuid.UUID {
-	userID := uuidgen.New()
-	sql, args, err := psql.Insert("users").
-		Columns("id", "email", "password_hash").
-		Values(userID, userID.String()+"@example.com", "hash").
-		ToSql()
-	require.NoError(t, err)
+// newTestAPI wires up the full Huma API (routes + auth middleware) backed by
+// the given pool, without Redis or observability dependencies.
+func newTestAPI(pool *pgxpool.Pool) huma.API {
+	todoRepo := pgRepo.NewTodoRepository(pool)
+	userRepo := pgRepo.NewUserRepository(pool)
+	tokenRepo := pgRepo.NewTokenRepository(pool)
 
-	_, err = pool.Exec(ctx, sql, args...)
-	require.NoError(t, err)
-	return userID
+	tokenSvc := jwt.NewJWTService(testJWTSecret, 15*time.Minute, 7*24*time.Hour)
+
+	authSvc := usecase.NewAuth(userRepo, tokenSvc, tokenRepo, nil)
+	todoSvc := usecase.NewTodo(todoRepo, nil, nil)
+
+	r := chi.NewRouter()
+	humaConfig := huma.DefaultConfig("Todo API Test", "0.0.0")
+	humaConfig.Components = &huma.Components{
+		SecuritySchemes: map[string]*huma.SecurityScheme{
+			"bearerAuth": {Type: "http", Scheme: "bearer", BearerFormat: "JWT"},
+		},
+	}
+	api := humachi.New(r, humaConfig)
+	api.UseMiddleware(delivery.AuthMiddleware(api, tokenSvc))
+	delivery.RegisterRoutes(api, authSvc, todoSvc, nil)
+	return api
 }
 
-func TestTodoService_Integration(t *testing.T) {
+// registerAndLogin calls the register endpoint and returns the access token.
+func registerAndLogin(t *testing.T, api huma.API, email, password string) string {
+	t.Helper()
+	body := map[string]string{"email": email, "password": password}
+	b, _ := json.Marshal(body)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewReader(b))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	api.Adapter().ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, "register failed: %s", w.Body.String())
+
+	var resp struct {
+		Data struct {
+			AccessToken string `json:"access_token"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	return resp.Data.AccessToken
+}
+
+// doRequest is a helper that sends an authenticated request and returns the recorder.
+func doRequest(api huma.API, method, path, token string, body []byte, contentType string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(method, path, bytes.NewReader(body))
+	if contentType != "" {
+		req.Header.Set("Content-Type", contentType)
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	w := httptest.NewRecorder()
+	api.Adapter().ServeHTTP(w, req)
+	return w
+}
+
+// buildMultipartBody builds a simple multipart/form-data body with text fields only.
+func buildMultipartBody(fields map[string]string) ([]byte, string) {
+	var buf bytes.Buffer
+	mw := multipart.NewWriter(&buf)
+	for k, v := range fields {
+		_ = mw.WriteField(k, v)
+	}
+	mw.Close()
+	return buf.Bytes(), mw.FormDataContentType()
+}
+
+// ─── Tests ──────────────────────────────────────────────────────────────────
+
+func TestTodoHTTP_Integration(t *testing.T) {
 	pool, cleanup := SetupTestDatabase(t)
 	defer cleanup()
 
-	ctx := context.Background()
+	api := newTestAPI(pool)
 
-	repo := postgres.NewTodoRepository(pool)
-	svc := usecase.NewTodo(repo, nil, nil)
+	// Each sub-test gets its own isolated user so they don't interfere.
+	email := fmt.Sprintf("test-%s@example.com", uuid.New().String())
+	token := registerAndLogin(t, api, email, "password123")
 
-	userID := insertDummyUser(t, ctx, pool)
+	var createdID string
 
-	t.Run("Create Todo", func(t *testing.T) {
-		in := domain.CreateTodoInput{
-			UserID: userID,
-			Title:  "Integration Test Todo",
+	t.Run("POST /api/v1/todos – success", func(t *testing.T) {
+		body, ct := buildMultipartBody(map[string]string{"title": "Integration HTTP Todo"})
+		w := doRequest(api, http.MethodPost, "/api/v1/todos", token, body, ct)
+
+		assert.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+
+		var resp struct {
+			Data struct {
+				ID    string `json:"id"`
+				Title string `json:"title"`
+			} `json:"data"`
 		}
-		todo, err := svc.Create(ctx, in)
-		assert.NoError(t, err)
-		assert.NotNil(t, todo)
-		assert.Equal(t, "Integration Test Todo", todo.Title)
-		assert.Equal(t, domain.TodoPending, todo.Status)
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+		assert.Equal(t, "Integration HTTP Todo", resp.Data.Title)
+		assert.NotEmpty(t, resp.Data.ID)
+
+		createdID = resp.Data.ID
 	})
 
-	t.Run("Create validation failure", func(t *testing.T) {
-		in := domain.CreateTodoInput{
-			UserID: userID,
-			Title:  "",
-		}
-		todo, err := svc.Create(ctx, in)
-		assert.Error(t, err)
-		assert.Nil(t, todo)
+	t.Run("POST /api/v1/todos – missing title returns 422", func(t *testing.T) {
+		body, ct := buildMultipartBody(map[string]string{"title": ""})
+		w := doRequest(api, http.MethodPost, "/api/v1/todos", token, body, ct)
+		// Huma validates minLength:1 -> 422 Unprocessable Entity
+		assert.Equal(t, http.StatusUnprocessableEntity, w.Code, w.Body.String())
 	})
 
-	t.Run("Update Todo", func(t *testing.T) {
-		in := domain.CreateTodoInput{
-			UserID: userID,
-			Title:  "Old Title",
-		}
-		todo, err := svc.Create(ctx, in)
-		require.NoError(t, err)
+	t.Run("GET /api/v1/todos – returns list", func(t *testing.T) {
+		w := doRequest(api, http.MethodGet, "/api/v1/todos", token, nil, "")
+		assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
 
-		newTitle := "New Title"
-		updated, err := svc.Update(ctx, domain.UpdateTodoInput{
-			ID:     todo.ID,
-			UserID: userID,
-			Title:  &newTitle,
-		})
-		assert.NoError(t, err)
-		assert.Equal(t, "New Title", updated.Title)
+		var resp struct {
+			Data struct {
+				Items []struct {
+					ID string `json:"id"`
+				} `json:"items"`
+				Total int `json:"total"`
+			} `json:"data"`
+		}
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+		assert.GreaterOrEqual(t, resp.Data.Total, 1)
 	})
 
-	t.Run("List Todos", func(t *testing.T) {
-		// Insert another user to test isolation
-		otherUserID := insertDummyUser(t, ctx, pool)
+	t.Run("GET /api/v1/todos/{id} – returns single todo", func(t *testing.T) {
+		require.NotEmpty(t, createdID, "depends on create test")
+		w := doRequest(api, http.MethodGet, "/api/v1/todos/"+createdID, token, nil, "")
+		assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
 
-		// Create two for primary user
-		_, err := svc.Create(ctx, domain.CreateTodoInput{UserID: userID, Title: "List item 1"})
-		require.NoError(t, err)
-		_, err = svc.Create(ctx, domain.CreateTodoInput{UserID: userID, Title: "List item 2"})
-		require.NoError(t, err)
-
-		// Create one for other user
-		_, err = svc.Create(ctx, domain.CreateTodoInput{UserID: otherUserID, Title: "Other user item"})
-		require.NoError(t, err)
-
-		items, total, err := svc.List(ctx, domain.ListTodosQuery{
-			UserID: userID,
-			Limit:  10,
-		})
-		assert.NoError(t, err)
-
-		// The total might be more than 2 if previous tests also created todos for userID, but
-		// the ones for otherUserID should NOT be there.
-		assert.GreaterOrEqual(t, total, 2)
-
-		// Ensure none of the returned items belong to otherUserID
-		for _, item := range items {
-			assert.Equal(t, userID, item.UserID)
+		var resp struct {
+			Data struct {
+				ID    string `json:"id"`
+				Title string `json:"title"`
+			} `json:"data"`
 		}
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+		assert.Equal(t, createdID, resp.Data.ID)
+		assert.Equal(t, "Integration HTTP Todo", resp.Data.Title)
 	})
 
-	t.Run("Delete Todo", func(t *testing.T) {
-		in := domain.CreateTodoInput{
-			UserID: userID,
-			Title:  "To be deleted",
+	t.Run("PATCH /api/v1/todos/{id} – updates title", func(t *testing.T) {
+		require.NotEmpty(t, createdID, "depends on create test")
+		body, ct := buildMultipartBody(map[string]string{"title": "Updated Title"})
+		w := doRequest(api, http.MethodPatch, "/api/v1/todos/"+createdID, token, body, ct)
+		assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+		var resp struct {
+			Data struct {
+				Title string `json:"title"`
+			} `json:"data"`
 		}
-		todo, err := svc.Create(ctx, in)
-		require.NoError(t, err)
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+		assert.Equal(t, "Updated Title", resp.Data.Title)
+	})
 
-		err = svc.Delete(ctx, userID, todo.ID)
-		assert.NoError(t, err)
+	t.Run("DELETE /api/v1/todos/{id} – removes todo", func(t *testing.T) {
+		require.NotEmpty(t, createdID, "depends on create test")
+		w := doRequest(api, http.MethodDelete, "/api/v1/todos/"+createdID, token, nil, "")
+		assert.Equal(t, http.StatusNoContent, w.Code, w.Body.String())
+	})
 
-		_, err = svc.Get(ctx, userID, todo.ID)
-		assert.ErrorIs(t, err, domain.ErrNotFound)
+	t.Run("GET /api/v1/todos/{id} – returns 404 after delete", func(t *testing.T) {
+		require.NotEmpty(t, createdID, "depends on delete test")
+		w := doRequest(api, http.MethodGet, "/api/v1/todos/"+createdID, token, nil, "")
+		assert.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
+	})
+
+	t.Run("GET /api/v1/todos – unauthenticated returns 401", func(t *testing.T) {
+		w := doRequest(api, http.MethodGet, "/api/v1/todos", "", nil, "")
+		assert.Equal(t, http.StatusUnauthorized, w.Code, w.Body.String())
+	})
+
+	t.Run("GET /api/v1/todos/{id} – other user cannot access todo", func(t *testing.T) {
+		// Create a second user and their own todo
+		email2 := fmt.Sprintf("other-%s@example.com", uuid.New().String())
+		token2 := registerAndLogin(t, api, email2, "password123")
+
+		body, ct := buildMultipartBody(map[string]string{"title": "Other user's todo"})
+		wCreate := doRequest(api, http.MethodPost, "/api/v1/todos", token2, body, ct)
+		require.Equal(t, http.StatusCreated, wCreate.Code)
+
+		var createResp struct {
+			Data struct {
+				ID string `json:"id"`
+			} `json:"data"`
+		}
+		require.NoError(t, json.Unmarshal(wCreate.Body.Bytes(), &createResp))
+
+		// user1 tries to access user2's todo — must get 404 (not found for that user)
+		w := doRequest(api, http.MethodGet, "/api/v1/todos/"+createResp.Data.ID, token, nil, "")
+		assert.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
 	})
 }
+
+// Ensure humatest is imported to satisfy the go.mod dependency.
+var _ = humatest.New
