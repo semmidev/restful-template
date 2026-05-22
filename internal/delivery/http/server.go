@@ -8,6 +8,7 @@ import (
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-redis/redis_rate/v10"
 	"github.com/riandyrn/otelchi"
 	"github.com/semmidev/restful-template/internal/config"
 	"github.com/semmidev/restful-template/internal/domain"
@@ -22,7 +23,7 @@ type Server struct {
 // NewServer wires up all middleware, Huma API, and registers routes.
 // tokens (domain.TokenService) is passed separately so AuthMiddleware can
 // validate JWTs without depending on the full AuthService (clean arch).
-func NewServer(cfg config.Config, log *slog.Logger, auth domain.AuthUsecase, todos domain.TodoUsecase, tokens domain.TokenService) *Server {
+func NewServer(cfg config.Config, log *slog.Logger, auth domain.AuthUsecase, todos domain.TodoUsecase, tokens domain.TokenService, limiter *redis_rate.Limiter) *Server {
 	r := chi.NewRouter()
 
 	// Middleware stack (order matters)
@@ -34,6 +35,7 @@ func NewServer(cfg config.Config, log *slog.Logger, auth domain.AuthUsecase, tod
 	r.Use(middleware.Timeout(cfg.HTTP.ReadTimeout))
 	r.Use(CORS())
 	r.Use(SecurityHeaders())
+	r.Use(RateLimiter(limiter))
 
 	humaConfig := huma.DefaultConfig("Todo API", cfg.App.Version)
 	humaConfig.Info.Description = "Production-ready Todo REST API built with Huma v2 + Chi."

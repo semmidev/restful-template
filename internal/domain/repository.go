@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -15,6 +16,12 @@ type UserRepository interface {
 	Create(ctx context.Context, user *User) error
 	FindByEmail(ctx context.Context, email string) (*User, error)
 	FindByID(ctx context.Context, id uuid.UUID) (*User, error)
+}
+
+type TokenRepository interface {
+	StoreRefreshToken(ctx context.Context, tokenHash string, userID uuid.UUID, expiresAt time.Time) error
+	// DeleteRefreshToken returns ErrNotFound if the token was not found
+	DeleteRefreshToken(ctx context.Context, tokenHash string) error
 }
 
 // TodoRepository is the driven port for todo persistence.

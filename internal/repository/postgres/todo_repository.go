@@ -51,13 +51,13 @@ func (r *TodoRepository) FindByID(ctx context.Context, userID, id uuid.UUID) (*d
 
 // ListByUser returns paginated todos for a user with optional status and keyword filters.
 func (r *TodoRepository) ListByUser(ctx context.Context, q domain.ListTodosQuery) ([]*domain.Todo, int, error) {
-	
+
 	base := psql.Select().From("todos").Where(sq.Eq{"user_id": q.UserID})
-	
+
 	if q.Status != "" {
 		base = base.Where(sq.Eq{"status": q.Status})
 	}
-	
+
 	if q.Keyword != "" {
 		like := "%" + q.Keyword + "%"
 		base = base.Where(sq.Or{

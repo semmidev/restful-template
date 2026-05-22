@@ -59,13 +59,14 @@ type TodoResp struct {
 }
 
 type ListData struct {
-	Items   []*domain.Todo `json:"items"`
-	Total   int            `json:"total"`
-	Page    int            `json:"page"`
-	PerPage int            `json:"per_page"`
-	Keyword string         `json:"keyword,omitempty" doc:"Active keyword filter (empty if none)"`
-	SortBy  string         `json:"sort_by" doc:"Column sorted by"`
-	SortDir string         `json:"sort_dir" doc:"Sort direction"`
+	Items   []*domain.Todo    `json:"items"`
+	Total   int               `json:"total"`
+	Page    int               `json:"page"`
+	PerPage int               `json:"per_page"`
+	Links   map[string]string `json:"_links,omitempty"`
+	Keyword string            `json:"keyword,omitempty" doc:"Active keyword filter (empty if none)"`
+	SortBy  string            `json:"sort_by" doc:"Column sorted by"`
+	SortDir string            `json:"sort_dir" doc:"Sort direction"`
 }
 
 type ListResp struct {
@@ -181,6 +182,26 @@ func RegisterRoutes(api huma.API, auth domain.AuthUsecase, todos domain.TodoUsec
 		resp.Body.Data.Keyword = in.Keyword
 		resp.Body.Data.SortBy = in.SortBy
 		resp.Body.Data.SortDir = in.SortDir
+
+		links := make(map[string]string)
+		baseURL := "/api/v1/todos"
+		links["self"] = fmt.Sprintf("%s?page=%d&per_page=%d", baseURL, in.Page, in.PerPage)
+		links["first"] = fmt.Sprintf("%s?page=%d&per_page=%d", baseURL, 1, in.PerPage)
+
+		lastPage := (total + in.PerPage - 1) / in.PerPage
+		if lastPage < 1 {
+			lastPage = 1
+		}
+		links["last"] = fmt.Sprintf("%s?page=%d&per_page=%d", baseURL, lastPage, in.PerPage)
+
+		if in.Page > 1 {
+			links["prev"] = fmt.Sprintf("%s?page=%d&per_page=%d", baseURL, in.Page-1, in.PerPage)
+		}
+		if in.Page < lastPage {
+			links["next"] = fmt.Sprintf("%s?page=%d&per_page=%d", baseURL, in.Page+1, in.PerPage)
+		}
+		resp.Body.Data.Links = links
+
 		return resp, nil
 	})
 

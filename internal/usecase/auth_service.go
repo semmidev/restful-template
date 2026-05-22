@@ -2,6 +2,9 @@ package usecase
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"time"
 
 	"github.com/semmidev/restful-template/internal/domain"
 	"github.com/semmidev/restful-template/internal/shared/password"
@@ -10,12 +13,13 @@ import (
 
 // AuthService implements domain.AuthUsecase.
 type AuthService struct {
-	users  domain.UserRepository
-	tokens domain.TokenService
+	users     domain.UserRepository
+	tokens    domain.TokenService
+	tokenRepo domain.TokenRepository
 }
 
-func NewAuthService(users domain.UserRepository, tokens domain.TokenService) *AuthService {
-	return &AuthService{users: users, tokens: tokens}
+func NewAuthService(users domain.UserRepository, tokens domain.TokenService, tokenRepo domain.TokenRepository) *AuthService {
+	return &AuthService{users: users, tokens: tokens, tokenRepo: tokenRepo}
 }
 
 func (s *AuthService) Register(ctx context.Context, in domain.RegisterInput) (domain.TokenPair, error) {
@@ -62,6 +66,13 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (domain.
 	if err != nil {
 		return domain.TokenPair{}, domain.ErrUnauthorized
 	}
+
+	hash := hashToken(refreshToken)
+	if err := s.tokenRepo.DeleteRefreshToken(ctx, hash); err != nil {
+		// If it's not in the DB, it was already used or revoked -> treat as unauthorized
+		return domain.TokenPair{}, domain.ErrUnauthorized
+	}
+
 	// Re-fetch user to ensure the account still exists
 	u, err := s.users.FindByID(ctx, claims.UserID)
 	if err != nil {
@@ -71,9 +82,20 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (domain.
 }
 
 func (s *AuthService) issuePair(ctx context.Context, u *domain.User) (domain.TokenPair, error) {
-	access, refresh, exp, err := s.tokens.GeneratePair(ctx, u.ID, u.Email)
+	access, refresh, exp, refreshExp, err := s.tokens.GeneratePair(ctx, u.ID, u.Email)
 	if err != nil {
 		return domain.TokenPair{}, err
 	}
+
+	hash := hashToken(refresh)
+	if err := s.tokenRepo.StoreRefreshToken(ctx, hash, u.ID, time.Unix(refreshExp, 0)); err != nil {
+		return domain.TokenPair{}, err
+	}
+
 	return domain.TokenPair{AccessToken: access, RefreshToken: refresh, ExpiresIn: exp}, nil
+}
+
+func hashToken(token string) string {
+	h := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(h[:])
 }

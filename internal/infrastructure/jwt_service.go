@@ -19,7 +19,7 @@ func NewJWTService(secret string, accessTTL, refreshTTL time.Duration) *JWTServi
 	return &JWTService{secret: []byte(secret), accessTTL: accessTTL, refreshTTL: refreshTTL}
 }
 
-func (s *JWTService) GeneratePair(ctx context.Context, userID uuid.UUID, email string) (string, string, int64, error) {
+func (s *JWTService) GeneratePair(ctx context.Context, userID uuid.UUID, email string) (string, string, int64, int64, error) {
 	now := time.Now()
 	accessExp := now.Add(s.accessTTL).Unix()
 	access := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -30,7 +30,7 @@ func (s *JWTService) GeneratePair(ctx context.Context, userID uuid.UUID, email s
 	})
 	aStr, err := access.SignedString(s.secret)
 	if err != nil {
-		return "", "", 0, err
+		return "", "", 0, 0, err
 	}
 	refreshExp := now.Add(s.refreshTTL).Unix()
 	refresh := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -40,7 +40,7 @@ func (s *JWTService) GeneratePair(ctx context.Context, userID uuid.UUID, email s
 		"type":  "refresh",
 	})
 	rStr, err := refresh.SignedString(s.secret)
-	return aStr, rStr, accessExp, err
+	return aStr, rStr, accessExp, refreshExp, err
 }
 
 func (s *JWTService) ParseAccess(ctx context.Context, token string) (*domain.TokenClaims, error) {

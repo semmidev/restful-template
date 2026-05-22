@@ -12,7 +12,7 @@ type TokenClaims struct {
 }
 
 type TokenService interface {
-	GeneratePair(ctx context.Context, userID uuid.UUID, email string) (access, refresh string, exp int64, err error)
+	GeneratePair(ctx context.Context, userID uuid.UUID, email string) (access, refresh string, accessExp, refreshExp int64, err error)
 	ParseAccess(ctx context.Context, token string) (*TokenClaims, error)
 	ParseRefresh(ctx context.Context, token string) (*TokenClaims, error)
 }

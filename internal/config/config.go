@@ -20,9 +20,10 @@ import (
 
 // Config is the root application configuration.
 type Config struct {
-	App      App
-	HTTP     HTTP
-	Database Database
+	App       App
+	HTTP      HTTP
+	Database  Database
+	Redis     Redis
 	JWT       JWT
 	Log       Log
 	Telemetry Telemetry
@@ -47,6 +48,10 @@ type Database struct {
 	MaxOpenConns    int
 	MaxIdleConns    int
 	ConnMaxLifetime time.Duration
+}
+
+type Redis struct {
+	DSN string
 }
 
 type JWT struct {
@@ -94,13 +99,15 @@ func Load() Config {
 	v.SetDefault("DATABASE_MAX_IDLE_CONNS", 5)
 	v.SetDefault("DATABASE_CONN_MAX_LIFETIME", "5m")
 
+	v.SetDefault("REDIS_DSN", "redis://localhost:6379/0")
+
 	v.SetDefault("JWT_SECRET", "change-me-in-production-min-32-bytes!")
 	v.SetDefault("JWT_ACCESS_TTL", "15m")
 	v.SetDefault("JWT_REFRESH_TTL", "168h")
 
 	v.SetDefault("LOG_LEVEL", "info")
 	v.SetDefault("LOG_FORMAT", "json")
-	
+
 	v.SetDefault("TELEMETRY_OTLP_ENDPOINT", "localhost:4317")
 
 	return Config{
@@ -121,6 +128,9 @@ func Load() Config {
 			MaxOpenConns:    v.GetInt("DATABASE_MAX_OPEN_CONNS"),
 			MaxIdleConns:    v.GetInt("DATABASE_MAX_IDLE_CONNS"),
 			ConnMaxLifetime: mustDuration(v, "DATABASE_CONN_MAX_LIFETIME"),
+		},
+		Redis: Redis{
+			DSN: v.GetString("REDIS_DSN"),
 		},
 		JWT: JWT{
 			Secret:     v.GetString("JWT_SECRET"),

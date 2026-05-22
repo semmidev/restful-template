@@ -40,3 +40,6 @@ chrome-user-data
 /tmp
 /.worktrees
 .claude/*.local.*
+
+# disable for now
+k8s

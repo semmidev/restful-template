@@ -56,5 +56,5 @@ Automate the path to production.
 ## 📡 5. Application Logic Tweaks (To Do)
 Minor code improvements for enterprise readiness.
 
-- [ ] **Pagination Metadata**: Enhance `ListData` to return `next_cursor` or HAL links for standard REST API traversal instead of just `page` and `per_page`.
-- [ ] **Refresh Token Rotation**: Currently, `RefreshBody` accepts a token. Implement Token Rotation (invalidating the old refresh token upon use) and store active refresh token hashes in the database/Redis to allow remote revocation.
+- [x] **Pagination Metadata**: Enhance `ListData` to return `next_cursor` or HAL links for standard REST API traversal instead of just `page` and `per_page`.
+- [x] **Refresh Token Rotation**: Currently, `RefreshBody` accepts a token. Implement Token Rotation (invalidating the old refresh token upon use) and store active refresh token hashes in the database/Redis to allow remote revocation.

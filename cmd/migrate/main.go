@@ -12,7 +12,7 @@ import (
 func main() {
 	cfg := config.Load()
 	logger := observability.NewLogger(cfg.Log.Level, "text", cfg.App.Env)
-	
+
 	direction := "up"
 	if len(os.Args) > 1 {
 		direction = os.Args[1]
