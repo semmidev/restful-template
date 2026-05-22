@@ -40,6 +40,31 @@ A production-grade RESTful API template built with Go 1.26, featuring **Clean Ar
 
 ---
 
+## Architecture Flow
+
+```mermaid
+flowchart TD
+    Client([Client]) -- "HTTP Request" --> Delivery
+
+    subgraph Clean Architecture
+        Delivery["Delivery Layer<br/>(Chi + Huma)"]
+        Usecase["Usecase Layer<br/>(Business Logic)"]
+        Domain["Domain Layer<br/>(Entities & Interfaces)"]
+        Infrastructure["Infrastructure Layer<br/>(Postgres, JWT)"]
+
+        Delivery -- "Depends on" --> Usecase
+        Usecase -- "Depends on" --> Domain
+        Infrastructure -. "Implements interfaces" .-> Domain
+        Delivery -. "Depends on" .-> Domain
+        
+        Usecase -. "Runtime execution" .-> Infrastructure
+    end
+
+    Infrastructure -- "SQL Queries" --> Database[(PostgreSQL 18)]
+```
+
+---
+
 ## Project Structure
 
 ```text
