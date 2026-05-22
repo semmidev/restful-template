@@ -49,12 +49,13 @@ A production-grade RESTful API template built with Go 1.26, featuring **Clean Ar
 │   └── server/       # Main API application entrypoint
 ├── internal/
 │   ├── config/       # Application configuration (Viper)
-│   ├── database/     # DB connection, migrations, TxManager implementation
 │   ├── delivery/     # Inbound (HTTP Server, Routers)
 │   ├── domain/       # Core business entities, usecase, and repository interfaces
-│   ├── infrastructure/# External services (e.g. JWT Auth)
-│   ├── observability/# Logging and OpenTelemetry tracing setup
-│   ├── repository/   # Outbound (Postgres)
+│   ├── infrastructure/
+│   │   ├── database/     # DB connection, migrations, TxManager implementation
+│   │   ├── jwt/          # External services (e.g. JWT Auth)
+│   │   ├── observability/# Logging and OpenTelemetry tracing setup
+│   │   └── repository/   # Outbound (Postgres, Redis)
 │   ├── shared/       # Cross-cutting utilities (UUID generation, Password hashing)
 │   └── usecase/      # Use cases / Business logic implementation
 ```
