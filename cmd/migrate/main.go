@@ -6,7 +6,7 @@ import (
 
 	"github.com/semmidev/restful-template/internal/config"
 	"github.com/semmidev/restful-template/internal/database"
-	"github.com/semmidev/restful-template/internal/observability"
+	"github.com/semmidev/restful-template/internal/infrastructure/observability"
 )
 
 func main() {
