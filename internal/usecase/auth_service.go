@@ -16,10 +16,11 @@ type AuthService struct {
 	users     domain.UserRepository
 	tokens    domain.TokenService
 	tokenRepo domain.TokenRepository
+	tracer    domain.Tracer
 }
 
-func NewAuthService(users domain.UserRepository, tokens domain.TokenService, tokenRepo domain.TokenRepository) *AuthService {
-	return &AuthService{users: users, tokens: tokens, tokenRepo: tokenRepo}
+func NewAuthService(users domain.UserRepository, tokens domain.TokenService, tokenRepo domain.TokenRepository, tracer domain.Tracer) *AuthService {
+	return &AuthService{users: users, tokens: tokens, tokenRepo: tokenRepo, tracer: tracer}
 }
 
 func (s *AuthService) Register(ctx context.Context, in domain.RegisterInput) (domain.TokenPair, error) {

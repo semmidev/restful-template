@@ -12,6 +12,7 @@ import (
 	"github.com/riandyrn/otelchi"
 	"github.com/semmidev/restful-template/internal/config"
 	"github.com/semmidev/restful-template/internal/domain"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Server holds the chi router and huma API.
@@ -30,6 +31,7 @@ func NewServer(cfg config.Config, log *slog.Logger, auth domain.AuthUsecase, tod
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(otelchi.Middleware(cfg.App.Name, otelchi.WithChiRoutes(r)))
+	r.Use(TraceIDMiddleware)
 	r.Use(Logger(log))
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(cfg.HTTP.ReadTimeout))
@@ -58,3 +60,15 @@ func NewServer(cfg config.Config, log *slog.Logger, auth domain.AuthUsecase, tod
 }
 
 func (s *Server) Handler() http.Handler { return s.router }
+
+// TraceIDMiddleware extracts the OpenTelemetry Trace ID from the context
+// and injects it into the HTTP response header for debugging.
+func TraceIDMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		spanContext := trace.SpanContextFromContext(r.Context())
+		if spanContext.HasTraceID() {
+			w.Header().Set("X-Trace-Id", spanContext.TraceID().String())
+		}
+		next.ServeHTTP(w, r)
+	})
+}

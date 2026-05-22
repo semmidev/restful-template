@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/go-redis/redis_rate/v10"
+	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -17,6 +18,16 @@ func NewClient(ctx context.Context, dsn string) (*redis.Client, *redis_rate.Limi
 
 	if err := rdb.Ping(ctx).Err(); err != nil {
 		rdb.Close()
+		return nil, nil, err
+	}
+
+	// Enable tracing for all Redis commands
+	if err := redisotel.InstrumentTracing(rdb); err != nil {
+		return nil, nil, err
+	}
+
+	// Enable metrics for Redis commands
+	if err := redisotel.InstrumentMetrics(rdb); err != nil {
 		return nil, nil, err
 	}
 

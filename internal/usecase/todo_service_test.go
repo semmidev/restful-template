@@ -67,7 +67,7 @@ func TestCreate(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			repo := new(mockTodoRepo)
-			svc := NewTodoService(repo)
+			svc := NewTodoService(repo, nil, nil)
 
 			if !tc.wantErr {
 				repo.On("Create", mock.Anything, mock.Anything).Return(tc.repoErr)
@@ -124,7 +124,7 @@ func TestList(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			repo := new(mockTodoRepo)
-			svc := NewTodoService(repo)
+			svc := NewTodoService(repo, nil, nil)
 
 			expectedQuery := tc.query
 			expectedQuery.Limit = tc.wantLimit
@@ -143,7 +143,7 @@ func TestList(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 	repo := new(mockTodoRepo)
-	svc := NewTodoService(repo)
+	svc := NewTodoService(repo, nil, nil)
 	userID := uuidgen.New()
 	id := uuidgen.New()
 
@@ -155,7 +155,7 @@ func TestDelete(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	repo := new(mockTodoRepo)
-	svc := NewTodoService(repo)
+	svc := NewTodoService(repo, nil, nil)
 	userID := uuidgen.New()
 	id := uuidgen.New()
 

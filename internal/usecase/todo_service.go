@@ -11,11 +11,13 @@ import (
 
 // TodoService implements domain.TodoUsecase.
 type TodoService struct {
-	repo domain.TodoRepository
+	repo   domain.TodoRepository
+	cache  domain.CacheRepository
+	tracer domain.Tracer
 }
 
-func NewTodoService(repo domain.TodoRepository) *TodoService {
-	return &TodoService{repo: repo}
+func NewTodoService(repo domain.TodoRepository, cache domain.CacheRepository, tracer domain.Tracer) *TodoService {
+	return &TodoService{repo: repo, cache: cache, tracer: tracer}
 }
 
 func (s *TodoService) Create(ctx context.Context, in domain.CreateTodoInput) (*domain.Todo, error) {
@@ -33,6 +35,14 @@ func (s *TodoService) Create(ctx context.Context, in domain.CreateTodoInput) (*d
 	if err := t.Validate(); err != nil {
 		return nil, err
 	}
+
+	// Example: tracing a heavy internal block manually
+	if s.tracer != nil {
+		_, span := s.tracer.Start(ctx, "TodoService.validateAndFormat")
+		// perform some heavy logic or formatting
+		span.End()
+	}
+
 	if err := s.repo.Create(ctx, t); err != nil {
 		return nil, err
 	}
