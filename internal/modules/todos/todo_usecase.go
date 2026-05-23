@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	apperrors "github.com/semmidev/restful-template/internal/shared/errors"
+
 	"github.com/semmidev/restful-template/internal/shared/cache"
 	"github.com/semmidev/restful-template/internal/shared/observability"
 	"github.com/semmidev/restful-template/internal/shared/uuidgen"
@@ -33,7 +35,7 @@ func (s *Usecase) Create(ctx context.Context, in CreateTodoInput) (*Todo, error)
 		UpdatedAt:   now,
 	}
 	if err := t.Validate(); err != nil {
-		return nil, err
+		return nil, apperrors.NewInvalidInput("Invalid todo data", err)
 	}
 
 	if s.tracer != nil {
@@ -42,13 +44,17 @@ func (s *Usecase) Create(ctx context.Context, in CreateTodoInput) (*Todo, error)
 	}
 
 	if err := s.repo.Create(ctx, t); err != nil {
-		return nil, err
+		return nil, apperrors.NewInternal("Failed to create todo", err)
 	}
 	return t, nil
 }
 
 func (s *Usecase) Get(ctx context.Context, userID, id uuid.UUID) (*Todo, error) {
-	return s.repo.GetByID(ctx, userID, id)
+	t, err := s.repo.GetByID(ctx, userID, id)
+	if err != nil {
+		return nil, apperrors.NewNotFound("The requested todo does not exist", err)
+	}
+	return t, nil
 }
 
 func (s *Usecase) List(ctx context.Context, q ListTodosQuery) ([]*Todo, int, error) {
@@ -61,13 +67,17 @@ func (s *Usecase) List(ctx context.Context, q ListTodosQuery) ([]*Todo, int, err
 	if q.SortDir == "" {
 		q.SortDir = "desc"
 	}
-	return s.repo.ListByUser(ctx, q)
+	todos, count, err := s.repo.ListByUser(ctx, q)
+	if err != nil {
+		return nil, 0, apperrors.NewInternal("Failed to list todos", err)
+	}
+	return todos, count, nil
 }
 
 func (s *Usecase) Update(ctx context.Context, in UpdateTodoInput) (*Todo, error) {
 	t, err := s.repo.GetByID(ctx, in.UserID, in.ID)
 	if err != nil {
-		return nil, err
+		return nil, apperrors.NewNotFound("The requested todo does not exist", err)
 	}
 	
 	t.UpdateDetails(in.Title, in.Description, in.Cover)
@@ -76,18 +86,24 @@ func (s *Usecase) Update(ctx context.Context, in UpdateTodoInput) (*Todo, error)
 	}
 
 	if err := t.Validate(); err != nil {
-		return nil, err
+		return nil, apperrors.NewInvalidInput("Invalid todo data", err)
 	}
 	if err := s.repo.Update(ctx, t); err != nil {
-		return nil, err
+		return nil, apperrors.NewInternal("Failed to update todo", err)
 	}
 	return t, nil
 }
 
 func (s *Usecase) Delete(ctx context.Context, userID, id uuid.UUID) error {
-	return s.repo.Delete(ctx, userID, id)
+	if err := s.repo.Delete(ctx, userID, id); err != nil {
+		return apperrors.NewInternal("Failed to delete todo", err)
+	}
+	return nil
 }
 
 func (s *Usecase) DeleteAllByUserID(ctx context.Context, userID uuid.UUID) error {
-	return s.repo.DeleteAllByUserID(ctx, userID)
+	if err := s.repo.DeleteAllByUserID(ctx, userID); err != nil {
+		return apperrors.NewInternal("Failed to delete all todos", err)
+	}
+	return nil
 }

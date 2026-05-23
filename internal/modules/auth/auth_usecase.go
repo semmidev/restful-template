@@ -29,16 +29,16 @@ func NewAuth(users UserRepository, tokens TokenService, tokenRepo TokenRepositor
 
 func (s *Usecase) Register(ctx context.Context, in RegisterInput) (TokenPair, error) {
 	if in.Email == "" || in.Password == "" {
-		return TokenPair{}, errors.ErrInvalidInput
+		return TokenPair{}, errors.NewInvalidInput("Email and password are required", errors.ErrInvalidInput)
 	}
 
 	if _, err := s.users.GetByEmail(ctx, in.Email); err == nil {
-		return TokenPair{}, errors.ErrConflict
+		return TokenPair{}, errors.NewConflict("Email is already registered", errors.ErrConflict)
 	}
 
 	hash, err := password.Hash(in.Password)
 	if err != nil {
-		return TokenPair{}, err
+		return TokenPair{}, errors.NewInternal("Failed to process registration", err)
 	}
 
 	u := &User{
@@ -47,7 +47,7 @@ func (s *Usecase) Register(ctx context.Context, in RegisterInput) (TokenPair, er
 		PasswordHash: hash,
 	}
 	if err := s.users.Create(ctx, u); err != nil {
-		return TokenPair{}, err
+		return TokenPair{}, errors.NewInternal("Failed to create user", err)
 	}
 	return s.issuePair(ctx, u)
 }
@@ -55,12 +55,12 @@ func (s *Usecase) Register(ctx context.Context, in RegisterInput) (TokenPair, er
 func (s *Usecase) Login(ctx context.Context, in LoginInput) (TokenPair, error) {
 	u, err := s.users.GetByEmail(ctx, in.Email)
 	if err != nil {
-		return TokenPair{}, errors.ErrUnauthorized
+		return TokenPair{}, errors.NewUnauthorized("Invalid credentials", errors.ErrUnauthorized)
 	}
 
 	ok, err := password.Verify(in.Password, u.PasswordHash)
 	if err != nil || !ok {
-		return TokenPair{}, errors.ErrUnauthorized
+		return TokenPair{}, errors.NewUnauthorized("Invalid credentials", errors.ErrUnauthorized)
 	}
 	return s.issuePair(ctx, u)
 }
@@ -68,17 +68,17 @@ func (s *Usecase) Login(ctx context.Context, in LoginInput) (TokenPair, error) {
 func (s *Usecase) Refresh(ctx context.Context, refreshToken string) (TokenPair, error) {
 	claims, err := s.tokens.ParseRefresh(ctx, refreshToken)
 	if err != nil {
-		return TokenPair{}, errors.ErrUnauthorized
+		return TokenPair{}, errors.NewUnauthorized("Invalid refresh token", errors.ErrUnauthorized)
 	}
 
 	hash := hashToken(refreshToken)
 	if err := s.tokenRepo.DeleteRefreshToken(ctx, hash); err != nil {
-		return TokenPair{}, errors.ErrUnauthorized
+		return TokenPair{}, errors.NewUnauthorized("Invalid refresh token", errors.ErrUnauthorized)
 	}
 
 	u, err := s.users.GetByID(ctx, claims.UserID)
 	if err != nil {
-		return TokenPair{}, errors.ErrUnauthorized
+		return TokenPair{}, errors.NewUnauthorized("Invalid user", errors.ErrUnauthorized)
 	}
 	return s.issuePair(ctx, u)
 }
@@ -86,12 +86,12 @@ func (s *Usecase) Refresh(ctx context.Context, refreshToken string) (TokenPair, 
 func (s *Usecase) issuePair(ctx context.Context, u *User) (TokenPair, error) {
 	access, refresh, exp, refreshExp, err := s.tokens.GeneratePair(ctx, u.ID, u.Email)
 	if err != nil {
-		return TokenPair{}, err
+		return TokenPair{}, errors.NewInternal("Failed to generate tokens", err)
 	}
 
 	hash := hashToken(refresh)
 	if err := s.tokenRepo.StoreRefreshToken(ctx, u.ID, hash, time.Unix(refreshExp, 0)); err != nil {
-		return TokenPair{}, err
+		return TokenPair{}, errors.NewInternal("Failed to store session", err)
 	}
 
 	return TokenPair{AccessToken: access, RefreshToken: refresh, ExpiresIn: exp}, nil

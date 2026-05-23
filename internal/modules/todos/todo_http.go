@@ -67,7 +67,7 @@ func RegisterTodoRoutes(api huma.API, todos *Usecase) {
 	}) (*ListResp, error) {
 		userID, err := httpapi.ExtractUserID(ctx)
 		if err != nil {
-			return nil, httpapi.ToHumaErr(err)
+			return nil, httpapi.ToHumaErr(ctx, err)
 		}
 		offset := (in.Page - 1) * in.PerPage
 
@@ -87,8 +87,7 @@ func RegisterTodoRoutes(api huma.API, todos *Usecase) {
 			SortDir: in.SortDir,
 		})
 		if err != nil {
-			wideevent.Add(ctx, "error", err.Error())
-			return nil, httpapi.ToHumaErr(err)
+			return nil, httpapi.ToHumaErr(ctx, err)
 		}
 		wideevent.Add(ctx, "todo_count", len(items))
 		wideevent.Add(ctx, "todo_total", total)
@@ -136,7 +135,7 @@ func RegisterTodoRoutes(api huma.API, todos *Usecase) {
 	}) (*TodoResp, error) {
 		userID, err := httpapi.ExtractUserID(ctx)
 		if err != nil {
-			return nil, httpapi.ToHumaErr(err)
+			return nil, httpapi.ToHumaErr(ctx, err)
 		}
 
 		data := in.RawBody.Data()
@@ -157,8 +156,7 @@ func RegisterTodoRoutes(api huma.API, todos *Usecase) {
 			Cover:       coverBase64,
 		})
 		if err != nil {
-			wideevent.Add(ctx, "error", err.Error())
-			return nil, httpapi.ToHumaErr(err)
+			return nil, httpapi.ToHumaErr(ctx, err)
 		}
 		wideevent.Add(ctx, "todo_id", t.ID.String())
 		wideevent.Add(ctx, "todo_title", t.Title)
@@ -179,13 +177,12 @@ func RegisterTodoRoutes(api huma.API, todos *Usecase) {
 	}) (*TodoResp, error) {
 		userID, err := httpapi.ExtractUserID(ctx)
 		if err != nil {
-			return nil, httpapi.ToHumaErr(err)
+			return nil, httpapi.ToHumaErr(ctx, err)
 		}
 		t, err := todos.Get(ctx, userID, in.ID)
 		if err != nil {
 			wideevent.Add(ctx, "todo_id", in.ID.String())
-			wideevent.Add(ctx, "error", err.Error())
-			return nil, httpapi.ToHumaErr(err)
+			return nil, httpapi.ToHumaErr(ctx, err)
 		}
 		wideevent.Add(ctx, "todo_id", t.ID.String())
 		resp := &TodoResp{}
@@ -206,7 +203,7 @@ func RegisterTodoRoutes(api huma.API, todos *Usecase) {
 	}) (*TodoResp, error) {
 		userID, err := httpapi.ExtractUserID(ctx)
 		if err != nil {
-			return nil, httpapi.ToHumaErr(err)
+			return nil, httpapi.ToHumaErr(ctx, err)
 		}
 
 		data := in.RawBody.Data()
@@ -247,8 +244,7 @@ func RegisterTodoRoutes(api huma.API, todos *Usecase) {
 		})
 		if err != nil {
 			wideevent.Add(ctx, "todo_id", in.ID.String())
-			wideevent.Add(ctx, "error", err.Error())
-			return nil, httpapi.ToHumaErr(err)
+			return nil, httpapi.ToHumaErr(ctx, err)
 		}
 		wideevent.Add(ctx, "todo_id", t.ID.String())
 		wideevent.Add(ctx, "todo_title", t.Title)
@@ -271,12 +267,11 @@ func RegisterTodoRoutes(api huma.API, todos *Usecase) {
 	}) (*struct{}, error) {
 		userID, err := httpapi.ExtractUserID(ctx)
 		if err != nil {
-			return nil, httpapi.ToHumaErr(err)
+			return nil, httpapi.ToHumaErr(ctx, err)
 		}
 		if err := todos.Delete(ctx, userID, in.ID); err != nil {
 			wideevent.Add(ctx, "todo_id", in.ID.String())
-			wideevent.Add(ctx, "error", err.Error())
-			return nil, httpapi.ToHumaErr(err)
+			return nil, httpapi.ToHumaErr(ctx, err)
 		}
 		wideevent.Add(ctx, "todo_id", in.ID.String())
 		return &struct{}{}, nil

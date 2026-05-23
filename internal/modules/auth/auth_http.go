@@ -44,8 +44,7 @@ func RegisterAuthRoutes(api huma.API, auth *Usecase) {
 	}, func(ctx context.Context, in *struct{ Body RegisterBody }) (*TokenResp, error) {
 		pair, err := auth.Register(ctx, RegisterInput{Email: in.Body.Email, Password: in.Body.Password})
 		if err != nil {
-			wideevent.Add(ctx, "error", err.Error())
-			return nil, httpapi.ToHumaErr(err)
+			return nil, httpapi.ToHumaErr(ctx, err)
 		}
 		wideevent.Add(ctx, "user_email", in.Body.Email)
 		return tokenResp(pair), nil
@@ -60,8 +59,7 @@ func RegisterAuthRoutes(api huma.API, auth *Usecase) {
 	}, func(ctx context.Context, in *struct{ Body LoginBody }) (*TokenResp, error) {
 		pair, err := auth.Login(ctx, LoginInput{Email: in.Body.Email, Password: in.Body.Password})
 		if err != nil {
-			wideevent.Add(ctx, "error", err.Error())
-			return nil, httpapi.ToHumaErr(err)
+			return nil, httpapi.ToHumaErr(ctx, err)
 		}
 		wideevent.Add(ctx, "user_email", in.Body.Email)
 		return tokenResp(pair), nil
@@ -76,7 +74,7 @@ func RegisterAuthRoutes(api huma.API, auth *Usecase) {
 	}, func(ctx context.Context, in *struct{ Body RefreshBody }) (*TokenResp, error) {
 		pair, err := auth.Refresh(ctx, in.Body.RefreshToken)
 		if err != nil {
-			return nil, httpapi.ToHumaErr(err)
+			return nil, httpapi.ToHumaErr(ctx, err)
 		}
 		return tokenResp(pair), nil
 	})
@@ -92,16 +90,15 @@ func RegisterAuthRoutes(api huma.API, auth *Usecase) {
 	}, func(ctx context.Context, in *struct{}) (*struct{}, error) {
 		userIDStr := GetUserID(ctx)
 		if userIDStr == "" {
-			return nil, httpapi.ToHumaErr(errors.ErrUnauthorized)
+			return nil, httpapi.ToHumaErr(ctx, errors.ErrUnauthorized)
 		}
 		userID, err := uuid.Parse(userIDStr)
 		if err != nil {
-			return nil, httpapi.ToHumaErr(errors.ErrUnauthorized)
+			return nil, httpapi.ToHumaErr(ctx, errors.ErrUnauthorized)
 		}
 
 		if err := auth.DeleteAccount(ctx, userID); err != nil {
-			wideevent.Add(ctx, "error", err.Error())
-			return nil, httpapi.ToHumaErr(err)
+			return nil, httpapi.ToHumaErr(ctx, err)
 		}
 		return &struct{}{}, nil
 	})
