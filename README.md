@@ -65,6 +65,46 @@ flowchart TD
 
 ---
 
+## Observability Architecture
+
+```mermaid
+flowchart TD
+    subgraph Application
+        API["API Service<br/>(Go App)"]
+        DB[(PostgreSQL)]
+        API -- "Read/Write" --> DB
+    end
+
+    subgraph Grafana Observability Stack
+        Alloy["Grafana Alloy<br/>(Telemetry Collector)"]
+        Prometheus["Prometheus<br/>(Metrics Storage)"]
+        Loki["Grafana Loki<br/>(Logs Storage)"]
+        Tempo["Grafana Tempo<br/>(Traces Storage)"]
+        Grafana["Grafana UI<br/>(Visualization)"]
+    end
+
+    %% Metrics Flow
+    Prometheus -- "1. Pulls metrics (/metrics)" --> API
+    
+    %% Traces Flow
+    API -- "2. Pushes OTLP Traces (gRPC: 4317)" --> Alloy
+    Alloy -- "3. Pushes Traces (gRPC: 4317)" --> Tempo
+    
+    %% Logs Flow
+    DockerSocket[["/var/run/docker.sock"]]
+    API -. "Writes stdout/stderr" .-> DockerSocket
+    Alloy -- "4. Pulls container logs" --> DockerSocket
+    Alloy -- "5. Pushes Logs (HTTP: 3100)" --> Loki
+
+    %% Grafana UI Flow
+    Grafana -- "6. Pulls Metrics (PromQL)" --> Prometheus
+    Grafana -- "7. Pulls Logs (LogQL)" --> Loki
+    Grafana -- "8. Pulls Traces (TraceQL)" --> Tempo
+```
+
+---
+
+
 ## Project Structure
 
 ```text

@@ -44,3 +44,4 @@ chrome-user-data
 # disable for now
 k8s
 bin
+/references

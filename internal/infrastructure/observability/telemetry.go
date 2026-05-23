@@ -3,13 +3,10 @@ package observability
 import (
 	"context"
 	"errors"
-	"time"
 
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
-	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
@@ -51,28 +48,10 @@ func InitTelemetry(ctx context.Context, serviceName, serviceVersion, otlpEndpoin
 		propagation.Baggage{},
 	))
 
-	// 2. Set up Metrics
-	metricExporter, err := otlpmetricgrpc.New(ctx,
-		otlpmetricgrpc.WithEndpoint(otlpEndpoint),
-		otlpmetricgrpc.WithInsecure(), // Adjust for production
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	meterProvider := metric.NewMeterProvider(
-		metric.WithReader(metric.NewPeriodicReader(metricExporter, metric.WithInterval(15*time.Second))),
-		metric.WithResource(res),
-	)
-	otel.SetMeterProvider(meterProvider)
-
 	// Combine shutdown
 	shutdown := func(shutdownCtx context.Context) error {
 		var errs error
 		if err := tracerProvider.Shutdown(shutdownCtx); err != nil {
-			errs = errors.Join(errs, err)
-		}
-		if err := meterProvider.Shutdown(shutdownCtx); err != nil {
 			errs = errors.Join(errs, err)
 		}
 		return errs

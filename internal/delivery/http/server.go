@@ -9,6 +9,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-redis/redis_rate/v10"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/riandyrn/otelchi"
 	"github.com/semmidev/restful-template/internal/config"
 	"github.com/semmidev/restful-template/internal/domain"
@@ -27,10 +29,20 @@ type Server struct {
 func NewServer(cfg config.Config, log *slog.Logger, auth domain.AuthUsecase, todos domain.TodoUsecase, tokens domain.TokenService, limiter *redis_rate.Limiter) *Server {
 	r := chi.NewRouter()
 
+	promMiddleware, err := NewPrometheusMiddleware(prometheus.DefaultRegisterer)
+	if err != nil {
+		log.Error("failed to create prometheus middleware", "err", err)
+	}
+
 	// Middleware stack (order matters)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(otelchi.Middleware(cfg.App.Name, otelchi.WithChiRoutes(r)))
+
+	if promMiddleware != nil {
+		r.Use(promMiddleware.Handler())
+	}
+
 	r.Use(TraceIDMiddleware)
 	r.Use(Logger(log))
 	r.Use(middleware.Recoverer)
@@ -39,8 +51,11 @@ func NewServer(cfg config.Config, log *slog.Logger, auth domain.AuthUsecase, tod
 	r.Use(SecurityHeaders())
 	r.Use(RateLimiter(limiter))
 
-	humaConfig := huma.DefaultConfig("Todo API", cfg.App.Version)
-	humaConfig.Info.Description = "Production-ready Todo REST API built with Huma v2 + Chi."
+	// Expose Prometheus metrics endpoint
+	r.Get("/metrics", promhttp.Handler().ServeHTTP)
+
+	humaConfig := huma.DefaultConfig(cfg.App.Name, cfg.App.Version)
+	humaConfig.Info.Description = cfg.App.Description
 	humaConfig.Components = &huma.Components{
 		SecuritySchemes: map[string]*huma.SecurityScheme{
 			"bearerAuth": {
