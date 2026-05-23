@@ -17,10 +17,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	delivery "github.com/semmidev/restful-template/internal/delivery/http"
-	"github.com/semmidev/restful-template/internal/infrastructure/jwt"
 	"github.com/semmidev/restful-template/internal/modules/auth"
 	"github.com/semmidev/restful-template/internal/modules/todos"
 	"github.com/semmidev/restful-template/internal/shared/database"
+	"github.com/semmidev/restful-template/internal/shared/jwt"
 	. "github.com/smartystreets/goconvey/convey"
 )
 

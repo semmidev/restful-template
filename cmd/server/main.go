@@ -12,12 +12,12 @@ import (
 
 	"github.com/semmidev/restful-template/internal/config"
 	delivery "github.com/semmidev/restful-template/internal/delivery/http"
-	"github.com/semmidev/restful-template/internal/infrastructure/jwt"
-	"github.com/semmidev/restful-template/internal/infrastructure/repository/redis"
 	"github.com/semmidev/restful-template/internal/modules/auth"
 	"github.com/semmidev/restful-template/internal/modules/todos"
 	"github.com/semmidev/restful-template/internal/shared/database"
+	"github.com/semmidev/restful-template/internal/shared/jwt"
 	"github.com/semmidev/restful-template/internal/shared/observability"
+	"github.com/semmidev/restful-template/internal/shared/redis"
 )
 
 func main() {

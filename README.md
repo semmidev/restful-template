@@ -152,13 +152,10 @@ flowchart TD
 ├── internal/
 │   ├── config/       # Konfigurasi aplikasi (Viper)
 │   ├── delivery/     # Setup root HTTP server (Middleware & Router Utama)
-│   ├── infrastructure/
-│   │   ├── jwt/          # Implementasi standar autentikasi
-│   │   └── repository/   # Adapter layer Caching (Redis)
 │   ├── modules/      # Seluruh fitur-fitur bisnis berada di sini
 │   │   ├── auth/         # Fitur Auth (login, register, user management, dsb)
 │   │   └── todos/        # Fitur Todo (operasi CRUD)
-│   └── shared/       # Cross-cutting utilities yang bisa digunakan secara aman oleh semua modul (errors, httpapi, observability, database)
+│   └── shared/       # Cross-cutting utilities yang bisa digunakan secara aman oleh semua modul (errors, httpapi, observability, database, jwt, redis)
 ```
 
 ---
