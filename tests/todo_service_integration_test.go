@@ -20,14 +20,12 @@ import (
 	"github.com/semmidev/restful-template/internal/infrastructure/jwt"
 	pgRepo "github.com/semmidev/restful-template/internal/infrastructure/repository/postgres"
 	"github.com/semmidev/restful-template/internal/usecase"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 const testJWTSecret = "test-secret-key-minimum-32-bytes!!"
 
-// newTestAPI wires up the full Huma API (routes + auth middleware) backed by
-// the given pool, without Redis or observability dependencies.
 func newTestAPI(pool *pgxpool.Pool) huma.API {
 	todoRepo := pgRepo.NewTodoRepository(pool)
 	userRepo := pgRepo.NewUserRepository(pool)
@@ -52,8 +50,7 @@ func newTestAPI(pool *pgxpool.Pool) huma.API {
 }
 
 // registerAndLogin calls the register endpoint and returns the access token.
-func registerAndLogin(t *testing.T, api huma.API, email, password string) string {
-	t.Helper()
+func registerAndLogin(api huma.API, email, password string) (string, error) {
 	body := map[string]string{"email": email, "password": password}
 	b, _ := json.Marshal(body)
 
@@ -61,18 +58,22 @@ func registerAndLogin(t *testing.T, api huma.API, email, password string) string
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	api.Adapter().ServeHTTP(w, req)
-	require.Equal(t, http.StatusOK, w.Code, "register failed: %s", w.Body.String())
+
+	if w.Code != http.StatusOK {
+		return "", fmt.Errorf("register failed: %s", w.Body.String())
+	}
 
 	var resp struct {
 		Data struct {
 			AccessToken string `json:"access_token"`
 		} `json:"data"`
 	}
-	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-	return resp.Data.AccessToken
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		return "", err
+	}
+	return resp.Data.AccessToken, nil
 }
 
-// doRequest is a helper that sends an authenticated request and returns the recorder.
 func doRequest(api huma.API, method, path, token string, body []byte, contentType string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(method, path, bytes.NewReader(body))
 	if contentType != "" {
@@ -86,7 +87,6 @@ func doRequest(api huma.API, method, path, token string, body []byte, contentTyp
 	return w
 }
 
-// buildMultipartBody builds a simple multipart/form-data body with text fields only.
 func buildMultipartBody(fields map[string]string) ([]byte, string) {
 	var buf bytes.Buffer
 	mw := multipart.NewWriter(&buf)
@@ -97,131 +97,124 @@ func buildMultipartBody(fields map[string]string) ([]byte, string) {
 	return buf.Bytes(), mw.FormDataContentType()
 }
 
-// ─── Tests ──────────────────────────────────────────────────────────────────
-
 func TestTodoHTTP_Integration(t *testing.T) {
 	pool, cleanup := SetupTestDatabase(t)
 	defer cleanup()
 
 	api := newTestAPI(pool)
 
-	// Each sub-test gets its own isolated user so they don't interfere.
-	email := fmt.Sprintf("test-%s@example.com", uuid.New().String())
-	token := registerAndLogin(t, api, email, "password123")
+	Convey("Given a connected API with an authenticated user", t, func() {
+		email := fmt.Sprintf("test-%s@example.com", uuid.New().String())
+		token, err := registerAndLogin(api, email, "password123")
+		So(err, ShouldBeNil)
+		So(token, ShouldNotBeEmpty)
 
-	var createdID string
+		Convey("When creating a new todo", func() {
+			body, ct := buildMultipartBody(map[string]string{"title": "Integration HTTP Todo"})
+			w := doRequest(api, http.MethodPost, "/api/v1/todos", token, body, ct)
 
-	t.Run("POST /api/v1/todos – success", func(t *testing.T) {
-		body, ct := buildMultipartBody(map[string]string{"title": "Integration HTTP Todo"})
-		w := doRequest(api, http.MethodPost, "/api/v1/todos", token, body, ct)
+			So(w.Code, ShouldEqual, http.StatusCreated)
 
-		assert.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+			var resp struct {
+				Data struct {
+					ID    string `json:"id"`
+					Title string `json:"title"`
+				} `json:"data"`
+			}
+			err = json.Unmarshal(w.Body.Bytes(), &resp)
+			So(err, ShouldBeNil)
+			So(resp.Data.Title, ShouldEqual, "Integration HTTP Todo")
+			So(resp.Data.ID, ShouldNotBeEmpty)
 
-		var resp struct {
-			Data struct {
-				ID    string `json:"id"`
-				Title string `json:"title"`
-			} `json:"data"`
-		}
-		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-		assert.Equal(t, "Integration HTTP Todo", resp.Data.Title)
-		assert.NotEmpty(t, resp.Data.ID)
+			createdID := resp.Data.ID
 
-		createdID = resp.Data.ID
+			Convey("Then getting the list returns at least 1 item", func() {
+				wList := doRequest(api, http.MethodGet, "/api/v1/todos", token, nil, "")
+				So(wList.Code, ShouldEqual, http.StatusOK)
+
+				var respList struct {
+					Data struct {
+						Items []struct {
+							ID string `json:"id"`
+						} `json:"items"`
+						Total int `json:"total"`
+					} `json:"data"`
+				}
+				err = json.Unmarshal(wList.Body.Bytes(), &respList)
+				So(err, ShouldBeNil)
+				So(respList.Data.Total, ShouldBeGreaterThanOrEqualTo, 1)
+			})
+
+			Convey("Then getting the single todo by ID works", func() {
+				wGet := doRequest(api, http.MethodGet, "/api/v1/todos/"+createdID, token, nil, "")
+				So(wGet.Code, ShouldEqual, http.StatusOK)
+
+				var respGet struct {
+					Data struct {
+						ID    string `json:"id"`
+						Title string `json:"title"`
+					} `json:"data"`
+				}
+				err = json.Unmarshal(wGet.Body.Bytes(), &respGet)
+				So(err, ShouldBeNil)
+				So(respGet.Data.ID, ShouldEqual, createdID)
+				So(respGet.Data.Title, ShouldEqual, "Integration HTTP Todo")
+			})
+
+			Convey("Then updating the title works", func() {
+				bodyUpd, ctUpd := buildMultipartBody(map[string]string{"title": "Updated Title"})
+				wPatch := doRequest(api, http.MethodPatch, "/api/v1/todos/"+createdID, token, bodyUpd, ctUpd)
+				So(wPatch.Code, ShouldEqual, http.StatusOK)
+
+				var respPatch struct {
+					Data struct {
+						Title string `json:"title"`
+					} `json:"data"`
+				}
+				err = json.Unmarshal(wPatch.Body.Bytes(), &respPatch)
+				So(err, ShouldBeNil)
+				So(respPatch.Data.Title, ShouldEqual, "Updated Title")
+			})
+
+			Convey("Then deleting the todo returns 204", func() {
+				wDel := doRequest(api, http.MethodDelete, "/api/v1/todos/"+createdID, token, nil, "")
+				So(wDel.Code, ShouldEqual, http.StatusNoContent)
+
+				Convey("And getting it again returns 404", func() {
+					wGetDel := doRequest(api, http.MethodGet, "/api/v1/todos/"+createdID, token, nil, "")
+					So(wGetDel.Code, ShouldEqual, http.StatusNotFound)
+				})
+			})
+
+			Convey("Then another user cannot access this user's todo", func() {
+				email2 := fmt.Sprintf("other-%s@example.com", uuid.New().String())
+				token2, err2 := registerAndLogin(api, email2, "password123")
+				So(err2, ShouldBeNil)
+				
+				wGetOther := doRequest(api, http.MethodGet, "/api/v1/todos/"+createdID, token2, nil, "")
+				So(wGetOther.Code, ShouldEqual, http.StatusNotFound)
+			})
+		})
+
+		Convey("When creating a todo with a missing title", func() {
+			body, ct := buildMultipartBody(map[string]string{"title": ""})
+			w := doRequest(api, http.MethodPost, "/api/v1/todos", token, body, ct)
+
+			Convey("Then it returns 422 Unprocessable Entity", func() {
+				So(w.Code, ShouldEqual, http.StatusUnprocessableEntity)
+			})
+		})
 	})
 
-	t.Run("POST /api/v1/todos – missing title returns 422", func(t *testing.T) {
-		body, ct := buildMultipartBody(map[string]string{"title": ""})
-		w := doRequest(api, http.MethodPost, "/api/v1/todos", token, body, ct)
-		// Huma validates minLength:1 -> 422 Unprocessable Entity
-		assert.Equal(t, http.StatusUnprocessableEntity, w.Code, w.Body.String())
-	})
+	Convey("Given an unauthenticated request", t, func() {
+		Convey("When trying to get todos", func() {
+			w := doRequest(api, http.MethodGet, "/api/v1/todos", "", nil, "")
 
-	t.Run("GET /api/v1/todos – returns list", func(t *testing.T) {
-		w := doRequest(api, http.MethodGet, "/api/v1/todos", token, nil, "")
-		assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
-
-		var resp struct {
-			Data struct {
-				Items []struct {
-					ID string `json:"id"`
-				} `json:"items"`
-				Total int `json:"total"`
-			} `json:"data"`
-		}
-		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-		assert.GreaterOrEqual(t, resp.Data.Total, 1)
-	})
-
-	t.Run("GET /api/v1/todos/{id} – returns single todo", func(t *testing.T) {
-		require.NotEmpty(t, createdID, "depends on create test")
-		w := doRequest(api, http.MethodGet, "/api/v1/todos/"+createdID, token, nil, "")
-		assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
-
-		var resp struct {
-			Data struct {
-				ID    string `json:"id"`
-				Title string `json:"title"`
-			} `json:"data"`
-		}
-		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-		assert.Equal(t, createdID, resp.Data.ID)
-		assert.Equal(t, "Integration HTTP Todo", resp.Data.Title)
-	})
-
-	t.Run("PATCH /api/v1/todos/{id} – updates title", func(t *testing.T) {
-		require.NotEmpty(t, createdID, "depends on create test")
-		body, ct := buildMultipartBody(map[string]string{"title": "Updated Title"})
-		w := doRequest(api, http.MethodPatch, "/api/v1/todos/"+createdID, token, body, ct)
-		assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
-
-		var resp struct {
-			Data struct {
-				Title string `json:"title"`
-			} `json:"data"`
-		}
-		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-		assert.Equal(t, "Updated Title", resp.Data.Title)
-	})
-
-	t.Run("DELETE /api/v1/todos/{id} – removes todo", func(t *testing.T) {
-		require.NotEmpty(t, createdID, "depends on create test")
-		w := doRequest(api, http.MethodDelete, "/api/v1/todos/"+createdID, token, nil, "")
-		assert.Equal(t, http.StatusNoContent, w.Code, w.Body.String())
-	})
-
-	t.Run("GET /api/v1/todos/{id} – returns 404 after delete", func(t *testing.T) {
-		require.NotEmpty(t, createdID, "depends on delete test")
-		w := doRequest(api, http.MethodGet, "/api/v1/todos/"+createdID, token, nil, "")
-		assert.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
-	})
-
-	t.Run("GET /api/v1/todos – unauthenticated returns 401", func(t *testing.T) {
-		w := doRequest(api, http.MethodGet, "/api/v1/todos", "", nil, "")
-		assert.Equal(t, http.StatusUnauthorized, w.Code, w.Body.String())
-	})
-
-	t.Run("GET /api/v1/todos/{id} – other user cannot access todo", func(t *testing.T) {
-		// Create a second user and their own todo
-		email2 := fmt.Sprintf("other-%s@example.com", uuid.New().String())
-		token2 := registerAndLogin(t, api, email2, "password123")
-
-		body, ct := buildMultipartBody(map[string]string{"title": "Other user's todo"})
-		wCreate := doRequest(api, http.MethodPost, "/api/v1/todos", token2, body, ct)
-		require.Equal(t, http.StatusCreated, wCreate.Code)
-
-		var createResp struct {
-			Data struct {
-				ID string `json:"id"`
-			} `json:"data"`
-		}
-		require.NoError(t, json.Unmarshal(wCreate.Body.Bytes(), &createResp))
-
-		// user1 tries to access user2's todo — must get 404 (not found for that user)
-		w := doRequest(api, http.MethodGet, "/api/v1/todos/"+createResp.Data.ID, token, nil, "")
-		assert.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
+			Convey("Then it returns 401 Unauthorized", func() {
+				So(w.Code, ShouldEqual, http.StatusUnauthorized)
+			})
+		})
 	})
 }
 
-// Ensure humatest is imported to satisfy the go.mod dependency.
 var _ = humatest.New
