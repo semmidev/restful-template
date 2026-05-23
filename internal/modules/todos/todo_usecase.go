@@ -69,19 +69,12 @@ func (s *Usecase) Update(ctx context.Context, in UpdateTodoInput) (*Todo, error)
 	if err != nil {
 		return nil, err
 	}
-	if in.Title != nil {
-		t.Title = *in.Title
-	}
-	if in.Description != nil {
-		t.Description = *in.Description
-	}
-	if in.Cover != nil {
-		t.Cover = in.Cover
-	}
+	
+	t.UpdateDetails(in.Title, in.Description, in.Cover)
 	if in.Status != nil {
-		t.Status = *in.Status
+		t.ChangeStatus(*in.Status)
 	}
-	t.UpdatedAt = time.Now().UTC()
+
 	if err := t.Validate(); err != nil {
 		return nil, err
 	}

@@ -42,9 +42,6 @@ type TokenService interface {
 	ParseRefresh(ctx context.Context, token string) (*TokenClaims, error)
 }
 
-type TxManager interface {
-	RunInTx(ctx context.Context, fn func(ctx context.Context) error) error
-}
 
 type TodoService interface {
 	DeleteAllByUserID(ctx context.Context, userID uuid.UUID) error

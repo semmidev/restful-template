@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/semmidev/restful-template/internal/shared/database"
 	"github.com/semmidev/restful-template/internal/shared/errors"
 	"github.com/semmidev/restful-template/internal/shared/observability"
 	"github.com/semmidev/restful-template/internal/shared/password"
@@ -18,11 +19,11 @@ type Usecase struct {
 	tokens    TokenService
 	tokenRepo TokenRepository
 	todos     TodoService
-	txManager TxManager
+	txManager database.TxManager
 	tracer    observability.Tracer
 }
 
-func NewAuth(users UserRepository, tokens TokenService, tokenRepo TokenRepository, todos TodoService, txManager TxManager, tracer observability.Tracer) *Usecase {
+func NewAuth(users UserRepository, tokens TokenService, tokenRepo TokenRepository, todos TodoService, txManager database.TxManager, tracer observability.Tracer) *Usecase {
 	return &Usecase{users: users, tokens: tokens, tokenRepo: tokenRepo, todos: todos, txManager: txManager, tracer: tracer}
 }
 

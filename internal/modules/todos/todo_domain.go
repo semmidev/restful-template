@@ -2,6 +2,7 @@ package todos
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -27,8 +28,28 @@ type Todo struct {
 }
 
 func (t *Todo) Validate() error {
-	// Simple validation
+	if t.Title == "" {
+		return errors.New("todo title cannot be empty")
+	}
 	return nil
+}
+
+func (t *Todo) ChangeStatus(status TodoStatus) {
+	t.Status = status
+	t.UpdatedAt = time.Now().UTC()
+}
+
+func (t *Todo) UpdateDetails(title, desc *string, cover *string) {
+	if title != nil {
+		t.Title = *title
+	}
+	if desc != nil {
+		t.Description = *desc
+	}
+	if cover != nil {
+		t.Cover = cover
+	}
+	t.UpdatedAt = time.Now().UTC()
 }
 
 type CreateTodoInput struct {

@@ -22,6 +22,11 @@ func ExtractTx(ctx context.Context) pgx.Tx {
 	return nil
 }
 
+// TxManager defines the interface for running operations within a transaction.
+type TxManager interface {
+	RunInTx(ctx context.Context, fn func(ctx context.Context) error) error
+}
+
 // PostgresTxManager provides transaction management using pgxpool.
 type PostgresTxManager struct {
 	pool *pgxpool.Pool
