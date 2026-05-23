@@ -1,95 +1,114 @@
 # Restful Template API
 
-A production-grade RESTful API template built with Go 1.26, featuring **Clean Architecture**, high performance routing via Chi, OpenAPI 3.1 auto-generation via Huma v2, and secure, time-ordered UUIDs via PostgreSQL 18.
+Template RESTful API *production-grade* yang dibangun menggunakan Go 1.26. Template ini mengusung arsitektur **Modular Monolith (Package by Feature)**, *routing* berkinerja tinggi menggunakan Chi, *auto-generation* OpenAPI 3.1 dengan Huma v2, serta menggunakan PostgreSQL 18 untuk men-generate UUID yang aman dan terurut berdasarkan waktu (*time-ordered*).
 
-## Table of Contents
-- [Key Features](#key-features)
-- [Architecture Flow](#architecture-flow)
-- [Observability Architecture](#observability-architecture)
-- [Project Structure](#project-structure)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [1. Configuration](#1-configuration)
-  - [2. Running Locally (Docker Compose)](#2-running-locally-docker-compose)
-  - [3. Running Locally (Go + Postgres)](#3-running-locally-go--postgres)
-- [Development Guide](#development-guide)
-  - [Code Quality & Testing](#code-quality--testing)
-  - [Building for Production](#building-for-production)
-  - [Database Migrations](#database-migrations)
-- [API Documentation](#api-documentation)
-  - [Adding New Routes](#adding-new-routes)
-  - [Search and Filtering Example](#search-and-filtering-example)
-- [Configuration Variables (.env)](#configuration-variables-env)
+## Daftar Isi
+- [Fitur Utama](#fitur-utama)
+- [Arsitektur Modular Monolith](#arsitektur-modular-monolith)
+  - [Aturan Main (Rules of Engagement)](#aturan-main-rules-of-engagement)
+  - [Komunikasi Antar Modul (Inter-Module Communication)](#komunikasi-antar-modul-inter-module-communication)
+  - [Transaksi Lintas Modul (Cross-Module Transactions)](#transaksi-lintas-modul-cross-module-transactions)
+- [Arsitektur Observability](#arsitektur-observability)
+- [Struktur Projek](#struktur-projek)
+- [Mulai Menggunakan (Getting Started)](#mulai-menggunakan-getting-started)
+- [Panduan Development](#panduan-development)
+- [Dokumentasi API](#dokumentasi-api)
+- [Konfigurasi Variabel (.env)](#konfigurasi-variabel-env)
 
 ---
 
-## Key Features
+## Fitur Utama
 
 *   **Architecture & Design**
-    *   Clean Architecture / Domain-Driven Design
-    *   Clean dependency flow: `domain` → `usecase` → `delivery` / `repository`
-    *   `domain.TxManager` for injecting transactions into the `context.Context` from the usecase layer.
+    *   **Modular Monolith (Package by Feature)**: Memiliki batasan (*boundaries*) yang tegas untuk mencegah *technical debt* dan arsitektur yang berantakan (*ball-of-mud*).
+    *   *Synchronous Interface Injection* untuk memfasilitasi *Consumer-Driven Contracts* yang bersih antar modul.
+    *   Transaksi lintas modul (*Cross-module transactions*) dikelola secara aman menggunakan `database.TxManager`.
 *   **Routing & Documentation**
-    *   [Huma v2](https://github.com/danielgtaylor/huma) + [Chi v5](https://github.com/go-chi/chi) integration
-    *   Automatic **OpenAPI 3.1** specification generation (`/openapi.json`)
-    *   Built-in Swagger UI documentation (`/docs`)
-    *   Typed HTTP handlers with auto-validation
+    *   Integrasi [Huma v2](https://github.com/danielgtaylor/huma) + [Chi v5](https://github.com/go-chi/chi)
+    *   *Auto-generation* spesifikasi **OpenAPI 3.1** (`/openapi.json`)
+    *   Dokumentasi interaktif menggunakan Swagger UI bawaan (`/docs`)
+    *   *Typed HTTP handlers* yang memiliki fitur validasi otomatis (*auto-validation*)
 *   **Database & Persistence**
-    *   PostgreSQL 18 integration via `pgxpool`
-    *   **Native UUID v7** support for time-ordered, fragmentation-free primary keys
-    *   Embedded SQL migrations (no external CLI needed at runtime)
-    *   Pagination and advanced filtering (e.g., status, full-text substring keyword search)
+    *   Integrasi PostgreSQL 18 melalui `pgxpool`
+    *   Dukungan **Native UUID v7** untuk *primary keys* yang kebal terhadap fragmentasi dan terurut secara kronologis.
+    *   Sistem migrasi database yang di-*embed* langsung ke dalam binary (tidak butuh *external CLI* tambahan di *runtime*).
+    *   Pagination dan *advanced filtering* (misalnya filter status dan pencarian dengan kata kunci / *full-text substring keyword search*)
 *   **Security & Authentication**
-    *   JWT-based Authentication (Access + Refresh tokens with rotation)
-    *   Argon2id password hashing (PHC string format, constant-time verification)
-    *   CORS configured
-    *   Secure HTTP Headers middleware
+    *   Autentikasi berbasis JWT (Access + Refresh tokens dengan rotasi)
+    *   *Hashing* kata sandi menggunakan Argon2id (format *string* PHC, verifikasi menggunakan *constant-time*)
+    *   CORS yang siap dipakai
+    *   Middleware untuk *Secure HTTP Headers*
 *   **Observability & Reliability**
-    *   Structured JSON/Text Logging via `log/slog`
-    *   OpenTelemetry (OTEL) integration for distributed tracing and metrics (`otelchi` and `otelpgx`)
-    *   Graceful shutdown with signal handling
-    *   Request ID propagation
-    *   Panic recovery middleware
-    *   RFC 9457 structured error responses (`application/problem+json`)
+    *   *Structured JSON/Text Logging* menggunakan `log/slog`
+    *   Integrasi OpenTelemetry (OTEL) untuk *distributed tracing* dan *metrics* (`otelchi` dan `otelpgx`)
+    *   *Graceful shutdown* dengan penanganan sinyal OS
+    *   Propagasi Request ID
+    *   Middleware *Panic recovery*
+    *   Format error yang terstruktur mengikuti standar RFC 9457 (`application/problem+json`)
 *   **Configuration & Deployment**
-    *   12-Factor App ready
-    *   Viper-based configuration loading (`.env` file + OS environment variables)
-    *   Multi-stage, distroless Dockerfile for tiny, secure images
-    *   `docker-compose` setup with healthchecks and restart policies
+    *   Memenuhi standar *12-Factor App*
+    *   Sistem konfigurasi menggunakan Viper (otomatis membaca file `.env` + *environment variables* dari OS)
+    *   Dockerfile *multi-stage* berbasis *distroless* untuk menghasilkan *image* yang mungil dan aman
+    *   Setup `docker-compose` yang dilengkapi dengan fitur *healthchecks* dan *restart policies*
 
 ---
 
-## Architecture Flow
+## Arsitektur Modular Monolith
 
-```mermaid
-flowchart TD
-    Client([Client]) -- "HTTP Request" --> Delivery
+Projek ini dibangun menggunakan *pattern* arsitektur **Package by Feature** / Modular Monolith.
 
-    subgraph Clean Architecture
-        Delivery["Delivery Layer<br/>(Chi + Huma)"]
-        Usecase["Usecase Layer<br/>(Business Logic)"]
-        Domain["Domain Layer<br/>(Entities & Interfaces)"]
-        Infrastructure["Infrastructure Layer<br/>(Postgres, JWT)"]
+Ketimbang mengelompokkan kode berdasarkan fungsi teknisnya (seperti menggabungkan semua *controllers* di satu folder, lalu semua *repositories* di folder lain), kode di projek ini dikelompokkan berdasarkan **fitur bisnis** (contoh: `auth`, `todos`). Pendekatan ini mendorong tercapainya *high cohesion* dan *low coupling* yang optimal pada aplikasi yang berskala besar.
 
-        Delivery -- "Depends on" --> Usecase
-        Usecase -- "Depends on" --> Domain
-        Infrastructure -. "Implements interfaces" .-> Domain
-        Delivery -. "Depends on" .-> Domain
-        
-        Usecase -. "Runtime execution" .-> Infrastructure
-    end
+### Aturan Main (Rules of Engagement)
 
-    Infrastructure -- "SQL Queries" --> Database[(PostgreSQL 18)]
+Agar *codebase* tetap rapi dan mudah dikelola seiring pertumbuhannya, kita menerapkan beberapa aturan ketat:
+1.  **Tidak ada *direct imports* antar modul**: Modul `internal/modules/auth` dilarang meng-*import* `internal/modules/todos` secara langsung.
+2.  **Shared Kernel**: Kode apapun yang generik dan dibutuhkan oleh lebih dari satu modul harus diletakkan di `internal/shared` (misalnya: `errors`, `httpapi`, `database`).
+3.  **Encapsulation**: Semua struktur yang ada di dalam sebuah modul (handlers, *business logic*, repositories) sifatnya *internal* di modul tersebut. Hanya *public constructors* (seperti `NewAuth`) yang boleh diakses dan disatukan (*wiring*) di *entrypoint* utama yaitu `cmd/server/main.go`.
+
+### Komunikasi Antar Modul (Inter-Module Communication)
+
+Ketika satu modul butuh berinteraksi dengan modul lain, kita menggunakan teknik **Synchronous Interface Injection** yang mengacu pada konsep **Consumer-Driven Contracts**.
+
+Contoh Kasus (Fitur *Account Deletion*):
+*   Modul `auth` harus menghapus semua data `todos` milik seorang *user* ketika akun *user* tersebut dihapus.
+*   Alih-alih langsung mengimpor modul `todos`, modul `auth` hanya mendefinisikan apa yang ia butuhkan lewat sebuah *interface* di dalam `internal/modules/auth/domain.go`:
+    ```go
+    type TodoService interface {
+        DeleteAllByUserID(ctx context.Context, userID uuid.UUID) error
+    }
+    ```
+*   Secara paralel, modul `todos` mengimplementasikan fungsi tersebut di dalam *Usecase* miliknya.
+*   Pada saat proses inisialisasi aplikasi di `cmd/server/main.go`, Usecase dari `todos` akan di-*inject* ke dalam fungsi pembuat (*constructor*) modul `auth`. Dengan begitu, modul `auth` bisa menjalankan fungsi hapus *todo* tanpa pernah terhubung langsung dengan *package* `todos` secara statis.
+
+### Transaksi Lintas Modul (Cross-Module Transactions)
+
+Untuk menjaga integritas data lintas modul tanpa membocorkan logika spesifik *database*, kita memanfaatkan struktur `TxManager` sebagai *cross-cutting concern*.
+
+Ketika sebuah aksi lintas modul berjalan (seperti *Account Deletion* di atas), *parent module* hanya perlu membungkus semua logikanya ke dalam sebuah blok transaksi:
+```go
+func (s *Usecase) DeleteAccount(ctx context.Context, userID uuid.UUID) error {
+    return s.txManager.RunInTx(ctx, func(txCtx context.Context) error {
+        if err := s.todos.DeleteAllByUserID(txCtx, userID); err != nil {
+            return err
+        }
+        if err := s.users.Delete(txCtx, userID); err != nil {
+            return err
+        }
+        return nil
+    })
+}
 ```
+Setiap *query* di dalam blok tersebut—dari *repository* maupun modul mana saja—akan dieksekusi secara atomik menggunakan koneksi yang disematkan pada `txCtx`. Hal ini menjamin bahwa seluruh data (*user* maupun *todos*) sukses terhapus, atau akan ter-*rollback* semuanya secara bersamaan jika terjadi kegagalan.
 
 ---
 
-## Observability Architecture
+## Arsitektur Observability
 
 ```mermaid
 flowchart TD
     subgraph Application
-        API["API Service<br/>(Go App)"]
+        API["API Service<br/>(Aplikasi Go)"]
         DB[(PostgreSQL)]
         API -- "Read/Write" --> DB
     end
@@ -104,11 +123,11 @@ flowchart TD
 
     %% Metrics Flow
     Prometheus -- "1. Pulls metrics (/metrics)" --> API
-    
+
     %% Traces Flow
     API -- "2. Pushes OTLP Traces (gRPC: 4317)" --> Alloy
     Alloy -- "3. Pushes Traces (gRPC: 4317)" --> Tempo
-    
+
     %% Logs Flow
     DockerSocket[["/var/run/docker.sock"]]
     API -. "Writes stdout/stderr" .-> DockerSocket
@@ -123,123 +142,74 @@ flowchart TD
 
 ---
 
-
-## Project Structure
+## Struktur Projek
 
 ```text
 .
 ├── cmd/
-│   ├── migrate/      # Standalone database migration utility
-│   └── server/       # Main API application entrypoint
+│   ├── migrate/      # Utility stand-alone untuk proses migrasi database
+│   └── server/       # Entrypoint aplikasi utama tempat di mana modul-modul di-wire
 ├── internal/
-│   ├── config/       # Application configuration (Viper)
-│   ├── delivery/     # Inbound (HTTP Server, Routers)
-│   ├── domain/       # Core business entities, usecase, and repository interfaces
+│   ├── config/       # Konfigurasi aplikasi (Viper)
+│   ├── delivery/     # Setup root HTTP server (Middleware & Router Utama)
 │   ├── infrastructure/
-│   │   ├── database/     # DB connection, migrations, TxManager implementation
-│   │   ├── jwt/          # External services (e.g. JWT Auth)
-│   │   ├── observability/# Logging and OpenTelemetry tracing setup
-│   │   └── repository/   # Outbound (Postgres, Redis)
-│   ├── shared/       # Cross-cutting utilities (UUID generation, Password hashing)
-│   └── usecase/      # Use cases / Business logic implementation
+│   │   ├── jwt/          # Implementasi standar autentikasi
+│   │   └── repository/   # Adapter layer Caching (Redis)
+│   ├── modules/      # Seluruh fitur-fitur bisnis berada di sini
+│   │   ├── auth/         # Fitur Auth (login, register, user management, dsb)
+│   │   └── todos/        # Fitur Todo (operasi CRUD)
+│   └── shared/       # Cross-cutting utilities yang bisa digunakan secara aman oleh semua modul (errors, httpapi, observability, database)
 ```
 
 ---
 
-## Getting Started
+## Mulai Menggunakan (Getting Started)
 
-### Prerequisites
-*   Go 1.23+
-*   Docker & Docker Compose (for local development database)
+### Prasyarat (Prerequisites)
+*   Go 1.26+
+*   Docker & Docker Compose (untuk *database* di tahap *local development*)
 *   Make
 
-### 1. Configuration
+### 1. Konfigurasi Awal
 
-Copy the example environment file and customize it if needed.
-
+Lakukan duplikasi dari file contoh *environment* dan sesuaikan nilainya dengan setup komputermu.
 ```bash
 cp .env.example .env
 ```
 
-### 2. Running Locally (Docker Compose)
-
-The easiest way to start the entire stack (API + PostgreSQL) is using Docker Compose.
-
+### 2. Menjalankan di Lokal (Hanya via Docker Compose)
+Cara termudah adalah menggunakan Docker Compose. Aplikasi API beserta databasenya akan langsung tereksekusi.
 ```bash
 make docker-up
 ```
-The API will be available at `http://localhost:8080`.
+Aplikasi API akan aktif dan tersedia di `http://localhost:8080`.
 
-To view the logs:
-```bash
-make docker-logs
-```
-
-To shut down:
-```bash
-make docker-down
-```
-
-### 3. Running Locally (Go + Postgres)
-
-If you prefer to run the Go application natively while keeping the database in Docker:
-
-1.  Start only the database:
+### 3. Menjalankan di Lokal (Go Secara Nativ + Postgres di Docker)
+Kalau kamu lebih suka menjalankan proses Go-nya secara langsung di terminal, kamu bisa menyalakan hanya databasenya saja dari *docker*.
+1.  Nyalakan *database* saja secara daemon (*background*):
     ```bash
     docker compose up postgres -d
     ```
-2.  Run the application (migrations are applied automatically on startup):
+2.  Jalankan aplikasinya (proses migrasi *database* sudah tereksekusi secara otomatis saat aplikasi menyala):
     ```bash
     make run
     ```
 
 ---
 
-## Development Guide
+## Panduan Development
 
-We use a `Makefile` to simplify common tasks.
+Terdapat banyak *shorthand* pada `Makefile` untuk mempermudah rutinitas pengembangan sistem.
 
-### Code Quality & Testing
+*   **Format & Tidy**: `make tidy`
+*   **Lint**: `make lint`
+*   **Vet**: `make vet`
+*   **Test**: `make test`
+*   **Coverage**: `make coverage`
+*   **Build**: `make build`
 
-*   **Format & Tidy**: Clean up dependencies and format code.
-    ```bash
-    make tidy
-    ```
-*   **Lint**: Run `golangci-lint` (requires it to be installed).
-    ```bash
-    make lint
-    ```
-*   **Vet**: Run Go vet over the project.
-    ```bash
-    make vet
-    ```
-*   **Test**: Run the test suite with race detection and coverage.
-    ```bash
-    make test
-    ```
-*   **Coverage**: View the test coverage in your browser.
-    ```bash
-    make coverage
-    ```
-
-### Building for Production
-
-To build a standalone, statically linked binary:
-
-```bash
-make build
-```
-The binary will be output to `bin/server`.
-
-To clean up build artifacts:
-```bash
-make clean
-```
-
-### Database Migrations
-
-Migrations are automatically embedded into the binary and executed on application startup. However, if you need to run them manually, you can use the provided migration CLI:
-
+### Migrasi Database (Database Migrations)
+Semua skrip SQL untuk migrasi database sudah disematkan ke dalam kode aplikasi (*embedded*) dan otomatis akan dieksekusi begitu server dijalankan. Walau begitu, jika kamu butuh memicu migrasi secara manual dari CLI, kamu bisa memanggil:
 ```bash
 make migrate-up
 make migrate-down
@@ -247,43 +217,27 @@ make migrate-down
 
 ---
 
-## API Documentation
+## Dokumentasi API
 
-Once the server is running, the interactive documentation is served automatically:
+Selama server aplikasi berjalan dalam kondisi normal, dokumentasi interaktif API dapat diakses melalui link-link berikut:
 
 *   **Swagger UI**: [http://localhost:8080/docs](http://localhost:8080/docs)
 *   **OpenAPI 3.1 JSON**: [http://localhost:8080/openapi.json](http://localhost:8080/openapi.json)
 
-### Adding New Routes
-
-1.  Define your Input/Output structs and the Interface method in `internal/domain/`.
-2.  Implement the business logic in `internal/usecase/`.
-3.  Register the route in `internal/delivery/http/routes.go` using `huma.Register`. Huma handles request validation and OpenAPI generation automatically based on your structs.
-
-### Search and Filtering Example
-The `GET /api/v1/todos` endpoint supports advanced filtering:
-*   `status`: Filter by todo status (e.g., `pending`, `in_progress`, `done`).
-*   `q`: Case-insensitive substring search across `title` and `description`.
-*   `limit` / `offset`: Pagination.
-
-Example Request:
-```
-GET /api/v1/todos?q=buy&status=pending&limit=10&offset=0
-```
-
 ---
 
-## Configuration Variables (`.env`)
+## Konfigurasi Variabel (`.env`)
 
-| Variable | Description | Default |
+| Variabel | Deskripsi | Default |
 | :--- | :--- | :--- |
-| `APP_ENV` | Environment (`development` or `production`) | `development` |
-| `APP_NAME` | Name of the application | `restful-template` |
-| `HTTP_PORT` | Port the API listens on | `8080` |
-| `DATABASE_DSN` | Postgres connection string | `postgres://todo:todo@localhost:5432/todo?sslmode=disable` |
-| `JWT_SECRET` | Secret key for signing JWTs (**MUST** change in prod) | `change-me-in-production-min-32-bytes!` |
-| `JWT_ACCESS_TTL` | Access token lifespan | `15m` |
-| `JWT_REFRESH_TTL` | Refresh token lifespan | `168h` |
-| `LOG_LEVEL` | Logging verbosity (`debug`, `info`, `warn`, `error`) | `info` |
-| `LOG_FORMAT` | Log output format (`json`, `text`) | `json` |
-| `TELEMETRY_OTLP_ENDPOINT` | OpenTelemetry gRPC endpoint | `localhost:4317` |
+| `APP_ENV` | Mode operasi server (`development` atau `production`) | `development` |
+| `APP_NAME` | Nama dari aplikasi | `restful-template` |
+| `APP_DESCRIPTION` | Deskripsi singkat dari aplikasi | `Template RESTful API menggunakan Go 1.26` |
+| `HTTP_PORT` | Port tujuan dimana aplikasi menerima *request* API | `8080` |
+| `DATABASE_DSN` | Connection string yang menuju ke database PostgreSQL | `postgres://todo:todo@localhost:5432/todo?sslmode=disable` |
+| `JWT_SECRET` | Kunci sandi / Secret key untuk men-sign payload JWT (**WAJIB** diganti pada environment production) | `change-me-in-production-min-32-bytes!` |
+| `JWT_ACCESS_TTL` | Umur maksimal Access Token sebelum *expired* | `15m` |
+| `JWT_REFRESH_TTL` | Umur maksimal Refresh Token sebelum *expired* | `168h` |
+| `LOG_LEVEL` | Tingkat prioritas verbositas keluaran Log (`debug`, `info`, `warn`, `error`) | `info` |
+| `LOG_FORMAT` | Tipe *formatting log* (`json` direkomendasikan untuk *production*, `text` untuk lokal) | `json` |
+| `TELEMETRY_OTLP_ENDPOINT` | OpenTelemetry gRPC target endpoint url | `localhost:4317` |

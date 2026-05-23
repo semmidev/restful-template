@@ -1,4 +1,4 @@
-package postgres
+package database
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/semmidev/restful-template/internal/infrastructure/database"
 )
 
 // Querier defines the common methods between *pgxpool.Pool and pgx.Tx.
@@ -17,8 +16,8 @@ type Querier interface {
 }
 
 // getDb returns the pgx.Tx from context if it exists, otherwise returns the default pool.
-func getDb(ctx context.Context, pool *pgxpool.Pool) Querier {
-	if tx := database.ExtractTx(ctx); tx != nil {
+func GetDB(ctx context.Context, pool *pgxpool.Pool) Querier {
+	if tx := ExtractTx(ctx); tx != nil {
 		return tx
 	}
 	return pool

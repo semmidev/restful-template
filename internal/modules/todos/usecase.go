@@ -1,34 +1,34 @@
-package usecase
+package todos
 
 import (
 	"context"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/semmidev/restful-template/internal/domain"
+	"github.com/semmidev/restful-template/internal/shared/cache"
+	"github.com/semmidev/restful-template/internal/shared/observability"
 	"github.com/semmidev/restful-template/internal/shared/uuidgen"
 )
 
-// Todo implements domain.TodoUsecase.
-type Todo struct {
-	repo   domain.TodoRepository
-	cache  domain.CacheRepository
-	tracer domain.Tracer
+type Usecase struct {
+	repo   TodoRepository
+	cache  cache.CacheRepository
+	tracer observability.Tracer
 }
 
-func NewTodo(repo domain.TodoRepository, cache domain.CacheRepository, tracer domain.Tracer) *Todo {
-	return &Todo{repo: repo, cache: cache, tracer: tracer}
+func NewTodo(repo TodoRepository, cache cache.CacheRepository, tracer observability.Tracer) *Usecase {
+	return &Usecase{repo: repo, cache: cache, tracer: tracer}
 }
 
-func (s *Todo) Create(ctx context.Context, in domain.CreateTodoInput) (*domain.Todo, error) {
+func (s *Usecase) Create(ctx context.Context, in CreateTodoInput) (*Todo, error) {
 	now := time.Now().UTC()
-	t := &domain.Todo{
-		ID:          uuidgen.New(), // UUID v7 — time-ordered, sortable
+	t := &Todo{
+		ID:          uuidgen.New(),
 		UserID:      in.UserID,
 		Title:       in.Title,
 		Description: in.Description,
 		Cover:       in.Cover,
-		Status:      domain.TodoPending,
+		Status:      TodoStatusPending,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
@@ -36,10 +36,8 @@ func (s *Todo) Create(ctx context.Context, in domain.CreateTodoInput) (*domain.T
 		return nil, err
 	}
 
-	// Example: tracing a heavy internal block manually
 	if s.tracer != nil {
 		_, span := s.tracer.Start(ctx, "Todo.validateAndFormat")
-		// perform some heavy logic or formatting
 		span.End()
 	}
 
@@ -49,11 +47,11 @@ func (s *Todo) Create(ctx context.Context, in domain.CreateTodoInput) (*domain.T
 	return t, nil
 }
 
-func (s *Todo) Get(ctx context.Context, userID, id uuid.UUID) (*domain.Todo, error) {
-	return s.repo.FindByID(ctx, userID, id)
+func (s *Usecase) Get(ctx context.Context, userID, id uuid.UUID) (*Todo, error) {
+	return s.repo.GetByID(ctx, userID, id)
 }
 
-func (s *Todo) List(ctx context.Context, q domain.ListTodosQuery) ([]*domain.Todo, int, error) {
+func (s *Usecase) List(ctx context.Context, q ListTodosQuery) ([]*Todo, int, error) {
 	if q.Limit <= 0 || q.Limit > 100 {
 		q.Limit = 20
 	}
@@ -66,8 +64,8 @@ func (s *Todo) List(ctx context.Context, q domain.ListTodosQuery) ([]*domain.Tod
 	return s.repo.ListByUser(ctx, q)
 }
 
-func (s *Todo) Update(ctx context.Context, in domain.UpdateTodoInput) (*domain.Todo, error) {
-	t, err := s.repo.FindByID(ctx, in.UserID, in.ID)
+func (s *Usecase) Update(ctx context.Context, in UpdateTodoInput) (*Todo, error) {
+	t, err := s.repo.GetByID(ctx, in.UserID, in.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +73,7 @@ func (s *Todo) Update(ctx context.Context, in domain.UpdateTodoInput) (*domain.T
 		t.Title = *in.Title
 	}
 	if in.Description != nil {
-		t.Description = in.Description
+		t.Description = *in.Description
 	}
 	if in.Cover != nil {
 		t.Cover = in.Cover
@@ -93,6 +91,10 @@ func (s *Todo) Update(ctx context.Context, in domain.UpdateTodoInput) (*domain.T
 	return t, nil
 }
 
-func (s *Todo) Delete(ctx context.Context, userID, id uuid.UUID) error {
+func (s *Usecase) Delete(ctx context.Context, userID, id uuid.UUID) error {
 	return s.repo.Delete(ctx, userID, id)
+}
+
+func (s *Usecase) DeleteAllByUserID(ctx context.Context, userID uuid.UUID) error {
+	return s.repo.DeleteAllByUserID(ctx, userID)
 }

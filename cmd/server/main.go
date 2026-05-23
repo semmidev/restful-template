@@ -11,14 +11,13 @@ import (
 	"time"
 
 	"github.com/semmidev/restful-template/internal/config"
-	"github.com/semmidev/restful-template/internal/infrastructure/database"
 	delivery "github.com/semmidev/restful-template/internal/delivery/http"
 	"github.com/semmidev/restful-template/internal/infrastructure/jwt"
-	"github.com/semmidev/restful-template/internal/infrastructure/observability"
-	"github.com/semmidev/restful-template/internal/infrastructure/observability/tracing"
-	"github.com/semmidev/restful-template/internal/infrastructure/repository/postgres"
 	"github.com/semmidev/restful-template/internal/infrastructure/repository/redis"
-	"github.com/semmidev/restful-template/internal/usecase"
+	"github.com/semmidev/restful-template/internal/modules/auth"
+	"github.com/semmidev/restful-template/internal/modules/todos"
+	"github.com/semmidev/restful-template/internal/shared/database"
+	"github.com/semmidev/restful-template/internal/shared/observability"
 )
 
 func main() {
@@ -53,9 +52,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	userRepo := postgres.NewUserRepository(pool)
-	todoRepo := postgres.NewTodoRepository(pool)
-	tokenRepo := postgres.NewTokenRepository(pool)
+	userRepo := auth.NewUserRepository(pool)
+	todoRepo := todos.NewTodoRepository(pool)
+	tokenRepo := auth.NewTokenRepository(pool)
 	tokenSvc := jwt.NewJWTService(cfg.JWT.Secret, cfg.JWT.AccessTTL, cfg.JWT.RefreshTTL)
 
 	rdb, limiter, err := redis.NewClient(ctx, cfg.Redis.DSN)
@@ -66,13 +65,11 @@ func main() {
 	defer rdb.Close()
 
 	cacheRepo := redis.NewCacheRepository(rdb)
-	tracerAdapter := tracing.NewOtelTracer("usecase")
+	tracerAdapter := observability.NewOtelTracer("usecase")
 
-	baseAuthSvc := usecase.NewAuth(userRepo, tokenSvc, tokenRepo, tracerAdapter)
-	authSvc := tracing.NewAuthDecorator(baseAuthSvc)
-
-	baseTodoSvc := usecase.NewTodo(todoRepo, cacheRepo, tracerAdapter)
-	todoSvc := tracing.NewTodoDecorator(baseTodoSvc)
+	txManager := database.NewPostgresTxManager(pool)
+	todoSvc := todos.NewTodo(todoRepo, cacheRepo, tracerAdapter)
+	authSvc := auth.NewAuth(userRepo, tokenSvc, tokenRepo, todoSvc, txManager, tracerAdapter)
 
 	server := delivery.NewServer(cfg, logger, authSvc, todoSvc, tokenSvc, limiter)
 

@@ -13,7 +13,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/riandyrn/otelchi"
 	"github.com/semmidev/restful-template/internal/config"
-	"github.com/semmidev/restful-template/internal/domain"
+	"github.com/semmidev/restful-template/internal/modules/auth"
+	"github.com/semmidev/restful-template/internal/modules/todos"
+	sharedmw "github.com/semmidev/restful-template/internal/shared/middleware"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -24,12 +26,12 @@ type Server struct {
 }
 
 // NewServer wires up all middleware, Huma API, and registers routes.
-// tokens (domain.TokenService) is passed separately so AuthMiddleware can
+// tokens (auth.TokenService) is passed separately so AuthMiddleware can
 // validate JWTs without depending on the full AuthService (clean arch).
-func NewServer(cfg config.Config, log *slog.Logger, auth domain.AuthUsecase, todos domain.TodoUsecase, tokens domain.TokenService, limiter *redis_rate.Limiter) *Server {
+func NewServer(cfg config.Config, log *slog.Logger, authUsecase *auth.Usecase, todosUsecase *todos.Usecase, tokens auth.TokenService, limiter *redis_rate.Limiter) *Server {
 	r := chi.NewRouter()
 
-	promMiddleware, err := NewPrometheusMiddleware(prometheus.DefaultRegisterer)
+	promMiddleware, err := sharedmw.NewPrometheusMiddleware(prometheus.DefaultRegisterer)
 	if err != nil {
 		log.Error("failed to create prometheus middleware", "err", err)
 	}
@@ -44,12 +46,12 @@ func NewServer(cfg config.Config, log *slog.Logger, auth domain.AuthUsecase, tod
 	}
 
 	r.Use(TraceIDMiddleware)
-	r.Use(Logger(log))
+	r.Use(sharedmw.Logger(log))
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(cfg.HTTP.ReadTimeout))
-	r.Use(CORS())
-	r.Use(SecurityHeaders())
-	r.Use(RateLimiter(limiter))
+	r.Use(sharedmw.CORS())
+	r.Use(sharedmw.SecurityHeaders())
+	r.Use(sharedmw.RateLimiter(limiter))
 
 	// Expose Prometheus metrics endpoint
 	r.Get("/metrics", promhttp.Handler().ServeHTTP)
@@ -67,9 +69,9 @@ func NewServer(cfg config.Config, log *slog.Logger, auth domain.AuthUsecase, tod
 	}
 
 	api := humachi.New(r, humaConfig)
-	api.UseMiddleware(AuthMiddleware(api, tokens))
+	api.UseMiddleware(auth.AuthMiddleware(api, tokens))
 
-	RegisterRoutes(api, auth, todos, log)
+	RegisterRoutes(api, authUsecase, todosUsecase, log)
 
 	return &Server{router: r, api: api}
 }

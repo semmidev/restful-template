@@ -6,7 +6,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/semmidev/restful-template/internal/domain"
+	"github.com/semmidev/restful-template/internal/modules/auth"
 )
 
 type JWTService struct {
@@ -43,15 +43,15 @@ func (s *JWTService) GeneratePair(ctx context.Context, userID uuid.UUID, email s
 	return aStr, rStr, accessExp, refreshExp, err
 }
 
-func (s *JWTService) ParseAccess(ctx context.Context, token string) (*domain.TokenClaims, error) {
+func (s *JWTService) ParseAccess(ctx context.Context, token string) (*auth.TokenClaims, error) {
 	return s.parse(token, "access")
 }
 
-func (s *JWTService) ParseRefresh(ctx context.Context, token string) (*domain.TokenClaims, error) {
+func (s *JWTService) ParseRefresh(ctx context.Context, token string) (*auth.TokenClaims, error) {
 	return s.parse(token, "refresh")
 }
 
-func (s *JWTService) parse(token, typ string) (*domain.TokenClaims, error) {
+func (s *JWTService) parse(token, typ string) (*auth.TokenClaims, error) {
 	parsed, err := jwt.Parse(token, func(t *jwt.Token) (interface{}, error) { return s.secret, nil })
 	if err != nil || !parsed.Valid {
 		return nil, err
@@ -61,5 +61,5 @@ func (s *JWTService) parse(token, typ string) (*domain.TokenClaims, error) {
 		return nil, jwt.ErrTokenInvalidClaims
 	}
 	uid, _ := uuid.Parse(claims["sub"].(string))
-	return &domain.TokenClaims{UserID: uid, Email: claims["email"].(string)}, nil
+	return &auth.TokenClaims{UserID: uid, Email: claims["email"].(string)}, nil
 }

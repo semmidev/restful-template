@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"github.com/semmidev/restful-template/internal/config"
-	"github.com/semmidev/restful-template/internal/infrastructure/database"
-	"github.com/semmidev/restful-template/internal/infrastructure/observability"
+	"github.com/semmidev/restful-template/internal/shared/database"
+	"github.com/semmidev/restful-template/internal/shared/observability"
 )
 
 func main() {

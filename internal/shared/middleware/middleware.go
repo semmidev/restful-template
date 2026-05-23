@@ -1,4 +1,4 @@
-package delivery
+package middleware
 
 import (
 	"log/slog"
@@ -10,7 +10,6 @@ import (
 	"github.com/semmidev/restful-template/internal/shared/wideevent"
 	"go.opentelemetry.io/otel/trace"
 )
-
 
 // Logger is the canonical wide-event middleware.
 // It initialises a fresh WideEvent in the request context, runs the handler,
@@ -73,7 +72,6 @@ func Logger(log *slog.Logger) func(http.Handler) http.Handler {
 		})
 	}
 }
-
 
 func CORS() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {

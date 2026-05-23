@@ -1,4 +1,4 @@
-package delivery
+package auth
 
 import (
 	"context"
@@ -6,21 +6,15 @@ import (
 	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/semmidev/restful-template/internal/domain"
+	"github.com/semmidev/restful-template/internal/shared/httpapi"
 	"github.com/semmidev/restful-template/internal/shared/wideevent"
 )
 
-
-type ctxKey string
-
-const (
-	userIDCtxKey    ctxKey = "user_id"
-	userEmailCtxKey ctxKey = "user_email"
-)
+// Context keys are now in httpapi
 
 // AuthMiddleware is a Huma middleware that validates Bearer JWTs on protected routes.
-// Depends on domain.TokenService (not domain.AuthUsecase) — clean dependency flow.
-func AuthMiddleware(api huma.API, tokens domain.TokenService) func(ctx huma.Context, next func(huma.Context)) {
+// Depends on TokenService (not Usecase) — clean dependency flow.
+func AuthMiddleware(api huma.API, tokens TokenService) func(ctx huma.Context, next func(huma.Context)) {
 	return func(ctx huma.Context, next func(huma.Context)) {
 		path := ctx.URL().Path
 
@@ -49,8 +43,8 @@ func AuthMiddleware(api huma.API, tokens domain.TokenService) func(ctx huma.Cont
 		wideevent.Add(ctx.Context(), "user_id", claims.UserID.String())
 		wideevent.Add(ctx.Context(), "user_email", claims.Email)
 
-		ctx = huma.WithValue(ctx, userIDCtxKey, claims.UserID.String())
-		ctx = huma.WithValue(ctx, userEmailCtxKey, claims.Email)
+		ctx = huma.WithValue(ctx, httpapi.UserIDKey, claims.UserID.String())
+		ctx = huma.WithValue(ctx, httpapi.UserEmailKey, claims.Email)
 		next(ctx)
 	}
 }
@@ -64,7 +58,7 @@ func isPublicPath(path string) bool {
 
 // GetUserID extracts the authenticated user ID from a standard context.
 func GetUserID(ctx context.Context) string {
-	if v := ctx.Value(userIDCtxKey); v != nil {
+	if v := ctx.Value(httpapi.UserIDKey); v != nil {
 		return v.(string)
 	}
 	return ""
@@ -72,7 +66,7 @@ func GetUserID(ctx context.Context) string {
 
 // GetUserEmail extracts the authenticated user email from a standard context.
 func GetUserEmail(ctx context.Context) string {
-	if v := ctx.Value(userEmailCtxKey); v != nil {
+	if v := ctx.Value(httpapi.UserEmailKey); v != nil {
 		return v.(string)
 	}
 	return ""

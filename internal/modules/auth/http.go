@@ -1,11 +1,13 @@
-package delivery
+package auth
 
 import (
 	"context"
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/semmidev/restful-template/internal/domain"
+	"github.com/google/uuid"
+	"github.com/semmidev/restful-template/internal/shared/errors"
+	"github.com/semmidev/restful-template/internal/shared/httpapi"
 	"github.com/semmidev/restful-template/internal/shared/wideevent"
 )
 
@@ -32,7 +34,7 @@ type TokenResp struct {
 	}
 }
 
-func RegisterAuthRoutes(api huma.API, auth domain.AuthUsecase) {
+func RegisterAuthRoutes(api huma.API, auth *Usecase) {
 	huma.Register(api, huma.Operation{
 		OperationID: "auth-register",
 		Method:      http.MethodPost,
@@ -40,10 +42,10 @@ func RegisterAuthRoutes(api huma.API, auth domain.AuthUsecase) {
 		Summary:     "Register a new user",
 		Tags:        []string{"Auth"},
 	}, func(ctx context.Context, in *struct{ Body RegisterBody }) (*TokenResp, error) {
-		pair, err := auth.Register(ctx, domain.RegisterInput{Email: in.Body.Email, Password: in.Body.Password})
+		pair, err := auth.Register(ctx, RegisterInput{Email: in.Body.Email, Password: in.Body.Password})
 		if err != nil {
 			wideevent.Add(ctx, "error", err.Error())
-			return nil, toHumaErr(err)
+			return nil, httpapi.ToHumaErr(err)
 		}
 		wideevent.Add(ctx, "user_email", in.Body.Email)
 		return tokenResp(pair), nil
@@ -56,10 +58,10 @@ func RegisterAuthRoutes(api huma.API, auth domain.AuthUsecase) {
 		Summary:     "Login and receive tokens",
 		Tags:        []string{"Auth"},
 	}, func(ctx context.Context, in *struct{ Body LoginBody }) (*TokenResp, error) {
-		pair, err := auth.Login(ctx, domain.LoginInput{Email: in.Body.Email, Password: in.Body.Password})
+		pair, err := auth.Login(ctx, LoginInput{Email: in.Body.Email, Password: in.Body.Password})
 		if err != nil {
 			wideevent.Add(ctx, "error", err.Error())
-			return nil, toHumaErr(err)
+			return nil, httpapi.ToHumaErr(err)
 		}
 		wideevent.Add(ctx, "user_email", in.Body.Email)
 		return tokenResp(pair), nil
@@ -74,13 +76,38 @@ func RegisterAuthRoutes(api huma.API, auth domain.AuthUsecase) {
 	}, func(ctx context.Context, in *struct{ Body RefreshBody }) (*TokenResp, error) {
 		pair, err := auth.Refresh(ctx, in.Body.RefreshToken)
 		if err != nil {
-			return nil, toHumaErr(err)
+			return nil, httpapi.ToHumaErr(err)
 		}
 		return tokenResp(pair), nil
 	})
+
+	huma.Register(api, huma.Operation{
+		OperationID:   "auth-delete-account",
+		Method:        http.MethodDelete,
+		Path:          "/api/v1/auth/account",
+		Summary:       "Delete user account and all associated data",
+		Tags:          []string{"Auth"},
+		Security:      []map[string][]string{{"bearerAuth": {}}},
+		DefaultStatus: http.StatusNoContent,
+	}, func(ctx context.Context, in *struct{}) (*struct{}, error) {
+		userIDStr := GetUserID(ctx)
+		if userIDStr == "" {
+			return nil, httpapi.ToHumaErr(errors.ErrUnauthorized)
+		}
+		userID, err := uuid.Parse(userIDStr)
+		if err != nil {
+			return nil, httpapi.ToHumaErr(errors.ErrUnauthorized)
+		}
+
+		if err := auth.DeleteAccount(ctx, userID); err != nil {
+			wideevent.Add(ctx, "error", err.Error())
+			return nil, httpapi.ToHumaErr(err)
+		}
+		return &struct{}{}, nil
+	})
 }
 
-func tokenResp(pair domain.TokenPair) *TokenResp {
+func tokenResp(pair TokenPair) *TokenResp {
 	r := &TokenResp{}
 	r.Body.Data.AccessToken = pair.AccessToken
 	r.Body.Data.RefreshToken = pair.RefreshToken

@@ -1,4 +1,4 @@
-package postgres
+package auth
 
 import (
 	"context"
@@ -8,16 +8,17 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/semmidev/restful-template/internal/domain"
+	"github.com/semmidev/restful-template/internal/shared/database"
+	apperrors "github.com/semmidev/restful-template/internal/shared/errors"
 )
 
 var psql = sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
-type UserRepository struct{ db *pgxpool.Pool }
+type userRepository struct{ db *pgxpool.Pool }
 
-func NewUserRepository(db *pgxpool.Pool) *UserRepository { return &UserRepository{db} }
+func NewUserRepository(db *pgxpool.Pool) UserRepository { return &userRepository{db} }
 
-func (r *UserRepository) Create(ctx context.Context, u *domain.User) error {
+func (r *userRepository) Create(ctx context.Context, u *User) error {
 	sql, args, err := psql.Insert("users").
 		Columns("id", "email", "password_hash", "created_at", "updated_at").
 		Values(u.ID, u.Email, u.PasswordHash, u.CreatedAt, u.UpdatedAt).
@@ -26,11 +27,11 @@ func (r *UserRepository) Create(ctx context.Context, u *domain.User) error {
 		return err
 	}
 
-	_, err = getDb(ctx, r.db).Exec(ctx, sql, args...)
+	_, err = database.GetDB(ctx, r.db).Exec(ctx, sql, args...)
 	return err
 }
 
-func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*domain.User, error) {
+func (r *userRepository) GetByEmail(ctx context.Context, email string) (*User, error) {
 	sql, args, err := psql.Select("id", "email", "password_hash", "created_at", "updated_at").
 		From("users").
 		Where(sq.Eq{"email": email}).
@@ -39,18 +40,18 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*domain
 		return nil, err
 	}
 
-	row := getDb(ctx, r.db).QueryRow(ctx, sql, args...)
-	var u domain.User
+	row := database.GetDB(ctx, r.db).QueryRow(ctx, sql, args...)
+	var u User
 	if err := row.Scan(&u.ID, &u.Email, &u.PasswordHash, &u.CreatedAt, &u.UpdatedAt); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, domain.ErrNotFound
+			return nil, apperrors.ErrNotFound
 		}
 		return nil, err
 	}
 	return &u, nil
 }
 
-func (r *UserRepository) FindByID(ctx context.Context, id uuid.UUID) (*domain.User, error) {
+func (r *userRepository) GetByID(ctx context.Context, id uuid.UUID) (*User, error) {
 	sql, args, err := psql.Select("id", "email", "password_hash", "created_at", "updated_at").
 		From("users").
 		Where(sq.Eq{"id": id}).
@@ -59,13 +60,31 @@ func (r *UserRepository) FindByID(ctx context.Context, id uuid.UUID) (*domain.Us
 		return nil, err
 	}
 
-	row := getDb(ctx, r.db).QueryRow(ctx, sql, args...)
-	var u domain.User
+	row := database.GetDB(ctx, r.db).QueryRow(ctx, sql, args...)
+	var u User
 	if err := row.Scan(&u.ID, &u.Email, &u.PasswordHash, &u.CreatedAt, &u.UpdatedAt); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, domain.ErrNotFound
+			return nil, apperrors.ErrNotFound
 		}
 		return nil, err
 	}
 	return &u, nil
+}
+
+func (r *userRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	sql, args, err := psql.Delete("users").
+		Where(sq.Eq{"id": id}).
+		ToSql()
+	if err != nil {
+		return err
+	}
+
+	res, err := database.GetDB(ctx, r.db).Exec(ctx, sql, args...)
+	if err != nil {
+		return err
+	}
+	if res.RowsAffected() == 0 {
+		return apperrors.ErrNotFound
+	}
+	return nil
 }

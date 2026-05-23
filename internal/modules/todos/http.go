@@ -1,4 +1,4 @@
-package delivery
+package todos
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
-	"github.com/semmidev/restful-template/internal/domain"
+	"github.com/semmidev/restful-template/internal/shared/httpapi"
 	"github.com/semmidev/restful-template/internal/shared/wideevent"
 )
 
@@ -28,12 +28,12 @@ type UpdateTodoForm struct {
 
 type TodoResp struct {
 	Body struct {
-		Data *domain.Todo `json:"data"`
+		Data *Todo `json:"data"`
 	}
 }
 
 type ListData struct {
-	Items   []*domain.Todo    `json:"items"`
+	Items   []*Todo           `json:"items"`
 	Total   int               `json:"total"`
 	Page    int               `json:"page"`
 	PerPage int               `json:"per_page"`
@@ -49,7 +49,7 @@ type ListResp struct {
 	}
 }
 
-func RegisterTodoRoutes(api huma.API, todos domain.TodoUsecase) {
+func RegisterTodoRoutes(api huma.API, todos *Usecase) {
 	huma.Register(api, huma.Operation{
 		OperationID: "list-todos",
 		Method:      http.MethodGet,
@@ -65,24 +65,30 @@ func RegisterTodoRoutes(api huma.API, todos domain.TodoUsecase) {
 		SortBy  string `query:"sort_by" default:"created_at" enum:"created_at,updated_at,title,status" doc:"Column to sort by"`
 		SortDir string `query:"sort_dir" default:"desc" enum:"asc,desc" doc:"Sort direction"`
 	}) (*ListResp, error) {
-		userID, err := extractUserID(ctx)
+		userID, err := httpapi.ExtractUserID(ctx)
 		if err != nil {
-			return nil, toHumaErr(err)
+			return nil, httpapi.ToHumaErr(err)
 		}
 		offset := (in.Page - 1) * in.PerPage
 
-		items, total, err := todos.List(ctx, domain.ListTodosQuery{
-			UserID:  userID,
-			Limit:   in.PerPage,
-			Offset:  offset,
-			Status:  in.Status,
+		items, total, err := todos.List(ctx, ListTodosQuery{
+			UserID: userID,
+			Limit:  in.PerPage,
+			Offset: offset,
+			Status: func() *TodoStatus {
+				if in.Status == "" {
+					return nil
+				}
+				s := TodoStatus(in.Status)
+				return &s
+			}(),
 			Keyword: in.Keyword,
 			SortBy:  in.SortBy,
 			SortDir: in.SortDir,
 		})
 		if err != nil {
 			wideevent.Add(ctx, "error", err.Error())
-			return nil, toHumaErr(err)
+			return nil, httpapi.ToHumaErr(err)
 		}
 		wideevent.Add(ctx, "todo_count", len(items))
 		wideevent.Add(ctx, "todo_total", total)
@@ -128,9 +134,9 @@ func RegisterTodoRoutes(api huma.API, todos domain.TodoUsecase) {
 	}, func(ctx context.Context, in *struct {
 		RawBody huma.MultipartFormFiles[CreateTodoForm]
 	}) (*TodoResp, error) {
-		userID, err := extractUserID(ctx)
+		userID, err := httpapi.ExtractUserID(ctx)
 		if err != nil {
-			return nil, toHumaErr(err)
+			return nil, httpapi.ToHumaErr(err)
 		}
 
 		data := in.RawBody.Data()
@@ -144,20 +150,15 @@ func RegisterTodoRoutes(api huma.API, todos domain.TodoUsecase) {
 			coverBase64 = &encoded
 		}
 
-		var desc *string
-		if data.Description != "" {
-			desc = &data.Description
-		}
-
-		t, err := todos.Create(ctx, domain.CreateTodoInput{
+		t, err := todos.Create(ctx, CreateTodoInput{
 			UserID:      userID,
 			Title:       data.Title,
-			Description: desc,
+			Description: data.Description,
 			Cover:       coverBase64,
 		})
 		if err != nil {
 			wideevent.Add(ctx, "error", err.Error())
-			return nil, toHumaErr(err)
+			return nil, httpapi.ToHumaErr(err)
 		}
 		wideevent.Add(ctx, "todo_id", t.ID.String())
 		wideevent.Add(ctx, "todo_title", t.Title)
@@ -176,15 +177,15 @@ func RegisterTodoRoutes(api huma.API, todos domain.TodoUsecase) {
 	}, func(ctx context.Context, in *struct {
 		ID uuid.UUID `path:"id" doc:"Todo UUID"`
 	}) (*TodoResp, error) {
-		userID, err := extractUserID(ctx)
+		userID, err := httpapi.ExtractUserID(ctx)
 		if err != nil {
-			return nil, toHumaErr(err)
+			return nil, httpapi.ToHumaErr(err)
 		}
 		t, err := todos.Get(ctx, userID, in.ID)
 		if err != nil {
 			wideevent.Add(ctx, "todo_id", in.ID.String())
 			wideevent.Add(ctx, "error", err.Error())
-			return nil, toHumaErr(err)
+			return nil, httpapi.ToHumaErr(err)
 		}
 		wideevent.Add(ctx, "todo_id", t.ID.String())
 		resp := &TodoResp{}
@@ -203,9 +204,9 @@ func RegisterTodoRoutes(api huma.API, todos domain.TodoUsecase) {
 		ID      uuid.UUID `path:"id"`
 		RawBody huma.MultipartFormFiles[UpdateTodoForm]
 	}) (*TodoResp, error) {
-		userID, err := extractUserID(ctx)
+		userID, err := httpapi.ExtractUserID(ctx)
 		if err != nil {
-			return nil, toHumaErr(err)
+			return nil, httpapi.ToHumaErr(err)
 		}
 
 		data := in.RawBody.Data()
@@ -220,9 +221,9 @@ func RegisterTodoRoutes(api huma.API, todos domain.TodoUsecase) {
 			desc = &data.Description
 		}
 
-		var status *domain.TodoStatus
+		var status *TodoStatus
 		if _, ok := in.RawBody.Form.Value["status"]; ok && data.Status != "" {
-			st := domain.TodoStatus(data.Status)
+			st := TodoStatus(data.Status)
 			status = &st
 		}
 
@@ -236,7 +237,7 @@ func RegisterTodoRoutes(api huma.API, todos domain.TodoUsecase) {
 			coverBase64 = &encoded
 		}
 
-		t, err := todos.Update(ctx, domain.UpdateTodoInput{
+		t, err := todos.Update(ctx, UpdateTodoInput{
 			ID:          in.ID,
 			UserID:      userID,
 			Title:       title,
@@ -247,7 +248,7 @@ func RegisterTodoRoutes(api huma.API, todos domain.TodoUsecase) {
 		if err != nil {
 			wideevent.Add(ctx, "todo_id", in.ID.String())
 			wideevent.Add(ctx, "error", err.Error())
-			return nil, toHumaErr(err)
+			return nil, httpapi.ToHumaErr(err)
 		}
 		wideevent.Add(ctx, "todo_id", t.ID.String())
 		wideevent.Add(ctx, "todo_title", t.Title)
@@ -268,14 +269,14 @@ func RegisterTodoRoutes(api huma.API, todos domain.TodoUsecase) {
 	}, func(ctx context.Context, in *struct {
 		ID uuid.UUID `path:"id"`
 	}) (*struct{}, error) {
-		userID, err := extractUserID(ctx)
+		userID, err := httpapi.ExtractUserID(ctx)
 		if err != nil {
-			return nil, toHumaErr(err)
+			return nil, httpapi.ToHumaErr(err)
 		}
 		if err := todos.Delete(ctx, userID, in.ID); err != nil {
 			wideevent.Add(ctx, "todo_id", in.ID.String())
 			wideevent.Add(ctx, "error", err.Error())
-			return nil, toHumaErr(err)
+			return nil, httpapi.ToHumaErr(err)
 		}
 		wideevent.Add(ctx, "todo_id", in.ID.String())
 		return &struct{}{}, nil

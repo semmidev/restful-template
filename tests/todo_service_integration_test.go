@@ -18,23 +18,24 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	delivery "github.com/semmidev/restful-template/internal/delivery/http"
 	"github.com/semmidev/restful-template/internal/infrastructure/jwt"
-	pgRepo "github.com/semmidev/restful-template/internal/infrastructure/repository/postgres"
-	"github.com/semmidev/restful-template/internal/usecase"
-	
+	"github.com/semmidev/restful-template/internal/modules/auth"
+	"github.com/semmidev/restful-template/internal/modules/todos"
+	"github.com/semmidev/restful-template/internal/shared/database"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
 const testJWTSecret = "test-secret-key-minimum-32-bytes!!"
 
 func newTestAPI(pool *pgxpool.Pool) huma.API {
-	todoRepo := pgRepo.NewTodoRepository(pool)
-	userRepo := pgRepo.NewUserRepository(pool)
-	tokenRepo := pgRepo.NewTokenRepository(pool)
+	todoRepo := todos.NewTodoRepository(pool)
+	userRepo := auth.NewUserRepository(pool)
+	tokenRepo := auth.NewTokenRepository(pool)
 
 	tokenSvc := jwt.NewJWTService(testJWTSecret, 15*time.Minute, 7*24*time.Hour)
+	txManager := database.NewPostgresTxManager(pool)
 
-	authSvc := usecase.NewAuth(userRepo, tokenSvc, tokenRepo, nil)
-	todoSvc := usecase.NewTodo(todoRepo, nil, nil)
+	todoSvc := todos.NewTodo(todoRepo, nil, nil)
+	authSvc := auth.NewAuth(userRepo, tokenSvc, tokenRepo, todoSvc, txManager, nil)
 
 	r := chi.NewRouter()
 	humaConfig := huma.DefaultConfig("Todo API Test", "0.0.0")
@@ -44,7 +45,7 @@ func newTestAPI(pool *pgxpool.Pool) huma.API {
 		},
 	}
 	api := humachi.New(r, humaConfig)
-	api.UseMiddleware(delivery.AuthMiddleware(api, tokenSvc))
+	api.UseMiddleware(auth.AuthMiddleware(api, tokenSvc))
 	delivery.RegisterRoutes(api, authSvc, todoSvc, nil)
 	return api
 }
@@ -190,7 +191,7 @@ func TestTodoHTTP_Integration(t *testing.T) {
 				email2 := fmt.Sprintf("other-%s@example.com", uuid.New().String())
 				token2, err2 := registerAndLogin(api, email2, "password123")
 				So(err2, ShouldBeNil)
-				
+
 				wGetOther := doRequest(api, http.MethodGet, "/api/v1/todos/"+createdID, token2, nil, "")
 				So(wGetOther.Code, ShouldEqual, http.StatusNotFound)
 			})
