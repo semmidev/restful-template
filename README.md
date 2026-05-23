@@ -2,6 +2,25 @@
 
 A production-grade RESTful API template built with Go 1.26, featuring **Clean Architecture**, high performance routing via Chi, OpenAPI 3.1 auto-generation via Huma v2, and secure, time-ordered UUIDs via PostgreSQL 18.
 
+## Table of Contents
+- [Key Features](#key-features)
+- [Architecture Flow](#architecture-flow)
+- [Observability Architecture](#observability-architecture)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [1. Configuration](#1-configuration)
+  - [2. Running Locally (Docker Compose)](#2-running-locally-docker-compose)
+  - [3. Running Locally (Go + Postgres)](#3-running-locally-go--postgres)
+- [Development Guide](#development-guide)
+  - [Code Quality & Testing](#code-quality--testing)
+  - [Building for Production](#building-for-production)
+  - [Database Migrations](#database-migrations)
+- [API Documentation](#api-documentation)
+  - [Adding New Routes](#adding-new-routes)
+  - [Search and Filtering Example](#search-and-filtering-example)
+- [Configuration Variables (.env)](#configuration-variables-env)
+
 ---
 
 ## Key Features
