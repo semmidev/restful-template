@@ -72,7 +72,7 @@ Ketika satu modul butuh berinteraksi dengan modul lain, kita menggunakan teknik 
 
 Contoh Kasus (Fitur *Account Deletion*):
 *   Modul `auth` harus menghapus semua data `todos` milik seorang *user* ketika akun *user* tersebut dihapus.
-*   Alih-alih langsung mengimpor modul `todos`, modul `auth` hanya mendefinisikan apa yang ia butuhkan lewat sebuah *interface* di dalam `internal/modules/auth/domain.go`:
+*   Alih-alih langsung mengimpor modul `todos`, modul `auth` hanya mendefinisikan apa yang ia butuhkan lewat sebuah *interface* di dalam `internal/modules/auth/auth_domain.go`:
     ```go
     type TodoService interface {
         DeleteAllByUserID(ctx context.Context, userID uuid.UUID) error
