@@ -38,6 +38,18 @@ func ToHumaErr(ctx context.Context, err error) error {
 		wideevent.Add(ctx, "error", safeErr.LogString())
 	} else {
 		wideevent.Add(ctx, "error", err.Error())
+		switch {
+		case errors.Is(err, apperrors.ErrNotFound):
+			userMsg = "resource not found"
+		case errors.Is(err, apperrors.ErrConflict):
+			userMsg = "resource conflict"
+		case errors.Is(err, apperrors.ErrUnauthorized):
+			userMsg = "unauthorized access"
+		case errors.Is(err, apperrors.ErrForbidden):
+			userMsg = "forbidden access"
+		case errors.Is(err, apperrors.ErrInvalidInput):
+			userMsg = "invalid input data"
+		}
 	}
 
 	switch {

@@ -23,6 +23,7 @@ func (s *JWTService) GeneratePair(ctx context.Context, userID uuid.UUID, email s
 	now := time.Now()
 	accessExp := now.Add(s.accessTTL).Unix()
 	access := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"jti":   uuid.New().String(),
 		"sub":   userID.String(),
 		"email": email,
 		"exp":   accessExp,
@@ -34,6 +35,7 @@ func (s *JWTService) GeneratePair(ctx context.Context, userID uuid.UUID, email s
 	}
 	refreshExp := now.Add(s.refreshTTL).Unix()
 	refresh := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"jti":   uuid.New().String(),
 		"sub":   userID.String(),
 		"email": email,
 		"exp":   refreshExp,

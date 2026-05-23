@@ -1,21 +1,31 @@
 package tests
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"fmt"
+	"mime/multipart"
+	"net/http"
+	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/semmidev/restful-template/internal/shared/database"
+	"github.com/semmidev/restful-template/internal/app"
+	"github.com/semmidev/restful-template/internal/config"
+	"github.com/semmidev/restful-template/internal/shared/observability"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
+	"github.com/testcontainers/testcontainers-go/modules/redis"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-func SetupTestDatabase(t *testing.T) (*pgxpool.Pool, func()) {
+func SetupTestInfrastructure(t *testing.T) (pgDSN string, redisDSN string, cleanup func()) {
 	t.Helper()
 	ctx := context.Background()
 
+	// PostgreSQL
 	dbContainer, err := postgres.Run(ctx,
 		"docker.io/postgres:18-alpine",
 		postgres.WithDatabase("testdb"),
@@ -31,32 +41,101 @@ func SetupTestDatabase(t *testing.T) (*pgxpool.Pool, func()) {
 		t.Fatalf("failed to start postgres container: %v", err)
 	}
 
-	connStr, err := dbContainer.ConnectionString(ctx, "sslmode=disable")
+	pgDSN, err = dbContainer.ConnectionString(ctx, "sslmode=disable")
 	if err != nil {
-		t.Fatalf("failed to get connection string: %v", err)
+		t.Fatalf("failed to get postgres connection string: %v", err)
 	}
 
-	// Register the uuidv7() function before running migrations.
-	pcfg, err := pgxpool.ParseConfig(connStr)
+	// Redis
+	redisContainer, err := redis.Run(ctx,
+		"docker.io/redis:7-alpine",
+		testcontainers.WithWaitStrategy(
+			wait.ForLog("Ready to accept connections").
+				WithStartupTimeout(60*time.Second),
+		),
+	)
 	if err != nil {
-		t.Fatalf("failed to parse pool config: %v", err)
-	}
-	pool, err := pgxpool.NewWithConfig(ctx, pcfg)
-	if err != nil {
-		t.Fatalf("failed to create pool: %v", err)
+		t.Fatalf("failed to start redis container: %v", err)
 	}
 
-	// Run all embedded SQL migrations.
-	if err := database.RunMigrations(connStr, "up"); err != nil {
-		t.Fatalf("failed to run migrations: %v", err)
+	redisDSN, err = redisContainer.ConnectionString(ctx)
+	if err != nil {
+		t.Fatalf("failed to get redis connection string: %v", err)
 	}
 
-	cleanup := func() {
-		pool.Close()
+	cleanup = func() {
 		if err := dbContainer.Terminate(ctx); err != nil {
 			t.Logf("warning: failed to terminate postgres container: %v", err)
 		}
+		if err := redisContainer.Terminate(ctx); err != nil {
+			t.Logf("warning: failed to terminate redis container: %v", err)
+		}
 	}
 
-	return pool, cleanup
+	return pgDSN, redisDSN, cleanup
+}
+
+const testJWTSecret = "test-secret-key-minimum-32-bytes!!"
+
+// newTestAPI wires up the app using the new Setup logic for integration tests
+func newTestAPI(ctx context.Context, pgDSN string, redisDSN string) (http.Handler, func(), error) {
+	os.Setenv("DATABASE_DSN", pgDSN)
+	os.Setenv("REDIS_DSN", redisDSN)
+	os.Setenv("JWT_SECRET", testJWTSecret)
+	os.Setenv("LOG_LEVEL", "error")
+
+	cfg := config.Load()
+	logger := observability.NewLogger(cfg.Log.Level, cfg.Log.Format, "test")
+
+	return app.Setup(ctx, cfg, logger)
+}
+
+// registerAndLogin calls the register endpoint and returns the access token.
+func registerAndLogin(api http.Handler, email, password string) (string, error) {
+	body := map[string]string{"email": email, "password": password}
+	b, _ := json.Marshal(body)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewReader(b))
+	req.Header.Set("Content-Type", "application/json")
+	req.RemoteAddr = fmt.Sprintf("192.0.2.%d:1234", time.Now().UnixNano()%255)
+	w := httptest.NewRecorder()
+	api.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		return "", fmt.Errorf("register failed: %s", w.Body.String())
+	}
+
+	var resp struct {
+		Data struct {
+			AccessToken string `json:"access_token"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		return "", err
+	}
+	return resp.Data.AccessToken, nil
+}
+
+func doRequest(api http.Handler, method, path, token string, body []byte, contentType string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(method, path, bytes.NewReader(body))
+	req.RemoteAddr = fmt.Sprintf("192.0.2.%d:1234", time.Now().UnixNano()%255)
+	if contentType != "" {
+		req.Header.Set("Content-Type", contentType)
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	w := httptest.NewRecorder()
+	api.ServeHTTP(w, req)
+	return w
+}
+
+func buildMultipartBody(fields map[string]string) ([]byte, string) {
+	var buf bytes.Buffer
+	mw := multipart.NewWriter(&buf)
+	for k, v := range fields {
+		_ = mw.WriteField(k, v)
+	}
+	mw.Close()
+	return buf.Bytes(), mw.FormDataContentType()
 }

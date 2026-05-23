@@ -1,108 +1,27 @@
 package tests
 
 import (
-	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
-	"mime/multipart"
 	"net/http"
-	"net/http/httptest"
 	"testing"
-	"time"
 
-	"github.com/danielgtaylor/huma/v2"
-	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/danielgtaylor/huma/v2/humatest"
-	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
-	delivery "github.com/semmidev/restful-template/internal/delivery/http"
-	"github.com/semmidev/restful-template/internal/modules/auth"
-	"github.com/semmidev/restful-template/internal/modules/todos"
-	"github.com/semmidev/restful-template/internal/shared/database"
-	"github.com/semmidev/restful-template/internal/shared/jwt"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-const testJWTSecret = "test-secret-key-minimum-32-bytes!!"
-
-func newTestAPI(pool *pgxpool.Pool) huma.API {
-	todoRepo := todos.NewTodoRepository(pool)
-	userRepo := auth.NewUserRepository(pool)
-	tokenRepo := auth.NewTokenRepository(pool)
-
-	tokenSvc := jwt.NewJWTService(testJWTSecret, 15*time.Minute, 7*24*time.Hour)
-	txManager := database.NewPostgresTxManager(pool)
-
-	todoSvc := todos.NewTodo(todoRepo, nil, nil)
-	authSvc := auth.NewAuth(userRepo, tokenSvc, tokenRepo, todoSvc, txManager, nil)
-
-	r := chi.NewRouter()
-	humaConfig := huma.DefaultConfig("Todo API Test", "0.0.0")
-	humaConfig.Components = &huma.Components{
-		SecuritySchemes: map[string]*huma.SecurityScheme{
-			"bearerAuth": {Type: "http", Scheme: "bearer", BearerFormat: "JWT"},
-		},
-	}
-	api := humachi.New(r, humaConfig)
-	api.UseMiddleware(auth.AuthMiddleware(api, tokenSvc))
-	delivery.RegisterRoutes(api, authSvc, todoSvc, nil)
-	return api
-}
-
-// registerAndLogin calls the register endpoint and returns the access token.
-func registerAndLogin(api huma.API, email, password string) (string, error) {
-	body := map[string]string{"email": email, "password": password}
-	b, _ := json.Marshal(body)
-
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewReader(b))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	api.Adapter().ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		return "", fmt.Errorf("register failed: %s", w.Body.String())
-	}
-
-	var resp struct {
-		Data struct {
-			AccessToken string `json:"access_token"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		return "", err
-	}
-	return resp.Data.AccessToken, nil
-}
-
-func doRequest(api huma.API, method, path, token string, body []byte, contentType string) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(method, path, bytes.NewReader(body))
-	if contentType != "" {
-		req.Header.Set("Content-Type", contentType)
-	}
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
-	}
-	w := httptest.NewRecorder()
-	api.Adapter().ServeHTTP(w, req)
-	return w
-}
-
-func buildMultipartBody(fields map[string]string) ([]byte, string) {
-	var buf bytes.Buffer
-	mw := multipart.NewWriter(&buf)
-	for k, v := range fields {
-		_ = mw.WriteField(k, v)
-	}
-	mw.Close()
-	return buf.Bytes(), mw.FormDataContentType()
-}
-
 func TestTodoHTTP_Integration(t *testing.T) {
-	pool, cleanup := SetupTestDatabase(t)
+	pgDSN, redisDSN, cleanup := SetupTestInfrastructure(t)
 	defer cleanup()
 
-	api := newTestAPI(pool)
+	ctx := context.Background()
+	api, appCleanup, err := newTestAPI(ctx, pgDSN, redisDSN)
+	if err != nil {
+		t.Fatalf("failed to setup app: %v", err)
+	}
+	defer appCleanup()
 
 	Convey("Given a connected API with an authenticated user", t, func() {
 		email := fmt.Sprintf("test-%s@example.com", uuid.New().String())

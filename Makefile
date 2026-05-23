@@ -26,13 +26,6 @@ vet:
 tidy:
 	go mod tidy
 
-# ── Database ──────────────────────────────────────────────────────────────────
-migrate-up:
-	go run ./cmd/migrate up
-
-migrate-down:
-	go run ./cmd/migrate down
-
 # ── Docker ────────────────────────────────────────────────────────────────────
 docker-up:
 	docker compose up --build -d

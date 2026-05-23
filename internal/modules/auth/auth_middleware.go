@@ -50,7 +50,9 @@ func AuthMiddleware(api huma.API, tokens TokenService) func(ctx huma.Context, ne
 }
 
 func isPublicPath(path string) bool {
-	return strings.HasPrefix(path, "/api/v1/auth") ||
+	return path == "/api/v1/auth/login" ||
+		path == "/api/v1/auth/register" ||
+		path == "/api/v1/auth/refresh" ||
 		strings.HasPrefix(path, "/docs") ||
 		path == "/openapi.json" ||
 		path == "/api/v1/health"

@@ -59,6 +59,9 @@ Projek ini dibangun menggunakan *pattern* arsitektur **Package by Feature** / Mo
 
 Ketimbang mengelompokkan kode berdasarkan fungsi teknisnya (seperti menggabungkan semua *controllers* di satu folder, lalu semua *repositories* di folder lain), kode di projek ini dikelompokkan berdasarkan **fitur bisnis** (contoh: `auth`, `todos`). Pendekatan ini mendorong tercapainya *high cohesion* dan *low coupling* yang optimal pada aplikasi yang berskala besar.
 
+### Arsitektur "Main calls run()"
+Semua *dependency injection*, *database wiring*, dan *router setup* tidak dilakukan langsung di `main()`. Sebaliknya, `main.go` sangat tipis dan hanya menginisiasi `app.Setup()`. Ini memungkinkan pengujian integrasi *(integration tests)* memutar infrastruktur yang 100% identik dengan produksi tanpa *bypass* komponen krusial apa pun.
+
 ### Aturan Main (Rules of Engagement)
 
 Agar *codebase* tetap rapi dan mudah dikelola seiring pertumbuhannya, kita menerapkan beberapa aturan ketat:
@@ -140,6 +143,12 @@ flowchart TD
     Grafana -- "8. Pulls Traces (TraceQL)" --> Tempo
 ```
 
+### Unified Error Handling & Observability
+
+Projek ini menerapkan **Secure Idiomatic Error Handling**.
+*   **SafeError (`internal/shared/errors`)**: Kesalahan internal disembunyikan menggunakan wrapper `SafeError` yang mencegah bocornya informasi kredensial, struktur path, atau detail SQL ke pengguna (client). Semua kesalahan internal dikonversi secara aman menjadi kode HTTP seperti 500 atau 400 menggunakan `httpapi.ToHumaErr()`.
+*   **Wide Events (`internal/shared/wideevent`)**: Alih-alih membuat banyak statement *log* yang berantakan di setiap *layer*, aplikasi mengumpulkan data logis di sepanjang siklus hidup *request* menggunakan *context*, dan mengeluarkannya sebagai **Satu Baris Log per Request** di layer *middleware*. Format ini sangat cocok untuk mesin analitik seperti Loki atau Elasticsearch.
+
 ---
 
 ## Struktur Projek
@@ -147,15 +156,16 @@ flowchart TD
 ```text
 .
 ├── cmd/
-│   ├── migrate/      # Utility stand-alone untuk proses migrasi database
-│   └── server/       # Entrypoint aplikasi utama tempat di mana modul-modul di-wire
+│   └── server/       # Entrypoint aplikasi utama, cukup mendelegasikan eksekusi ke internal/app
 ├── internal/
+│   ├── app/          # Tempat di mana seluruh dependency injection dan wiring disatukan (Setup)
 │   ├── config/       # Konfigurasi aplikasi (Viper)
 │   ├── delivery/     # Setup root HTTP server (Middleware & Router Utama)
 │   ├── modules/      # Seluruh fitur-fitur bisnis berada di sini
 │   │   ├── auth/         # Fitur Auth (login, register, user management, dsb)
 │   │   └── todos/        # Fitur Todo (operasi CRUD)
 │   └── shared/       # Cross-cutting utilities yang bisa digunakan secara aman oleh semua modul (errors, httpapi, observability, database, jwt, redis)
+├── tests/            # Test Infrastruktur, berisi Black-box End-to-End Integration Tests
 ```
 
 ---
@@ -206,11 +216,11 @@ Terdapat banyak *shorthand* pada `Makefile` untuk mempermudah rutinitas pengemba
 *   **Build**: `make build`
 
 ### Migrasi Database (Database Migrations)
-Semua skrip SQL untuk migrasi database sudah disematkan ke dalam kode aplikasi (*embedded*) dan otomatis akan dieksekusi begitu server dijalankan. Walau begitu, jika kamu butuh memicu migrasi secara manual dari CLI, kamu bisa memanggil:
-```bash
-make migrate-up
-make migrate-down
-```
+Semua skrip SQL untuk migrasi database sudah disematkan ke dalam kode aplikasi (*embedded* melalui paket `embed` bawaan golang) dan otomatis akan dieksekusi begitu server dijalankan atau saat Integration Tests berjalan. Tidak diperlukan command khusus untuk menjalankannya.
+
+### Integration Testing
+Pengujian *end-to-end* menggunakan `testcontainers-go`. Semua skrip pengujian (seperti di folder `tests/`) otomatis membangkitkan dan memanajemen container Docker sementara (PostgreSQL & Redis) untuk menjalankan API persis seperti versi produksi melalui eksekusi `app.Setup()`.
+Gunakan `make test-integration` untuk mengeksekusi ini.
 
 ---
 
