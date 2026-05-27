@@ -107,6 +107,28 @@ make run
 
 ---
 
+## Integrasi Huma v2 Tingkat Lanjut
+
+Template ini tidak sekadar menggunakan Huma sebagai generator OpenAPI, melainkan memanfaatkan kapabilitas optimal Huma v2 untuk performa, concurrency, dan Developer Experience (DX):
+
+1. **Conditional Requests & Optimistic Locking (`If-Match` / `If-None-Match`)**
+   - API mendukung HTTP standar ETag dan header Last-Modified (misalnya pada operasi `Todo`).
+   - Mencegah masalah *lost update* di data *concurrent* (Huma otomatis merespons `412 Precondition Failed` jika ETag pada *request PATCH* tidak sesuai dengan database).
+   - Menghemat bandwidth: merespons dengan `304 Not Modified` jika data client masih sinkron (`If-None-Match`).
+2. **CBOR Content Negotiation**
+   - Mendukung format respons `application/cbor` secara otomatis.
+   - Tanpa merombak kode *handler*, client yang mengirimkan header `Accept: application/cbor` akan mendapatkan respons biner yang ukurannya ~30% lebih kecil dibanding JSON tradisional.
+3. **Pagination Tipe RFC 8288 (`Link` Header)**
+   - Format pagination data-list (misal, GET `/todos`) memanfaatkan HTTP Header `Link` bawaan, membuat parsing link `next`/`prev`/`last` lebih bersih layaknya GitHub API.
+   - Header Pagination dideklarasikan secara eksplisit dalam respons struct dan dapat dilihat di Swagger UI!
+4. **Schema Discovery (`SchemaLinkTransformer`)**
+   - Semua body respons menyertakan header `Link: <url>; rel="describedby"`, mengarahkan ke definisi JSON Schema.
+   - Hal ini membuat API kita sepenuhnya *self-descriptive* sehingga *tools* seperti VSCode atau IDE bisa memberikan *as-you-type validation* dan *autocomplete* untuk integrasi API di sisi frontend.
+5. **Ultra-Fast Handler Unit Tests (`humatest`)**
+   - Handler API memiliki unit test yang sepenuhnya terisolasi dan berjalan dalam hitungan *milidetik* via router lokal Huma `humatest.New()`, sehingga mempermudah TDD (Test-Driven Development) tanpa ketergantungan Docker container.
+
+---
+
 ## Struktur Projek
 
 ```text
