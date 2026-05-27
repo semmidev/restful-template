@@ -104,6 +104,24 @@ make run
   - Standar *12-Factor App* via Viper (`.env` + OS environment variables).
   - Dockerfile *multi-stage distroless* — image kecil dan aman.
   - `docker-compose` lengkap dengan *healthchecks*, *restart policies*, dan full observability stack.
+  - **CI/CD** otomatis via GitHub Actions (golangci-lint & E2E Testing).
+
+---
+
+## Arsitektur Enterprise-Grade (Deep Dive)
+
+Proyek ini melampaui sekadar kerangka kerja RESTful biasa dan menerapkan pola *Enterprise-Grade* yang kokoh:
+
+1. **Pola "Canonical Log Line" (Wide Events)**
+   - Tidak ada lagi ribuan *log statements* yang tercecer. Middleware secara cerdas mengumpulkan metadata (durasi, trace ID, user ID, status HTTP, error) ke dalam *context*, dan menghasilkan tepat **satu baris log terstruktur per request**. Ini adalah *best-practice* industri untuk menunjang mesin analitik (*log aggregator*) seperti Loki atau Elasticsearch.
+2. **Injeksi Kontrak Sinkron (Decoupled Modular Monolith)**
+   - Ketergantungan (dependencies) antar modul sepenuhnya dilonggarkan melalui abstraksi *interface* (Consumer-Driven Contracts). Modul `auth` berinteraksi dengan `todos` tanpa impor langsung. Jika kelak aplikasi perlu dipecah menjadi *Microservices*, *overhead* migrasi kodenya mendekati nol.
+3. **Cross-Module Transaction Manager**
+   - Mendukung eksekusi operasi secara atomik antar modul yang terisolasi. Jika terjadi kegagalan (misalnya gagal menghapus `todos` saat akun `user` dihapus), `TxManager` akan me-*rollback* seluruh rentetan transaksi database tanpa *leakage* data.
+4. **Fail-Open Rate Limiter & Security Suite**
+   - Pembatasan laju (*Rate Limiter*) berbasis Redis dirancang agar **Fail-Open**. Artinya, jika server Redis mengalami *down*, permintaan klien tetap diproses agar API tidak ikut lumpuh total. Didukung dengan lapisan *Security Headers* (HSTS, nosniff, frame-options) bawaan.
+5. **Observability Zero-Configuration**
+   - Jejak terdistribusi (*Trace ID*) dari OpenTelemetry secara cerdas disuntikkan kembali ke dalam *HTTP Response Header* (`X-Trace-Id`). Klien atau *Frontend Developer* yang mendapatkan error bisa melaporkan ID tersebut, dan Anda bisa langsung melihat urutan *SQL query* mana yang memicu *bug* di dasbor Grafana Tempo.
 
 ---
 
