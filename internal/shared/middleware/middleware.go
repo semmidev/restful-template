@@ -112,7 +112,7 @@ func RateLimiter(limiter *redis_rate.Limiter) func(http.Handler) http.Handler {
 			if res.Allowed == 0 {
 				w.Header().Set("Content-Type", "application/problem+json")
 				w.WriteHeader(http.StatusTooManyRequests)
-				w.Write([]byte(`{"status": 429, "title": "Too Many Requests", "detail": "Rate limit exceeded"}`))
+				_, _ = w.Write([]byte(`{"status": 429, "title": "Too Many Requests", "detail": "Rate limit exceeded"}`))
 				return
 			}
 			next.ServeHTTP(w, r)

@@ -19,12 +19,12 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.26.x' # Changed to 1.26 as per project docs
+          go-version: '1.26.x'
 
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
-          version: latest
+          version: v2.12.2
           args: --timeout=5m
 
   test:
@@ -43,5 +43,4 @@ jobs:
         run: make test
 
       - name: Run integration tests
-        # testcontainers-go works out of the box on GitHub Actions ubuntu-latest
         run: make test-integration

@@ -79,10 +79,10 @@ const testJWTSecret = "test-secret-key-minimum-32-bytes!!"
 
 // newTestAPI wires up the app using the new Setup logic for integration tests
 func newTestAPI(ctx context.Context, pgDSN string, redisDSN string) (http.Handler, func(), error) {
-	os.Setenv("DATABASE_DSN", pgDSN)
-	os.Setenv("REDIS_DSN", redisDSN)
-	os.Setenv("JWT_SECRET", testJWTSecret)
-	os.Setenv("LOG_LEVEL", "error")
+	_ = os.Setenv("DATABASE_DSN", pgDSN)
+	_ = os.Setenv("REDIS_DSN", redisDSN)
+	_ = os.Setenv("JWT_SECRET", testJWTSecret)
+	_ = os.Setenv("LOG_LEVEL", "error")
 
 	cfg := config.Load()
 	logger := observability.NewLogger(cfg.Log.Level, cfg.Log.Format, "test")
@@ -136,6 +136,6 @@ func buildMultipartBody(fields map[string]string) ([]byte, string) {
 	for k, v := range fields {
 		_ = mw.WriteField(k, v)
 	}
-	mw.Close()
+	_ = mw.Close()
 	return buf.Bytes(), mw.FormDataContentType()
 }

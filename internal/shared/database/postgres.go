@@ -49,7 +49,9 @@ func RunMigrations(dsn string, direction string) error {
 	if err != nil {
 		return err
 	}
-	defer m.Close()
+	defer func() {
+		_, _ = m.Close()
+	}()
 
 	if direction == "down" {
 		if err := m.Down(); err != nil && !errors.Is(err, migrate.ErrNoChange) {

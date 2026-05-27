@@ -26,14 +26,14 @@ func AuthMiddleware(api huma.API, tokens TokenService) func(ctx huma.Context, ne
 
 		authHeader := ctx.Header("Authorization")
 		if !strings.HasPrefix(authHeader, "Bearer ") {
-			huma.WriteErr(api, ctx, http.StatusUnauthorized, "missing or malformed authorization header")
+			_ = huma.WriteErr(api, ctx, http.StatusUnauthorized, "missing or malformed authorization header")
 			return
 		}
 
 		token := strings.TrimPrefix(authHeader, "Bearer ")
 		claims, err := tokens.ParseAccess(ctx.Context(), token)
 		if err != nil {
-			huma.WriteErr(api, ctx, http.StatusUnauthorized, "invalid or expired token")
+			_ = huma.WriteErr(api, ctx, http.StatusUnauthorized, "invalid or expired token")
 			return
 		}
 

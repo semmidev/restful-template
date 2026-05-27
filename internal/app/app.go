@@ -41,7 +41,9 @@ func Setup(ctx context.Context, cfg config.Config, logger *slog.Logger) (http.Ha
 	}
 
 	cleanup := func() {
-		rdb.Close()
+		if rdb != nil {
+			_ = rdb.Close()
+		}
 		pool.Close()
 	}
 

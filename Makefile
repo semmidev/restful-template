@@ -1,4 +1,4 @@
-.PHONY: run test test-integration lint migrate-up migrate-down docker-up docker-down tidy vet
+.PHONY: run test test-integration lint migrate-up migrate-down docker-up docker-down format tidy vet
 
 # ── Dev ───────────────────────────────────────────────────────────────────────
 run:
@@ -17,8 +17,11 @@ test-integration:
 coverage:
 	go tool cover -html=coverage.out
 
+format:
+	goimports -w .
+
 lint:
-	golangci-lint run ./...
+	golangci-lint fmt ./... && golangci-lint run ./...
 
 vet:
 	go vet ./...
