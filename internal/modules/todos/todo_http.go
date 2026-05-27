@@ -18,14 +18,14 @@ import (
 type CreateTodoForm struct {
 	Title       string        `form:"title" minLength:"1" maxLength:"200"`
 	Description string        `form:"description" maxLength:"2000"`
-	Cover       huma.FormFile `form:"cover" contentType:"image/*" doc:"Image file to upload as cover"`
+	Cover       huma.FormFile `form:"cover" contentType:"image/*" doc:"Image file to upload as cover" required:"false"`
 }
 
 type UpdateTodoForm struct {
 	Title       string        `form:"title" maxLength:"200"`
 	Description string        `form:"description" maxLength:"2000"`
 	Status      string        `form:"status"`
-	Cover       huma.FormFile `form:"cover" contentType:"image/*" doc:"Image file to upload as cover"`
+	Cover       huma.FormFile `form:"cover" contentType:"image/*" doc:"Image file to upload as cover" required:"false"`
 }
 
 type TodoResp struct {
