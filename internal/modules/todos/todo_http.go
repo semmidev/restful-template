@@ -273,6 +273,10 @@ func RegisterTodoRoutes(api huma.API, todos TodoService) {
 			}
 			encoded := fmt.Sprintf("data:%s;base64,%s", data.Cover.ContentType, base64.StdEncoding.EncodeToString(b))
 			coverBase64 = &encoded
+		} else if _, ok := in.RawBody.Form.File["cover"]; ok {
+			// Field was sent but empty, meaning user wants to remove the cover
+			empty := ""
+			coverBase64 = &empty
 		}
 
 		t, err := todos.Update(ctx, UpdateTodoInput{

@@ -47,7 +47,11 @@ func (t *Todo) UpdateDetails(title, desc *string, cover *string) {
 		t.Description = *desc
 	}
 	if cover != nil {
-		t.Cover = cover
+		if *cover == "" {
+			t.Cover = nil
+		} else {
+			t.Cover = cover
+		}
 	}
 	t.UpdatedAt = time.Now().UTC()
 }
