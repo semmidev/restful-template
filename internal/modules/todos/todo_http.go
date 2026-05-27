@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/danielgtaylor/huma/v2/conditional"
 	"github.com/google/uuid"
 	"github.com/semmidev/restful-template/internal/shared/httpapi"
 	"github.com/semmidev/restful-template/internal/shared/wideevent"
@@ -27,7 +29,9 @@ type UpdateTodoForm struct {
 }
 
 type TodoResp struct {
-	Body struct {
+	ETag         string    `header:"ETag" doc:"Entity tag for optimistic locking"`
+	LastModified time.Time `header:"Last-Modified" doc:"Last modification time"`
+	Body         struct {
 		Data *Todo `json:"data"`
 	}
 }
@@ -44,12 +48,14 @@ type ListData struct {
 }
 
 type ListResp struct {
-	Body struct {
+	XTotalCount int    `header:"X-Total-Count" doc:"Total number of items matching the query"`
+	Link        string `header:"Link" doc:"RFC 8288 pagination links"`
+	Body        struct {
 		Data ListData `json:"data"`
 	}
 }
 
-func RegisterTodoRoutes(api huma.API, todos *Usecase) {
+func RegisterTodoRoutes(api huma.API, todos TodoService) {
 	huma.Register(api, huma.Operation{
 		OperationID: "list-todos",
 		Method:      http.MethodGet,
@@ -92,6 +98,7 @@ func RegisterTodoRoutes(api huma.API, todos *Usecase) {
 		wideevent.Add(ctx, "todo_count", len(items))
 		wideevent.Add(ctx, "todo_total", total)
 		resp := &ListResp{}
+		resp.XTotalCount = total
 		resp.Body.Data.Items = items
 		resp.Body.Data.Total = total
 		resp.Body.Data.Page = in.Page
@@ -118,6 +125,17 @@ func RegisterTodoRoutes(api huma.API, todos *Usecase) {
 			links["next"] = fmt.Sprintf("%s?page=%d&per_page=%d", baseURL, in.Page+1, in.PerPage)
 		}
 		resp.Body.Data.Links = links
+
+		// Format RFC 8288 Link header
+		linkHeader := ""
+		if links["next"] != "" {
+			linkHeader += fmt.Sprintf(`<%s>; rel="next", `, links["next"])
+		}
+		if links["prev"] != "" {
+			linkHeader += fmt.Sprintf(`<%s>; rel="prev", `, links["prev"])
+		}
+		linkHeader += fmt.Sprintf(`<%s>; rel="first", <%s>; rel="last"`, links["first"], links["last"])
+		resp.Link = linkHeader
 
 		return resp, nil
 	})
@@ -161,6 +179,8 @@ func RegisterTodoRoutes(api huma.API, todos *Usecase) {
 		wideevent.Add(ctx, "todo_id", t.ID.String())
 		wideevent.Add(ctx, "todo_title", t.Title)
 		resp := &TodoResp{}
+		resp.ETag = fmt.Sprintf(`"%s"`, t.UpdatedAt.Format(time.RFC3339Nano))
+		resp.LastModified = t.UpdatedAt
 		resp.Body.Data = t
 		return resp, nil
 	})
@@ -174,6 +194,7 @@ func RegisterTodoRoutes(api huma.API, todos *Usecase) {
 		Security:    []map[string][]string{{"bearerAuth": {}}},
 	}, func(ctx context.Context, in *struct {
 		ID uuid.UUID `path:"id" doc:"Todo UUID"`
+		conditional.Params
 	}) (*TodoResp, error) {
 		userID, err := httpapi.ExtractUserID(ctx)
 		if err != nil {
@@ -185,7 +206,15 @@ func RegisterTodoRoutes(api huma.API, todos *Usecase) {
 			return nil, httpapi.ToHumaErr(ctx, err)
 		}
 		wideevent.Add(ctx, "todo_id", t.ID.String())
+
+		etag := fmt.Sprintf(`"%s"`, t.UpdatedAt.Format(time.RFC3339Nano))
+		if err := in.PreconditionFailed(etag, t.UpdatedAt); err != nil {
+			return nil, err
+		}
+
 		resp := &TodoResp{}
+		resp.ETag = etag
+		resp.LastModified = t.UpdatedAt
 		resp.Body.Data = t
 		return resp, nil
 	})
@@ -200,10 +229,22 @@ func RegisterTodoRoutes(api huma.API, todos *Usecase) {
 	}, func(ctx context.Context, in *struct {
 		ID      uuid.UUID `path:"id"`
 		RawBody huma.MultipartFormFiles[UpdateTodoForm]
+		conditional.Params
 	}) (*TodoResp, error) {
 		userID, err := httpapi.ExtractUserID(ctx)
 		if err != nil {
 			return nil, httpapi.ToHumaErr(ctx, err)
+		}
+
+		// Optimistic locking check before update
+		existing, err := todos.Get(ctx, userID, in.ID)
+		if err != nil {
+			wideevent.Add(ctx, "todo_id", in.ID.String())
+			return nil, httpapi.ToHumaErr(ctx, err)
+		}
+		etag := fmt.Sprintf(`"%s"`, existing.UpdatedAt.Format(time.RFC3339Nano))
+		if err := in.PreconditionFailed(etag, existing.UpdatedAt); err != nil {
+			return nil, err // Returns 412 Precondition Failed if If-Match doesn't match
 		}
 
 		data := in.RawBody.Data()
@@ -250,6 +291,8 @@ func RegisterTodoRoutes(api huma.API, todos *Usecase) {
 		wideevent.Add(ctx, "todo_title", t.Title)
 		wideevent.Add(ctx, "todo_status", string(t.Status))
 		resp := &TodoResp{}
+		resp.ETag = fmt.Sprintf(`"%s"`, t.UpdatedAt.Format(time.RFC3339Nano))
+		resp.LastModified = t.UpdatedAt
 		resp.Body.Data = t
 		return resp, nil
 	})

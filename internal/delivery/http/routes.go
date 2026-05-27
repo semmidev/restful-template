@@ -10,8 +10,8 @@ import (
 
 // ─── Route Registration ─────────────────────────────────────────────────────
 
-func RegisterRoutes(api huma.API, authUsecase *auth.Usecase, todosUsecase *todos.Usecase, log *slog.Logger) {
+func RegisterRoutes(api huma.API, authService auth.AuthService, todosService todos.TodoService, log *slog.Logger) {
 	RegisterHealthRoutes(api)
-	auth.RegisterAuthRoutes(api, authUsecase)
-	todos.RegisterTodoRoutes(api, todosUsecase)
+	auth.RegisterAuthRoutes(api, authService)
+	todos.RegisterTodoRoutes(api, todosService)
 }

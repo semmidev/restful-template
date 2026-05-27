@@ -42,7 +42,6 @@ type TokenService interface {
 	ParseRefresh(ctx context.Context, token string) (*TokenClaims, error)
 }
 
-
 type TodoService interface {
 	DeleteAllByUserID(ctx context.Context, userID uuid.UUID) error
 }
@@ -57,4 +56,14 @@ type UserRepository interface {
 type TokenRepository interface {
 	StoreRefreshToken(ctx context.Context, userID uuid.UUID, tokenHash string, expiresAt time.Time) error
 	DeleteRefreshToken(ctx context.Context, tokenHash string) error
+}
+
+// AuthService is the interface that RegisterAuthRoutes consumes.
+// *Usecase satisfies this interface implicitly — it exists to enable handler
+// unit-testing with humatest mocks without a real database or JWT infrastructure.
+type AuthService interface {
+	Register(ctx context.Context, in RegisterInput) (TokenPair, error)
+	Login(ctx context.Context, in LoginInput) (TokenPair, error)
+	Refresh(ctx context.Context, refreshToken string) (TokenPair, error)
+	DeleteAccount(ctx context.Context, userID uuid.UUID) error
 }

@@ -34,7 +34,7 @@ type TokenResp struct {
 	}
 }
 
-func RegisterAuthRoutes(api huma.API, auth *Usecase) {
+func RegisterAuthRoutes(api huma.API, auth AuthService) {
 	huma.Register(api, huma.Operation{
 		OperationID: "auth-register",
 		Method:      http.MethodPost,

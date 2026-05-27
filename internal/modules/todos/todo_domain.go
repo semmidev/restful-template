@@ -87,3 +87,14 @@ type TodoRepository interface {
 	Delete(ctx context.Context, userID, id uuid.UUID) error
 	DeleteAllByUserID(ctx context.Context, userID uuid.UUID) error
 }
+
+// TodoService is the interface that RegisterTodoRoutes consumes.
+// *Usecase satisfies this interface implicitly — it exists solely to enable
+// handler unit-testing with mocks (e.g. via humatest) without a real database.
+type TodoService interface {
+	List(ctx context.Context, q ListTodosQuery) ([]*Todo, int, error)
+	Create(ctx context.Context, input CreateTodoInput) (*Todo, error)
+	Get(ctx context.Context, userID, id uuid.UUID) (*Todo, error)
+	Update(ctx context.Context, input UpdateTodoInput) (*Todo, error)
+	Delete(ctx context.Context, userID, id uuid.UUID) error
+}

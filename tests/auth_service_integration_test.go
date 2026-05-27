@@ -132,7 +132,7 @@ func TestAuthHTTP_Integration(t *testing.T) {
 					"password": validPassword,
 				})
 				wLogin := doRequest(api, http.MethodPost, "/api/v1/auth/login", "", loginBody, "application/json")
-				
+
 				So(wLogin.Code, ShouldEqual, http.StatusOK)
 
 				var resp struct {
@@ -148,7 +148,7 @@ func TestAuthHTTP_Integration(t *testing.T) {
 
 				// Delete the account
 				wDel := doRequest(api, http.MethodDelete, "/api/v1/auth/account", token, nil, "")
-				
+
 				Convey("Then it returns 204 No Content", func() {
 					if wDel.Code != http.StatusNoContent {
 						t.Logf("Delete Account failed: %s", wDel.Body.String())

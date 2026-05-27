@@ -79,7 +79,7 @@ func (s *Usecase) Update(ctx context.Context, in UpdateTodoInput) (*Todo, error)
 	if err != nil {
 		return nil, apperrors.NewNotFound("The requested todo does not exist", err)
 	}
-	
+
 	t.UpdateDetails(in.Title, in.Description, in.Cover)
 	if in.Status != nil {
 		t.ChangeStatus(*in.Status)
