@@ -17,14 +17,14 @@ const (
 )
 
 type Todo struct {
-	ID          uuid.UUID
-	UserID      uuid.UUID
-	Title       string
-	Description string
-	Cover       *string
-	Status      TodoStatus
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID          uuid.UUID  `json:"id"`
+	UserID      uuid.UUID  `json:"user_id"`
+	Title       string     `json:"title"`
+	Description string     `json:"description"`
+	Cover       *string    `json:"cover"`
+	Status      TodoStatus `json:"status"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
 }
 
 func (t *Todo) Validate() error {
