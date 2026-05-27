@@ -24,7 +24,7 @@ type CreateTodoForm struct {
 type UpdateTodoForm struct {
 	Title       string        `form:"title" maxLength:"200"`
 	Description string        `form:"description" maxLength:"2000"`
-	Status      string        `form:"status"`
+	Status      string        `form:"status" enum:"pending,in_progress,done" required:"false"`
 	Cover       huma.FormFile `form:"cover" contentType:"image/*" doc:"Image file to upload as cover" required:"false"`
 }
 
