@@ -22,8 +22,8 @@ type CreateTodoForm struct {
 }
 
 type UpdateTodoForm struct {
-	Title       string        `form:"title" maxLength:"200"`
-	Description string        `form:"description" maxLength:"2000"`
+	Title       string        `form:"title" maxLength:"200" required:"false"`
+	Description string        `form:"description" maxLength:"2000" required:"false"`
 	Status      string        `form:"status" enum:"pending,in_progress,done" required:"false"`
 	Cover       huma.FormFile `form:"cover" contentType:"image/*" doc:"Image file to upload as cover" required:"false"`
 }
@@ -273,7 +273,7 @@ func RegisterTodoRoutes(api huma.API, todos TodoService) {
 			}
 			encoded := fmt.Sprintf("data:%s;base64,%s", data.Cover.ContentType, base64.StdEncoding.EncodeToString(b))
 			coverBase64 = &encoded
-		} else if _, ok := in.RawBody.Form.File["cover"]; ok {
+		} else if _, ok := in.RawBody.Form.File["cover"]; ok || (len(in.RawBody.Form.Value["cover"]) > 0 && in.RawBody.Form.Value["cover"][0] == "") {
 			// Field was sent but empty, meaning user wants to remove the cover
 			empty := ""
 			coverBase64 = &empty
@@ -309,7 +309,13 @@ func RegisterTodoRoutes(api huma.API, todos TodoService) {
 		Tags:          []string{"Todos"},
 		Security:      []map[string][]string{{"bearerAuth": {}}},
 		DefaultStatus: http.StatusNoContent,
-	}, func(ctx context.Context, in *struct {
+	}, handleDeleteTodo(todos))
+}
+
+func handleDeleteTodo(todos TodoService) func(ctx context.Context, in *struct {
+	ID uuid.UUID `path:"id"`
+}) (*struct{}, error) {
+	return func(ctx context.Context, in *struct {
 		ID uuid.UUID `path:"id"`
 	}) (*struct{}, error) {
 		userID, err := httpapi.ExtractUserID(ctx)
@@ -322,5 +328,5 @@ func RegisterTodoRoutes(api huma.API, todos TodoService) {
 		}
 		wideevent.Add(ctx, "todo_id", in.ID.String())
 		return &struct{}{}, nil
-	})
+	}
 }
