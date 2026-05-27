@@ -1,4 +1,4 @@
-.PHONY: run test test-integration lint migrate-up migrate-down docker-up docker-down format tidy vet
+.PHONY: run test test-integration lint migrate-up migrate-down docker-up docker-down docker-clean format tidy vet
 
 # ── Dev ───────────────────────────────────────────────────────────────────────
 run:
@@ -34,6 +34,9 @@ docker-up:
 	docker compose up --build -d
 
 docker-down:
+	docker compose down
+
+docker-clean:
 	docker compose down -v
 
 docker-logs:
