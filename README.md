@@ -3,17 +3,32 @@
 Template RESTful API *production-grade* yang dibangun menggunakan Go 1.26. Template ini mengusung arsitektur **Modular Monolith (Package by Feature)**, *routing* berkinerja tinggi menggunakan Chi, *auto-generation* OpenAPI 3.1 dengan Huma v2, serta menggunakan PostgreSQL 18 untuk men-generate UUID yang aman dan terurut berdasarkan waktu (*time-ordered*).
 
 ## Daftar Isi
-- [Fitur Utama](#fitur-utama)
-- [Arsitektur Modular Monolith](#arsitektur-modular-monolith)
-  - [Aturan Main (Rules of Engagement)](#aturan-main-rules-of-engagement)
-  - [Komunikasi Antar Modul (Inter-Module Communication)](#komunikasi-antar-modul-inter-module-communication)
-  - [Transaksi Lintas Modul (Cross-Module Transactions)](#transaksi-lintas-modul-cross-module-transactions)
-- [Arsitektur Observability](#arsitektur-observability)
-- [Struktur Projek](#struktur-projek)
-- [Mulai Menggunakan (Getting Started)](#mulai-menggunakan-getting-started)
-- [Panduan Development](#panduan-development)
-- [Dokumentasi API](#dokumentasi-api)
-- [Konfigurasi Variabel (.env)](#konfigurasi-variabel-env)
+- [Restful Template API](#restful-template-api)
+  - [Daftar Isi](#daftar-isi)
+  - [Fitur Utama](#fitur-utama)
+  - [Arsitektur Modular Monolith](#arsitektur-modular-monolith)
+    - [Arsitektur "Main calls run()"](#arsitektur-main-calls-run)
+    - [Aturan Main (Rules of Engagement)](#aturan-main-rules-of-engagement)
+    - [Komunikasi Antar Modul (Inter-Module Communication)](#komunikasi-antar-modul-inter-module-communication)
+    - [Transaksi Lintas Modul (Cross-Module Transactions)](#transaksi-lintas-modul-cross-module-transactions)
+  - [Arsitektur Observability](#arsitektur-observability)
+    - [Penjelasan Alur Data (Flow Breakdown)](#penjelasan-alur-data-flow-breakdown)
+      - [1. Alur Metrics — *Pull-based via Prometheus*](#1-alur-metrics--pull-based-via-prometheus)
+      - [2. Alur Traces — *Push-based via OTLP ke Alloy → Tempo*](#2-alur-traces--push-based-via-otlp-ke-alloy--tempo)
+      - [3. Alur Logs — *Pull from Docker via Alloy → Loki*](#3-alur-logs--pull-from-docker-via-alloy--loki)
+    - [Komponen-Komponen dalam Stack](#komponen-komponen-dalam-stack)
+    - [Unified Error Handling \& Observability](#unified-error-handling--observability)
+  - [Struktur Projek](#struktur-projek)
+  - [Mulai Menggunakan (Getting Started)](#mulai-menggunakan-getting-started)
+    - [Prasyarat (Prerequisites)](#prasyarat-prerequisites)
+    - [1. Konfigurasi Awal](#1-konfigurasi-awal)
+    - [2. Menjalankan di Lokal (Hanya via Docker Compose)](#2-menjalankan-di-lokal-hanya-via-docker-compose)
+    - [3. Menjalankan di Lokal (Go Secara Nativ + Postgres di Docker)](#3-menjalankan-di-lokal-go-secara-nativ--postgres-di-docker)
+  - [Panduan Development](#panduan-development)
+    - [Migrasi Database (Database Migrations)](#migrasi-database-database-migrations)
+    - [Integration Testing](#integration-testing)
+  - [Dokumentasi API](#dokumentasi-api)
+  - [Konfigurasi Variabel (`.env`)](#konfigurasi-variabel-env)
 
 ---
 
@@ -108,6 +123,8 @@ Setiap *query* di dalam blok tersebut—dari *repository* maupun modul mana saja
 
 ## Arsitektur Observability
 
+Template ini dilengkapi dengan *observability stack* yang lengkap berbasis **Grafana LGTM** (Loki, Grafana, Tempo, Mimir/Prometheus). Tumpukan ini mengimplementasikan tiga pilar observability modern — **Metrics**, **Traces**, dan **Logs** — yang semuanya dapat dikunjungi lewat satu antarmuka terpusat: **Grafana UI**.
+
 ```mermaid
 flowchart TD
     subgraph Application
@@ -142,6 +159,43 @@ flowchart TD
     Grafana -- "7. Pulls Logs (LogQL)" --> Loki
     Grafana -- "8. Pulls Traces (TraceQL)" --> Tempo
 ```
+
+### Penjelasan Alur Data (Flow Breakdown)
+
+Diagram di atas dapat dibaca sebagai tiga alur data yang berjalan secara paralel dan independen.
+
+#### 1. Alur Metrics — *Pull-based via Prometheus*
+
+*   Aplikasi Go meng-*expose* data *metrics* (jumlah *request*, latensi, *error rate*, dsb.) dalam format teks Prometheus di *endpoint* **`/metrics`**.
+*   **Prometheus** secara aktif "*menarik*" (*scrape*) data dari endpoint tersebut secara berkala (setiap 15 detik, misalnya). Inilah mengapa mekanisme ini disebut **pull-based**.
+*   Prometheus menyimpan semua *metrics* tersebut dalam *time-series database* miliknya.
+*   **Grafana** kemudian menggunakan bahasa kueri **PromQL** untuk membaca data dari Prometheus dan menampilkannya sebagai grafik dan *dashboard*.
+
+#### 2. Alur Traces — *Push-based via OTLP ke Alloy → Tempo*
+
+*   Ketika sebuah HTTP *request* masuk ke API, *middleware* `otelchi` secara otomatis membuat sebuah **Trace** (jejak distribusi) beserta **Span** (satuan unit kerja) di dalamnya.
+*   Secara paralel, *instrumentation* `otelpgx` menciptakan *span* anak (*child span*) untuk setiap *query* yang dikirim ke PostgreSQL, sehingga kamu bisa melihat secara persis berapa lama waktu yang dihabiskan di *layer* database.
+*   Semua Trace dikirim secara asinkron dari aplikasi ke **Grafana Alloy** menggunakan protokol **OTLP melalui gRPC** (port `4317`). Ini adalah mekanisme **push-based**.
+*   **Alloy** berperan sebagai *telemetry collector* — ia menerima *traces* lalu meneruskannya ke **Grafana Tempo**.
+*   **Grafana Tempo** menyimpan *traces* tersebut dan Grafana bisa menelusurinya menggunakan bahasa kueri **TraceQL**.
+
+#### 3. Alur Logs — *Pull from Docker via Alloy → Loki*
+
+*   Aplikasi Go mencetak *log* terstruktur (format JSON) ke `stdout`/`stderr`. Aplikasi **tidak perlu tahu** ke mana log ini akan pergi — ini adalah *concern* dari infrastruktur, bukan aplikasi.
+*   Docker menangkap semua output `stdout`/`stderr` tersebut dan menyimpannya melalui mekanisme *logging driver* standarnya.
+*   **Grafana Alloy** diberikan akses ke *Docker Socket* (`/var/run/docker.sock`). Melalui akses ini, Alloy secara aktif *menarik* log dari semua *container* yang berjalan (*container discovery*) dan secara otomatis menambahkan label seperti nama *service* (`service="api"`) ke setiap baris log.
+*   Alloy kemudian mendorong (*push*) semua log tersebut ke **Grafana Loki** melalui HTTP (port `3100`).
+*   **Grafana Loki** menyimpan log dan Grafana dapat menggali informasinya menggunakan bahasa kueri **LogQL**.
+
+### Komponen-Komponen dalam Stack
+
+| Komponen | Peran | Port |
+| :--- | :--- | :--- |
+| **Grafana Alloy** | *Telemetry Collector*: Menerima OTLP Traces dari aplikasi dan menarik logs dari Docker, lalu meneruskan ke *backend* masing-masing. | `4317` (gRPC), `4318` (HTTP) |
+| **Prometheus** | *Metrics Backend*: Menyimpan *time-series metrics* yang di-*scrape* langsung dari *endpoint* `/metrics` aplikasi. | `9090` |
+| **Grafana Loki** | *Logs Backend*: Menyimpan log terstruktur yang dikirimkan oleh Alloy. Dioptimalkan untuk penyimpanan log bervolume tinggi. | `3100` |
+| **Grafana Tempo** | *Traces Backend*: Menyimpan *distributed traces* dalam format yang mendukung penelusuran (*root cause analysis*) berbasis TraceQL. | `3200` |
+| **Grafana UI** | *Visualization Layer*: Satu antarmuka terpusat untuk mengeksplorasi Metrics (PromQL), Logs (LogQL), dan Traces (TraceQL). Mendukung *correlation* antar sinyal. | `3000` |
 
 ### Unified Error Handling & Observability
 
