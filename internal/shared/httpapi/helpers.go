@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
@@ -22,9 +23,13 @@ func ExtractUserID(ctx context.Context) (uuid.UUID, error) {
 	if val == nil {
 		return uuid.Nil, apperrors.ErrUnauthorized
 	}
-	id, err := uuid.Parse(val.(string))
+	valStr, ok := val.(string)
+	if !ok {
+		return uuid.Nil, fmt.Errorf("invalid type for user_id in context")
+	}
+	id, err := uuid.Parse(valStr)
 	if err != nil {
-		return uuid.Nil, apperrors.ErrUnauthorized
+		return uuid.Nil, fmt.Errorf("invalid UUID format for user_id: %w", err)
 	}
 	return id, nil
 }

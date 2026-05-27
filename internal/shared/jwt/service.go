@@ -7,6 +7,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/semmidev/restful-template/internal/modules/auth"
+	apperrors "github.com/semmidev/restful-template/internal/shared/errors"
 )
 
 type JWTService struct {
@@ -62,6 +63,11 @@ func (s *JWTService) parse(token, typ string) (*auth.TokenClaims, error) {
 	if !ok || claims["type"] != typ {
 		return nil, jwt.ErrTokenInvalidClaims
 	}
-	uid, _ := uuid.Parse(claims["sub"].(string))
-	return &auth.TokenClaims{UserID: uid, Email: claims["email"].(string)}, nil
+	sub, ok1 := claims["sub"].(string)
+	email, ok2 := claims["email"].(string)
+	if !ok1 || !ok2 {
+		return nil, apperrors.ErrUnauthorized
+	}
+	uid, _ := uuid.Parse(sub)
+	return &auth.TokenClaims{UserID: uid, Email: email}, nil
 }

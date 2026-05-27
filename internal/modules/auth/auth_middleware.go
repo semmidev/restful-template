@@ -61,7 +61,9 @@ func isPublicPath(path string) bool {
 // GetUserID extracts the authenticated user ID from a standard context.
 func GetUserID(ctx context.Context) string {
 	if v := ctx.Value(httpapi.UserIDKey); v != nil {
-		return v.(string)
+		if s, ok := v.(string); ok {
+			return s
+		}
 	}
 	return ""
 }
@@ -69,7 +71,9 @@ func GetUserID(ctx context.Context) string {
 // GetUserEmail extracts the authenticated user email from a standard context.
 func GetUserEmail(ctx context.Context) string {
 	if v := ctx.Value(httpapi.UserEmailKey); v != nil {
-		return v.(string)
+		if s, ok := v.(string); ok {
+			return s
+		}
 	}
 	return ""
 }

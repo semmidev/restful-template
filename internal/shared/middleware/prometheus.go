@@ -52,18 +52,24 @@ func NewPrometheusMiddleware(reg prometheus.Registerer) (*PrometheusMiddleware, 
 
 	if errCount != nil {
 		var are prometheus.AlreadyRegisteredError
-		if !errors.As(errCount, &are) {
+		if errors.As(errCount, &are) {
+			if counter, ok := are.ExistingCollector.(*prometheus.CounterVec); ok {
+				requestCount = counter
+			}
+		} else {
 			return nil, errCount
 		}
-		requestCount = are.ExistingCollector.(*prometheus.CounterVec)
 	}
 
 	if errDuration != nil {
 		var are prometheus.AlreadyRegisteredError
-		if !errors.As(errDuration, &are) {
+		if errors.As(errDuration, &are) {
+			if histogram, ok := are.ExistingCollector.(*prometheus.HistogramVec); ok {
+				requestDuration = histogram
+			}
+		} else {
 			return nil, errDuration
 		}
-		requestDuration = are.ExistingCollector.(*prometheus.HistogramVec)
 	}
 
 	return &PrometheusMiddleware{

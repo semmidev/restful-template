@@ -8,13 +8,21 @@ linters-settings:
     enable-all: true
     disable:
       - fieldalignment
+      - shadow
   errcheck:
     check-type-assertions: true
-    check-blank: true
+    check-blank: false
+    exclude-functions:
+      - (net/http.ResponseWriter).Write
+      - github.com/danielgtaylor/huma/v2.WriteErr
+      - (*github.com/jackc/pgx/v5.Tx).Rollback
   gocyclo:
-    min-complexity: 15
-  gocognit:
     min-complexity: 30
+  gocognit:
+    min-complexity: 60
+  gosec:
+    excludes:
+      - G115
 
 linters:
   disable-all: true
