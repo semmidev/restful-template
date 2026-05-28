@@ -55,7 +55,12 @@ func (s *JWTService) ParseRefresh(ctx context.Context, token string) (*auth.Toke
 }
 
 func (s *JWTService) parse(token, typ string) (*auth.TokenClaims, error) {
-	parsed, err := jwt.Parse(token, func(t *jwt.Token) (interface{}, error) { return s.secret, nil })
+	parsed, err := jwt.Parse(token, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, jwt.ErrSignatureInvalid
+		}
+		return s.secret, nil
+	})
 	if err != nil || !parsed.Valid {
 		return nil, err
 	}

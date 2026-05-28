@@ -23,13 +23,9 @@ func ExtractUserID(ctx context.Context) (uuid.UUID, error) {
 	if val == nil {
 		return uuid.Nil, apperrors.ErrUnauthorized
 	}
-	valStr, ok := val.(string)
+	id, ok := val.(uuid.UUID)
 	if !ok {
 		return uuid.Nil, fmt.Errorf("invalid type for user_id in context")
-	}
-	id, err := uuid.Parse(valStr)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("invalid UUID format for user_id: %w", err)
 	}
 	return id, nil
 }

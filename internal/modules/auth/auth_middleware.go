@@ -43,7 +43,7 @@ func AuthMiddleware(api huma.API, tokens TokenService) func(ctx huma.Context, ne
 		wideevent.Add(ctx.Context(), "user_id", claims.UserID.String())
 		wideevent.Add(ctx.Context(), "user_email", claims.Email)
 
-		ctx = huma.WithValue(ctx, httpapi.UserIDKey, claims.UserID.String())
+		ctx = huma.WithValue(ctx, httpapi.UserIDKey, claims.UserID)
 		ctx = huma.WithValue(ctx, httpapi.UserEmailKey, claims.Email)
 		next(ctx)
 	}
@@ -60,12 +60,11 @@ func isPublicPath(path string) bool {
 
 // GetUserID extracts the authenticated user ID from a standard context.
 func GetUserID(ctx context.Context) string {
-	if v := ctx.Value(httpapi.UserIDKey); v != nil {
-		if s, ok := v.(string); ok {
-			return s
-		}
+	id, err := httpapi.ExtractUserID(ctx)
+	if err != nil {
+		return ""
 	}
-	return ""
+	return id.String()
 }
 
 // GetUserEmail extracts the authenticated user email from a standard context.

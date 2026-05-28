@@ -16,7 +16,7 @@ func NewClient(ctx context.Context, dsn string) (*redis.Client, *redis_rate.Limi
 	}
 	rdb := redis.NewClient(redisOpts)
 
-	if err := rdb.Ping(context.Background()).Err(); err != nil {
+	if err := rdb.Ping(ctx).Err(); err != nil {
 		_ = rdb.Close()
 		return nil, nil, err
 	}

@@ -46,16 +46,12 @@ func (tm *PostgresTxManager) RunInTx(ctx context.Context, fn func(ctx context.Co
 	}
 
 	defer func() {
-		if p := recover(); p != nil {
-			_ = tx.Rollback(ctx)
-			panic(p)
-		}
+		_ = tx.Rollback(ctx)
 	}()
 
 	ctxWithTx := InjectTx(ctx, tx)
 
 	if err := fn(ctxWithTx); err != nil {
-		_ = tx.Rollback(ctx)
 		return err
 	}
 
