@@ -6,10 +6,10 @@ run:
 
 # ── Quality ───────────────────────────────────────────────────────────────────
 test:
-	go test ./... -race -cover -coverprofile=coverage.out
+	go test $$(go list ./... | grep -v /tests) -race -cover -coverprofile=coverage.out
 
 test-verbose:
-	go test ./... -race -v -cover
+	go test $$(go list ./... | grep -v /tests) -race -v -cover
 
 test-integration:
 	go test ./tests/... -v -timeout 120s
