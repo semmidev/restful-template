@@ -11,3 +11,7 @@ domain       = ""               # Leave empty if no domain yet, e.g.: "api.examp
 
 # Restrict SSH to your IP only (recommended for production)
 # ssh_allowed_ips = ["203.0.113.1/32"]
+
+# Set to true if this is a new project that needs to be created in DigitalOcean.
+# Set to false to attach resources to an existing project (prevents 'Already Exists' error).
+create_project = false

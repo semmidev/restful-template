@@ -117,11 +117,21 @@ resource "digitalocean_record" "www" {
 # ─────────────────────────────────────────
 # Project grouping di DO dashboard
 # ─────────────────────────────────────────
+data "digitalocean_project" "existing" {
+  count = var.create_project ? 0 : 1
+  name  = "${var.project_name}-${var.environment}"
+}
+
 resource "digitalocean_project" "app" {
+  count       = var.create_project ? 1 : 0
   name        = "${var.project_name}-${var.environment}"
   description = "Infrastructure for ${var.project_name} (${var.environment})"
   purpose     = "Web Application"
   environment = title(var.environment)
+}
+
+resource "digitalocean_project_resources" "app" {
+  project = var.create_project ? digitalocean_project.app[0].id : data.digitalocean_project.existing[0].id
 
   resources = [
     digitalocean_droplet.app.urn,

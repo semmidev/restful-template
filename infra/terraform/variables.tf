@@ -57,3 +57,9 @@ variable "domain" {
   default     = ""
   # Contoh: "example.com"
 }
+
+variable "create_project" {
+  description = "Jika project sudah ada, set false agar Terraform tidak mencoba membuat ulang dan menyebabkan error."
+  type        = bool
+  default     = false
+}
