@@ -41,6 +41,28 @@ chrome-user-data
 /.worktrees
 .claude/*.local.*
 
+# Terraform
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
+terraform.tfvars
+*.tfplan
+
+# Ansible
+*.retry
+ansible/inventory.ini
+
+# Secrets / env
+.env
+.env.production
+.env.staging
+*.pem
+*.key
+
+# OS
+.DS_Store
+
 # disable for now
 k8s
 bin

@@ -1,25 +1,41 @@
 # Files and directories ignored when sending build context to Docker daemon
 
 # Git
-.git
+.git/
+.github/
 .gitignore
 
-# Environment variables (Very important for security)
-#.env
-#.env.*
+# Environment variables (Critical for security)
+.env
+.env.*
+*.local
 
-# Go dependencies
+# Go build & dependencies
 vendor/
-
-# Temporary files & IDE
-tmp/
 bin/
+tmp/
+coverage.out
+*.out
+*.test
+
+# Documentation & Scripts
+*.md
+LICENSE
+Makefile
+
+# Infra, Docker & Ansible
+infra/
+config/
+.dockerignore
+Dockerfile
+docker-compose.yml
+.ansible/
+
+# OS & IDE files
+.DS_Store
 .idea/
 .vscode/
 *.swp
 *.log
-
-# Docker files
-config/
-Dockerfile
-.dockerignore
+*.tmp
+*.bak
