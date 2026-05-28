@@ -30,7 +30,7 @@ output "ssh_command" {
 
 output "project_name" {
   description = "DigitalOcean project name"
-  value       = digitalocean_project.app.name
+  value       = var.create_project ? digitalocean_project.app[0].name : data.digitalocean_project.existing[0].name
 }
 
 output "next_steps" {

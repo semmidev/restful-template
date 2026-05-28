@@ -34,6 +34,21 @@ infra/
 
 ---
 
+## Table of Contents
+
+- [Architecture](#architecture)
+- [Prerequisites](#prerequisites)
+- [Step 1 — Terraform: Provision Droplet](#step-1--terraform-provision-droplet)
+- [Step 2 — Ansible: Configure Server](#step-2--ansible-configure-server)
+- [Step 3 — First Deploy (Manual)](#step-3--first-deploy-manual)
+- [Step 4 — GitHub Actions: Automated CI/CD](#step-4--github-actions-automated-cicd)
+- [Observability Stack](#observability-stack)
+- [Useful Commands (via Makefile)](#useful-commands-via-makefile)
+- [Droplet Sizing Guide](#droplet-sizing-guide)
+- [Troubleshooting](#troubleshooting)
+
+---
+
 ## Architecture
 
 ```
@@ -139,6 +154,13 @@ ansible-playbook -i inventory playbook.yml -e "domain=api.example.com"
 ## Step 3 — First Deploy (Manual)
 
 ```bash
+# Create SSH config
+# add to ~/.ssh/config
+Host do-restful-staging
+    HostName [IP_ADDRESS]
+    User deploy
+    IdentityFile ~/.ssh/do-droplet-restfultemplate-staging
+
 # Create production .env
 cp infra/.env.example infra/.env
 nano infra/.env   # Fill in all secrets
@@ -147,14 +169,14 @@ nano infra/.env   # Fill in all secrets
 export SERVER_IP=$(cd infra/terraform && terraform output -raw reserved_ip)
 
 # Upload compose file and .env
-scp infra/docker-compose.yml infra/.env deploy@$SERVER_IP:~/app/
+scp infra/docker-compose.yml do-restful-staging:/home/deploy/app/
+scp infra/.env do-restful-staging:/home/deploy/app/.env
 
 # Copy config files for observability stack
-ssh deploy@$SERVER_IP "mkdir -p ~/app/config"
-scp -r config deploy@$SERVER_IP:~/app/
+scp -r config do-restful-staging:/home/deploy/
 
 # SSH in and start the stack
-ssh deploy@$SERVER_IP
+ssh do-restful-staging
 cd ~/app
 docker compose up -d
 

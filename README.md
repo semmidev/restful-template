@@ -36,6 +36,7 @@ Template ini mengusung arsitektur **Modular Monolith (Package by Feature)**, *ro
 - [Panduan Development](#panduan-development)
 - [Dokumentasi API](#dokumentasi-api)
 - [Konfigurasi Variabel (.env)](#konfigurasi-variabel-env)
+- [Panduan Infrastruktur & Deployment](infra/README.md)
 - [Contributing](#contributing)
 - [License](#license)
 
