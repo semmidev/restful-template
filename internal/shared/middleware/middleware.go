@@ -103,6 +103,11 @@ func SecurityHeaders() func(http.Handler) http.Handler {
 func RateLimiter(limiter *redis_rate.Limiter) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/api/v1/health" {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			res, err := limiter.Allow(r.Context(), "rate_limit:"+r.RemoteAddr, redis_rate.PerSecond(5))
 			if err != nil {
 				// Log error and fallback to allowing request (fail open)

@@ -158,18 +158,18 @@ jobs:
 
       - name: Deploy
         env:
-          # Kirim secret sebagai env var, bukan diinterpolasi langsung ke heredoc
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
           IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
-          DOCKER_IMAGE: ${{ env.DOCKER_IMAGE }}
         run: |
-          ssh -i ~/.ssh/deploy_key \
-            -o SendEnv=DOCKERHUB_USERNAME \
-            -o SendEnv=DOCKERHUB_TOKEN \
-            -o SendEnv=IMAGE_TAG \
-            -o SendEnv=DOCKER_IMAGE \
-            deploy@${{ secrets.SERVER_IP }} << 'ENDSSH'
+          ssh -i ~/.ssh/deploy_key deploy@${{ secrets.SERVER_IP }} bash -s \
+            "$DOCKERHUB_USERNAME" \
+            "$DOCKERHUB_TOKEN" \
+            "$IMAGE_TAG" << 'ENDSSH'
+
+            DOCKERHUB_USERNAME=$1
+            DOCKERHUB_TOKEN=$2
+            IMAGE_TAG=$3
 
             set -euo pipefail
             cd ~/app
@@ -240,14 +240,15 @@ jobs:
       - name: Rollback on failure
         if: failure()
         env:
-          IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
-          ssh -i ~/.ssh/deploy_key \
-            -o SendEnv=DOCKERHUB_USERNAME \
-            -o SendEnv=DOCKERHUB_TOKEN \
-            deploy@${{ secrets.SERVER_IP }} << 'ENDSSH'
+          ssh -i ~/.ssh/deploy_key deploy@${{ secrets.SERVER_IP }} bash -s \
+            "$DOCKERHUB_USERNAME" \
+            "$DOCKERHUB_TOKEN" << 'ENDSSH'
+
+            DOCKERHUB_USERNAME=$1
+            DOCKERHUB_TOKEN=$2
 
             set -euo pipefail
             cd ~/app
