@@ -1,0 +1,59 @@
+---
+# Role: caddy
+# Install Caddy sebagai reverse proxy + auto HTTPS
+
+# ─────────────────────────────────────────
+# Install Caddy
+# ─────────────────────────────────────────
+- name: Tambah Caddy GPG key
+  ansible.builtin.apt_key:
+    url: https://dl.cloudsmith.io/public/caddy/stable/gpg.key
+    state: present
+
+- name: Tambah Caddy repository
+  ansible.builtin.apt_repository:
+    repo: "deb [trusted=yes] https://apt.fury.io/caddy/ /"
+    state: present
+    filename: caddy-stable
+
+- name: Install Caddy
+  ansible.builtin.apt:
+    name: caddy
+    state: present
+    update_cache: true
+
+- name: Create Caddy log directory
+  ansible.builtin.file:
+    path: /var/log/caddy
+    state: directory
+    owner: caddy
+    group: caddy
+    mode: "0755"
+
+- name: Touch Caddy log files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: touch
+    owner: caddy
+    group: caddy
+    mode: "0644"
+  loop:
+    - /var/log/caddy/access.log
+    - /var/log/caddy/grafana.log
+
+# ─────────────────────────────────────────
+# Caddyfile config
+# ─────────────────────────────────────────
+- name: Deploy Caddyfile
+  ansible.builtin.template:
+    src: Caddyfile.j2
+    dest: /etc/caddy/Caddyfile
+    mode: "0644"
+    validate: caddy validate --config %s --adapter caddyfile
+  notify: Reload Caddy
+
+- name: Start dan enable Caddy
+  ansible.builtin.systemd:
+    name: caddy
+    state: started
+    enabled: true

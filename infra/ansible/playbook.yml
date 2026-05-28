@@ -1,0 +1,72 @@
+---
+# Ansible Playbook — Server Setup for restful-template
+# Run: ansible-playbook -i inventory playbook.yml
+#
+# Variables can be overridden with: -e "app_user=myuser domain=example.com"
+
+- name: Full server setup
+  hosts: all
+  become: true
+  gather_facts: true
+
+  vars:
+    app_user: deploy
+    app_dir: /home/deploy/app
+    swap_size_gb: 1
+    domain: restful-template-api.spaceku.my.id
+    grafana_domain: restful-template-grafana.spaceku.my.id
+
+  roles:
+    - role: base
+      tags: [base]
+    - role: docker
+      tags: [docker]
+    - role: caddy
+      tags: [caddy]
+
+  post_tasks:
+    - name: Create app directory
+      ansible.builtin.file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: "0750"
+
+    - name: Create scripts directory
+      ansible.builtin.file:
+        path: "{{ app_dir }}/scripts"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: "0750"
+
+    - name: Copy init-db.sql
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../scripts/init-db.sql"
+        dest: "{{ app_dir }}/scripts/init-db.sql"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: "0640"
+
+    - name: Print summary
+      ansible.builtin.debug:
+        msg: |
+          ✅ Server setup complete!
+
+          Deploy user:  {{ app_user }}
+          App dir:      {{ app_dir }}
+          Domain:       {{ domain if domain != "" else "none (using IP)" }}
+
+          Next steps:
+            1. Copy docker-compose.yml to server:
+               scp infra/docker-compose.yml {{ app_user }}@<IP>:{{ app_dir }}/
+
+            2. Copy .env to server:
+               scp infra/.env {{ app_user }}@<IP>:{{ app_dir }}/.env
+
+            3. Start the stack:
+               ssh {{ app_user }}@<IP> "cd {{ app_dir }} && docker compose up -d"
+
+            4. Check health:
+               curl http://<IP>/api/v1/health

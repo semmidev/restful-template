@@ -12,10 +12,11 @@ services:
       POSTGRES_USER: todo
       POSTGRES_PASSWORD: todo
       POSTGRES_DB: todo
+      PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U todo -d todo"]
       interval: 5s

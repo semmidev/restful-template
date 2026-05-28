@@ -1,0 +1,64 @@
+# Caddyfile — Auto HTTPS via Let's Encrypt
+# Ansible template: filled during deploy
+
+{% if domain is defined and domain != "" %}
+{{ domain }}, www.{{ domain }} {
+{% else %}
+# No domain configured — using plain HTTP on port 80
+:80 {
+{% endif %}
+
+    # Reverse proxy to app container on localhost
+    reverse_proxy localhost:8080
+
+    # Structured JSON access logs (matches our Go JSON logger)
+    log {
+        output file /var/log/caddy/access.log {
+            roll_size 10mb
+            roll_keep 5
+        }
+        format json
+    }
+
+    # Gzip compression for all responses
+    encode gzip
+
+    # Security headers (app already sets some — Caddy adds the rest for HTTPS)
+    header {
+        # Remove server fingerprinting headers
+        -Server
+        -X-Powered-By
+
+        # Standard security headers
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy "strict-origin-when-cross-origin"
+
+{% if domain is defined and domain != "" %}
+        # HSTS — only enable when HTTPS is confirmed working
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+{% endif %}
+    }
+}
+
+{% if grafana_domain is defined and grafana_domain != "" %}
+{{ grafana_domain }}, www.{{ grafana_domain }} {
+    # Reverse proxy to Grafana
+    reverse_proxy localhost:3000
+
+    log {
+        output file /var/log/caddy/grafana.log {
+            roll_size 10mb
+            roll_keep 5
+        }
+        format json
+    }
+
+    encode gzip
+
+    header {
+        -Server
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    }
+}
+{% endif %}

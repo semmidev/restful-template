@@ -1,0 +1,90 @@
+---
+# Role: docker
+# Install Docker Engine + Docker Compose v2
+
+# ─────────────────────────────────────────
+# Prerequisites
+# ─────────────────────────────────────────
+- name: Install dependencies Docker
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+    state: present
+
+- name: Tambah Docker GPG key
+  ansible.builtin.apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: Tambah Docker repository
+  ansible.builtin.apt_repository:
+    repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+    state: present
+    filename: docker
+
+# ─────────────────────────────────────────
+# Install Docker
+# ─────────────────────────────────────────
+- name: Install Docker Engine
+  ansible.builtin.apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+    update_cache: true
+
+- name: Start dan enable Docker
+  ansible.builtin.systemd:
+    name: docker
+    state: started
+    enabled: true
+
+# ─────────────────────────────────────────
+# User permissions
+# ─────────────────────────────────────────
+- name: Tambah user deploy ke group docker
+  ansible.builtin.user:
+    name: "{{ app_user }}"
+    groups: docker
+    append: true
+
+# ─────────────────────────────────────────
+# Docker daemon config (logging, resources)
+# ─────────────────────────────────────────
+- name: Konfigurasi Docker daemon
+  ansible.builtin.copy:
+    dest: /etc/docker/daemon.json
+    content: |
+      {
+        "log-driver": "json-file",
+        "log-opts": {
+          "max-size": "10m",
+          "max-file": "3"
+        },
+        "live-restore": true
+      }
+    mode: "0644"
+  notify: Restart Docker
+
+- name: Verifikasi Docker terinstall
+  ansible.builtin.command: docker --version
+  register: docker_version
+  changed_when: false
+
+- name: Verifikasi Docker Compose terinstall
+  ansible.builtin.command: docker compose version
+  register: compose_version
+  changed_when: false
+
+- name: Print versi Docker
+  ansible.builtin.debug:
+    msg:
+      - "{{ docker_version.stdout }}"
+      - "{{ compose_version.stdout }}"

@@ -1,46 +1,20 @@
-/main
-/server
-server.pid
-*.pdf
-*.log
-*.aux
+# ─── Go ───────────────────────────────────────────────────────────────────────
+bin/
+vendor/
+coverage.out
 *.out
-.DS_Store
-build/*
-my-notes.md
+*.test
+*.prof
 
-atstex-lab
+# ─── Environment & Secrets ────────────────────────────────────────────────────
 .env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
 
-.DS_STORE
-node_modules
-scripts/flow/*/.flowconfig
-.flowconfig
-*~
-*.pyc
-.grunt
-_SpecRunner.html
-__benchmarks__
-build/
-remote-repo/
-coverage/
-.module-cache
-fixtures/dom/public/react-dom.js
-fixtures/dom/public/react.js
-test/the-files-to-test.generated.js
-*.log*
-chrome-user-data
-*.sublime-project
-*.sublime-workspace
-.idea
-*.iml
-.vscode
-*.swp
-*.swo
-/tmp
-/.worktrees
-.claude/*.local.*
-
+# ─── Infrastructure ───────────────────────────────────────────────────────────
 # Terraform
 .terraform/
 .terraform.lock.hcl
@@ -50,20 +24,22 @@ terraform.tfvars
 *.tfplan
 
 # Ansible
+.ansible/
 *.retry
-ansible/inventory.ini
+infra/ansible/inventory
 
-# Secrets / env
-.env
-.env.production
-.env.staging
-*.pem
-*.key
-
-# OS
+# ─── OS & IDE ─────────────────────────────────────────────────────────────────
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
 
-# disable for now
-k8s
-bin
-/references
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.log
+tmp/
+/tmp/
