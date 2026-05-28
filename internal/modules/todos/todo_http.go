@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -227,8 +228,9 @@ func RegisterTodoRoutes(api huma.API, todos TodoService) {
 		Tags:        []string{"Todos"},
 		Security:    []map[string][]string{{"bearerAuth": {}}},
 	}, func(ctx context.Context, in *struct {
-		ID      uuid.UUID `path:"id"`
-		RawBody huma.MultipartFormFiles[UpdateTodoForm]
+		ID         uuid.UUID `path:"id"`
+		UpdateMask string    `query:"update_mask" doc:"Comma-separated list of fields to update (AIP-134)"`
+		RawBody    huma.MultipartFormFiles[UpdateTodoForm]
 		conditional.Params
 	}) (*TodoResp, error) {
 		userID, err := httpapi.ExtractUserID(ctx)
@@ -279,6 +281,14 @@ func RegisterTodoRoutes(api huma.API, todos TodoService) {
 			coverBase64 = &empty
 		}
 
+		var updateMask []string
+		if in.UpdateMask != "" {
+			updateMask = strings.Split(in.UpdateMask, ",")
+			for i, v := range updateMask {
+				updateMask[i] = strings.TrimSpace(v)
+			}
+		}
+
 		t, err := todos.Update(ctx, UpdateTodoInput{
 			ID:          in.ID,
 			UserID:      userID,
@@ -286,6 +296,7 @@ func RegisterTodoRoutes(api huma.API, todos TodoService) {
 			Description: desc,
 			Cover:       coverBase64,
 			Status:      status,
+			UpdateMask:  updateMask,
 		})
 		if err != nil {
 			wideevent.Add(ctx, "todo_id", in.ID.String())
@@ -309,13 +320,7 @@ func RegisterTodoRoutes(api huma.API, todos TodoService) {
 		Tags:          []string{"Todos"},
 		Security:      []map[string][]string{{"bearerAuth": {}}},
 		DefaultStatus: http.StatusNoContent,
-	}, handleDeleteTodo(todos))
-}
-
-func handleDeleteTodo(todos TodoService) func(ctx context.Context, in *struct {
-	ID uuid.UUID `path:"id"`
-}) (*struct{}, error) {
-	return func(ctx context.Context, in *struct {
+	}, func(ctx context.Context, in *struct {
 		ID uuid.UUID `path:"id"`
 	}) (*struct{}, error) {
 		userID, err := httpapi.ExtractUserID(ctx)
@@ -328,5 +333,5 @@ func handleDeleteTodo(todos TodoService) func(ctx context.Context, in *struct {
 		}
 		wideevent.Add(ctx, "todo_id", in.ID.String())
 		return &struct{}{}, nil
-	}
+	})
 }

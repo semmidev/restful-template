@@ -31,6 +31,9 @@ func (t *Todo) Validate() error {
 	if t.Title == "" {
 		return errors.New("todo title cannot be empty")
 	}
+	if t.Status != TodoStatusPending && t.Status != TodoStatusInProgress && t.Status != TodoStatusDone {
+		return errors.New("invalid todo status")
+	}
 	return nil
 }
 
@@ -70,6 +73,7 @@ type UpdateTodoInput struct {
 	Description *string     `json:"description,omitempty"`
 	Cover       *string     `json:"cover,omitempty"`
 	Status      *TodoStatus `json:"status,omitempty"`
+	UpdateMask  []string
 }
 
 type ListTodosQuery struct {

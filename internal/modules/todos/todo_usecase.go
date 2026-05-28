@@ -80,9 +80,45 @@ func (s *Usecase) Update(ctx context.Context, in UpdateTodoInput) (*Todo, error)
 		return nil, apperrors.NewNotFound("The requested todo does not exist", err)
 	}
 
-	t.UpdateDetails(in.Title, in.Description, in.Cover)
-	if in.Status != nil {
-		t.ChangeStatus(*in.Status)
+	if len(in.UpdateMask) > 0 {
+		for _, field := range in.UpdateMask {
+			switch field {
+			case "title":
+				if in.Title != nil {
+					t.Title = *in.Title
+				} else {
+					t.Title = ""
+				}
+			case "description":
+				if in.Description != nil {
+					t.Description = *in.Description
+				} else {
+					t.Description = ""
+				}
+			case "cover":
+				if in.Cover != nil {
+					if *in.Cover == "" {
+						t.Cover = nil
+					} else {
+						t.Cover = in.Cover
+					}
+				} else {
+					t.Cover = nil
+				}
+			case "status":
+				if in.Status != nil {
+					t.ChangeStatus(*in.Status)
+				} else {
+					t.ChangeStatus(TodoStatusPending)
+				}
+			}
+		}
+		t.UpdatedAt = time.Now().UTC()
+	} else {
+		t.UpdateDetails(in.Title, in.Description, in.Cover)
+		if in.Status != nil {
+			t.ChangeStatus(*in.Status)
+		}
 	}
 
 	if err := t.Validate(); err != nil {
