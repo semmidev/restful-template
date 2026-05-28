@@ -26,8 +26,8 @@ services:
     networks:
       - monitoring
 
-  api:
-    container_name: api
+  app:
+    container_name: restful-template
     build:
       context: .
       dockerfile: Dockerfile
