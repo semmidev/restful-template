@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/semmidev/restful-template/internal/shared/uuidgen"
 )
 
 type TodoStatus string
@@ -42,21 +43,75 @@ func (t *Todo) ChangeStatus(status TodoStatus) {
 	t.UpdatedAt = time.Now().UTC()
 }
 
-func (t *Todo) UpdateDetails(title, desc *string, cover *string) {
-	if title != nil {
-		t.Title = *title
+func NewTodoEntity(in CreateTodoInput) *Todo {
+	now := time.Now().UTC()
+	return &Todo{
+		ID:          uuidgen.New(),
+		UserID:      in.UserID,
+		Title:       in.Title,
+		Description: in.Description,
+		Cover:       in.Cover,
+		Status:      TodoStatusPending,
+		CreatedAt:   now,
+		UpdatedAt:   now,
 	}
-	if desc != nil {
-		t.Description = *desc
-	}
-	if cover != nil {
-		if *cover == "" {
-			t.Cover = nil
-		} else {
-			t.Cover = cover
+}
+
+func (t *Todo) ApplyUpdate(in UpdateTodoInput) {
+	if len(in.UpdateMask) > 0 {
+		for _, field := range in.UpdateMask {
+			switch field {
+			case "title":
+				if in.Title != nil {
+					t.Title = *in.Title
+				} else {
+					t.Title = ""
+				}
+			case "description":
+				if in.Description != nil {
+					t.Description = *in.Description
+				} else {
+					t.Description = ""
+				}
+			case "cover":
+				if in.Cover != nil {
+					if *in.Cover == "" {
+						t.Cover = nil
+					} else {
+						t.Cover = in.Cover
+					}
+				} else {
+					t.Cover = nil
+				}
+			case "status":
+				if in.Status != nil {
+					t.ChangeStatus(*in.Status)
+				} else {
+					t.ChangeStatus(TodoStatusPending)
+				}
+			}
 		}
+		t.UpdatedAt = time.Now().UTC()
+	} else {
+		// Fallback
+		if in.Title != nil {
+			t.Title = *in.Title
+		}
+		if in.Description != nil {
+			t.Description = *in.Description
+		}
+		if in.Cover != nil {
+			if *in.Cover == "" {
+				t.Cover = nil
+			} else {
+				t.Cover = in.Cover
+			}
+		}
+		if in.Status != nil {
+			t.ChangeStatus(*in.Status)
+		}
+		t.UpdatedAt = time.Now().UTC()
 	}
-	t.UpdatedAt = time.Now().UTC()
 }
 
 type CreateTodoInput struct {
@@ -85,6 +140,18 @@ type ListTodosQuery struct {
 	SortDir string
 	Status  *TodoStatus `query:"status"`
 	Search  string      `query:"search"`
+}
+
+func (q *ListTodosQuery) Normalize() {
+	if q.Limit <= 0 || q.Limit > 100 {
+		q.Limit = 20
+	}
+	if q.SortBy == "" {
+		q.SortBy = "created_at"
+	}
+	if q.SortDir == "" {
+		q.SortDir = "desc"
+	}
 }
 
 type TodoRepository interface {

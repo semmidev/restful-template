@@ -5,6 +5,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/semmidev/restful-template/internal/shared/errors"
+	"github.com/semmidev/restful-template/internal/shared/password"
+	"github.com/semmidev/restful-template/internal/shared/uuidgen"
 )
 
 type User struct {
@@ -13,6 +16,11 @@ type User struct {
 	PasswordHash string    `json:"password_hash"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+func (u *User) CheckPassword(plain string) bool {
+	ok, err := password.Verify(plain, u.PasswordHash)
+	return err == nil && ok
 }
 
 type TokenClaims struct {
@@ -29,6 +37,25 @@ type TokenPair struct {
 type RegisterInput struct {
 	Email    string `json:"email" format:"email" required:"true"`
 	Password string `json:"password" minLength:"8" required:"true"`
+}
+
+func (in *RegisterInput) Validate() error {
+	if in.Email == "" || in.Password == "" {
+		return errors.NewInvalidInput("Email and password are required", errors.ErrInvalidInput)
+	}
+	return nil
+}
+
+func (in *RegisterInput) ToUser() (*User, error) {
+	hash, err := password.Hash(in.Password)
+	if err != nil {
+		return nil, errors.NewInternal("Failed to process registration", err)
+	}
+	return &User{
+		ID:           uuidgen.New(),
+		Email:        in.Email,
+		PasswordHash: hash,
+	}, nil
 }
 
 type LoginInput struct {

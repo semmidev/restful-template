@@ -10,8 +10,6 @@ import (
 	"github.com/semmidev/restful-template/internal/shared/database"
 	"github.com/semmidev/restful-template/internal/shared/errors"
 	"github.com/semmidev/restful-template/internal/shared/observability"
-	"github.com/semmidev/restful-template/internal/shared/password"
-	"github.com/semmidev/restful-template/internal/shared/uuidgen"
 )
 
 type Usecase struct {
@@ -28,24 +26,19 @@ func NewAuth(users UserRepository, tokens TokenService, tokenRepo TokenRepositor
 }
 
 func (s *Usecase) Register(ctx context.Context, in RegisterInput) (TokenPair, error) {
-	if in.Email == "" || in.Password == "" {
-		return TokenPair{}, errors.NewInvalidInput("Email and password are required", errors.ErrInvalidInput)
+	if err := in.Validate(); err != nil {
+		return TokenPair{}, err
 	}
 
 	if _, err := s.users.GetByEmail(ctx, in.Email); err == nil {
 		return TokenPair{}, errors.NewConflict("Email is already registered", errors.ErrConflict)
 	}
 
-	hash, err := password.Hash(in.Password)
+	u, err := in.ToUser()
 	if err != nil {
-		return TokenPair{}, errors.NewInternal("Failed to process registration", err)
+		return TokenPair{}, err
 	}
 
-	u := &User{
-		ID:           uuidgen.New(),
-		Email:        in.Email,
-		PasswordHash: hash,
-	}
 	if err := s.users.Create(ctx, u); err != nil {
 		return TokenPair{}, errors.NewInternal("Failed to create user", err)
 	}
@@ -58,8 +51,7 @@ func (s *Usecase) Login(ctx context.Context, in LoginInput) (TokenPair, error) {
 		return TokenPair{}, errors.NewUnauthorized("Invalid credentials", errors.ErrUnauthorized)
 	}
 
-	ok, err := password.Verify(in.Password, u.PasswordHash)
-	if err != nil || !ok {
+	if !u.CheckPassword(in.Password) {
 		return TokenPair{}, errors.NewUnauthorized("Invalid credentials", errors.ErrUnauthorized)
 	}
 	return s.issuePair(ctx, u)

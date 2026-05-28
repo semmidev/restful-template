@@ -2,14 +2,11 @@ package todos
 
 import (
 	"context"
-	"time"
 
 	"github.com/google/uuid"
-	apperrors "github.com/semmidev/restful-template/internal/shared/errors"
-
 	"github.com/semmidev/restful-template/internal/shared/cache"
+	apperrors "github.com/semmidev/restful-template/internal/shared/errors"
 	"github.com/semmidev/restful-template/internal/shared/observability"
-	"github.com/semmidev/restful-template/internal/shared/uuidgen"
 )
 
 type Usecase struct {
@@ -23,24 +20,9 @@ func NewTodo(repo TodoRepository, cache cache.CacheRepository, tracer observabil
 }
 
 func (s *Usecase) Create(ctx context.Context, in CreateTodoInput) (*Todo, error) {
-	now := time.Now().UTC()
-	t := &Todo{
-		ID:          uuidgen.New(),
-		UserID:      in.UserID,
-		Title:       in.Title,
-		Description: in.Description,
-		Cover:       in.Cover,
-		Status:      TodoStatusPending,
-		CreatedAt:   now,
-		UpdatedAt:   now,
-	}
+	t := NewTodoEntity(in)
 	if err := t.Validate(); err != nil {
 		return nil, apperrors.NewInvalidInput("Invalid todo data", err)
-	}
-
-	if s.tracer != nil {
-		_, span := s.tracer.Start(ctx, "Todo.validateAndFormat")
-		span.End()
 	}
 
 	if err := s.repo.Create(ctx, t); err != nil {
@@ -58,15 +40,7 @@ func (s *Usecase) Get(ctx context.Context, userID, id uuid.UUID) (*Todo, error) 
 }
 
 func (s *Usecase) List(ctx context.Context, q ListTodosQuery) ([]*Todo, int, error) {
-	if q.Limit <= 0 || q.Limit > 100 {
-		q.Limit = 20
-	}
-	if q.SortBy == "" {
-		q.SortBy = "created_at"
-	}
-	if q.SortDir == "" {
-		q.SortDir = "desc"
-	}
+	q.Normalize()
 	todos, count, err := s.repo.ListByUser(ctx, q)
 	if err != nil {
 		return nil, 0, apperrors.NewInternal("Failed to list todos", err)
@@ -80,46 +54,7 @@ func (s *Usecase) Update(ctx context.Context, in UpdateTodoInput) (*Todo, error)
 		return nil, apperrors.NewNotFound("The requested todo does not exist", err)
 	}
 
-	if len(in.UpdateMask) > 0 {
-		for _, field := range in.UpdateMask {
-			switch field {
-			case "title":
-				if in.Title != nil {
-					t.Title = *in.Title
-				} else {
-					t.Title = ""
-				}
-			case "description":
-				if in.Description != nil {
-					t.Description = *in.Description
-				} else {
-					t.Description = ""
-				}
-			case "cover":
-				if in.Cover != nil {
-					if *in.Cover == "" {
-						t.Cover = nil
-					} else {
-						t.Cover = in.Cover
-					}
-				} else {
-					t.Cover = nil
-				}
-			case "status":
-				if in.Status != nil {
-					t.ChangeStatus(*in.Status)
-				} else {
-					t.ChangeStatus(TodoStatusPending)
-				}
-			}
-		}
-		t.UpdatedAt = time.Now().UTC()
-	} else {
-		t.UpdateDetails(in.Title, in.Description, in.Cover)
-		if in.Status != nil {
-			t.ChangeStatus(*in.Status)
-		}
-	}
+	t.ApplyUpdate(in)
 
 	if err := t.Validate(); err != nil {
 		return nil, apperrors.NewInvalidInput("Invalid todo data", err)
