@@ -26,8 +26,6 @@ WORKDIR /
 
 # Copy binary and runtime config (migrations are embedded in the binary)
 COPY --from=builder /bin/server /server
-# .env is optional — all config can be supplied via env vars in compose/k8s
-COPY --from=builder /app/.env.example /.env.example
 COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
 
 EXPOSE 8080
