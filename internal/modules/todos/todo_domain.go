@@ -93,7 +93,7 @@ func (t *Todo) ApplyUpdate(in UpdateTodoInput) {
 		}
 		t.UpdatedAt = time.Now().UTC()
 	} else {
-		// Fallback
+		// Fallback: apply all non-nil fields
 		if in.Title != nil {
 			t.Title = *in.Title
 		}
@@ -166,10 +166,14 @@ type TodoRepository interface {
 // TodoService is the interface that RegisterTodoRoutes consumes.
 // *Usecase satisfies this interface implicitly — it exists solely to enable
 // handler unit-testing with mocks (e.g. via humatest) without a real database.
+//
+// point 10: Update now accepts a pre-loaded *Todo entity (fetched by the handler
+// for ETag check) to avoid a redundant repo.GetByID call inside the usecase.
 type TodoService interface {
 	List(ctx context.Context, q ListTodosQuery) ([]*Todo, int, error)
 	Create(ctx context.Context, input CreateTodoInput) (*Todo, error)
 	Get(ctx context.Context, userID, id uuid.UUID) (*Todo, error)
-	Update(ctx context.Context, input UpdateTodoInput) (*Todo, error)
+	Update(ctx context.Context, existing *Todo, input UpdateTodoInput) (*Todo, error)
 	Delete(ctx context.Context, userID, id uuid.UUID) error
+	DeleteAllByUserID(ctx context.Context, userID uuid.UUID) error
 }

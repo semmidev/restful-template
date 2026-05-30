@@ -16,17 +16,22 @@ import (
 	"github.com/semmidev/restful-template/internal/shared/wideevent"
 )
 
+// maxCoverSize is the upper bound for uploaded cover images.
+// point 2: was previously io.ReadAll with no limit — an attacker could upload
+// an arbitrary-size payload to exhaust server memory.
+const maxCoverSize = 5 << 20 // 5 MB
+
 type CreateTodoForm struct {
 	Title       string        `form:"title" minLength:"1" maxLength:"200"`
 	Description string        `form:"description" maxLength:"2000" required:"false"`
-	Cover       huma.FormFile `form:"cover" contentType:"image/*" doc:"Image file to upload as cover" required:"false"`
+	Cover       huma.FormFile `form:"cover" contentType:"image/*" doc:"Image file to upload as cover (max 5 MB)" required:"false"`
 }
 
 type UpdateTodoForm struct {
 	Title       string        `form:"title" maxLength:"200" required:"false"`
 	Description string        `form:"description" maxLength:"2000" required:"false"`
 	Status      string        `form:"status" enum:"pending,in_progress,done" required:"false"`
-	Cover       huma.FormFile `form:"cover" contentType:"image/*" doc:"Image file to upload as cover" required:"false"`
+	Cover       huma.FormFile `form:"cover" contentType:"image/*" doc:"Image file to upload as cover (max 5 MB)" required:"false"`
 }
 
 type TodoResp struct {
@@ -217,14 +222,9 @@ func (h *todoHandler) handleCreate(ctx context.Context, in *createTodoReq) (*Tod
 	}
 
 	data := in.RawBody.Data()
-	var coverBase64 *string
-	if data.Cover.IsSet {
-		b, err := io.ReadAll(data.Cover)
-		if err != nil {
-			return nil, huma.Error400BadRequest("failed to read cover image")
-		}
-		encoded := fmt.Sprintf("data:%s;base64,%s", data.Cover.ContentType, base64.StdEncoding.EncodeToString(b))
-		coverBase64 = &encoded
+	coverBase64, err := processCoverImage(data.Cover)
+	if err != nil {
+		return nil, err
 	}
 
 	t, err := h.todos.Create(ctx, CreateTodoInput{
@@ -269,13 +269,18 @@ func (h *todoHandler) handleGet(ctx context.Context, in *getTodoReq) (*TodoResp,
 	return resp, nil
 }
 
+// handleUpdate applies a partial update to a todo.
+//
+// point 10: The entity is fetched once here for ETag validation and then passed
+// directly into the usecase, which no longer does an internal re-fetch.
+// Total DB calls: GET (1) + UPDATE (1) = 2, down from 3.
 func (h *todoHandler) handleUpdate(ctx context.Context, in *updateTodoReq) (*TodoResp, error) {
 	userID, err := httpapi.ExtractUserID(ctx)
 	if err != nil {
 		return nil, httpapi.ToHumaErr(ctx, err)
 	}
 
-	// Optimistic locking check before update
+	// Optimistic locking check before update (1st and only GET)
 	existing, err := h.todos.Get(ctx, userID, in.ID)
 	if err != nil {
 		wideevent.Add(ctx, "todo_id", in.ID.String())
@@ -304,18 +309,16 @@ func (h *todoHandler) handleUpdate(ctx context.Context, in *updateTodoReq) (*Tod
 		status = &st
 	}
 
-	var coverBase64 *string
-	if data.Cover.IsSet {
-		b, err := io.ReadAll(data.Cover)
-		if err != nil {
-			return nil, huma.Error400BadRequest("failed to read cover image")
+	coverBase64, err := processCoverImage(data.Cover)
+	if err != nil {
+		return nil, err
+	}
+	// If no new cover was uploaded but the cover field was sent as empty, clear it
+	if coverBase64 == nil {
+		if _, ok := in.RawBody.Form.File["cover"]; ok || (len(in.RawBody.Form.Value["cover"]) > 0 && in.RawBody.Form.Value["cover"][0] == "") {
+			empty := ""
+			coverBase64 = &empty
 		}
-		encoded := fmt.Sprintf("data:%s;base64,%s", data.Cover.ContentType, base64.StdEncoding.EncodeToString(b))
-		coverBase64 = &encoded
-	} else if _, ok := in.RawBody.Form.File["cover"]; ok || (len(in.RawBody.Form.Value["cover"]) > 0 && in.RawBody.Form.Value["cover"][0] == "") {
-		// Field was sent but empty, meaning user wants to remove the cover
-		empty := ""
-		coverBase64 = &empty
 	}
 
 	var updateMask []string
@@ -326,7 +329,8 @@ func (h *todoHandler) handleUpdate(ctx context.Context, in *updateTodoReq) (*Tod
 		}
 	}
 
-	t, err := h.todos.Update(ctx, UpdateTodoInput{
+	// Pass pre-fetched entity — usecase skips the re-fetch (point 10)
+	t, err := h.todos.Update(ctx, existing, UpdateTodoInput{
 		ID:          in.ID,
 		UserID:      userID,
 		Title:       title,
@@ -360,4 +364,45 @@ func (h *todoHandler) handleDelete(ctx context.Context, in *deleteTodoReq) (*str
 	}
 	wideevent.Add(ctx, "todo_id", in.ID.String())
 	return &struct{}{}, nil
+}
+
+// processCoverImage reads, size-checks, and MIME-validates an uploaded cover file.
+// Returns nil if no file was set, a *string base64 data-URI if valid, or an error.
+//
+// point 2: LimitReader enforces maxCoverSize (5 MB), preventing memory exhaustion.
+// http.DetectContentType sniffs the actual bytes to verify it's really an image,
+// regardless of the client-supplied Content-Type header.
+func processCoverImage(f huma.FormFile) (*string, error) {
+	if !f.IsSet {
+		return nil, nil
+	}
+
+	// Limit read to maxCoverSize+1 to distinguish "exactly limit" from "over limit"
+	limited := io.LimitReader(f, maxCoverSize+1)
+	b, err := io.ReadAll(limited)
+	if err != nil {
+		return nil, huma.Error400BadRequest("failed to read cover image")
+	}
+	if len(b) > maxCoverSize {
+		return nil, &httpapi.APIError{
+			Status: http.StatusRequestEntityTooLarge,
+			Title:  "Request Entity Too Large",
+			Code:   "COVER_TOO_LARGE",
+			Detail: fmt.Sprintf("cover image must not exceed %d MB", maxCoverSize>>20),
+		}
+	}
+
+	// Sniff the actual content type — do not trust the client's Content-Type
+	contentType := http.DetectContentType(b)
+	if !strings.HasPrefix(contentType, "image/") {
+		return nil, &httpapi.APIError{
+			Status: http.StatusBadRequest,
+			Title:  "Bad Request",
+			Code:   "INVALID_COVER_TYPE",
+			Detail: fmt.Sprintf("cover must be an image file, got %q", contentType),
+		}
+	}
+
+	encoded := fmt.Sprintf("data:%s;base64,%s", contentType, base64.StdEncoding.EncodeToString(b))
+	return &encoded, nil
 }

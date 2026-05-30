@@ -21,7 +21,9 @@ package wideevent
 import (
 	"context"
 	"log/slog"
+	"runtime"
 	"sync"
+	"time"
 )
 
 type ctxKey struct{}
@@ -70,14 +72,23 @@ func Fields(ctx context.Context) []any {
 // extra key-value pairs (e.g. status, duration_ms) provided by the caller.
 // extra must be in alternating key, value order, just like slog args.
 func Emit(ctx context.Context, log *slog.Logger, level slog.Level, msg string, extra ...any) {
-	if log == nil {
+	if log == nil || !log.Enabled(ctx, level) {
 		return
 	}
+
+	// Capture the program counter of Emit's caller to ensure the "source" field 
+	// (file/line) points to the middleware/handler, not this helper function.
+	var pcs [1]uintptr
+	runtime.Callers(2, pcs[:])
+	r := slog.NewRecord(time.Now(), level, msg, pcs[0])
+
 	accumulated := Fields(ctx)
 	// extra fields (status, outcome, duration) come first so they appear at
 	// the top of the JSON object for readability in most log viewers.
 	args := make([]any, 0, len(extra)+len(accumulated))
 	args = append(args, extra...)
 	args = append(args, accumulated...)
-	log.Log(ctx, level, msg, args...)
+	
+	r.Add(args...)
+	_ = log.Handler().Handle(ctx, r)
 }

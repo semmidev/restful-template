@@ -4,22 +4,20 @@ import (
 	"context"
 	"errors"
 
-	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/semmidev/restful-template/internal/shared/database"
 	apperrors "github.com/semmidev/restful-template/internal/shared/errors"
 )
-
-var psql = sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
 type userRepository struct{ db *pgxpool.Pool }
 
 func NewUserRepository(db *pgxpool.Pool) UserRepository { return &userRepository{db} }
 
 func (r *userRepository) Create(ctx context.Context, u *User) error {
-	sql, args, err := psql.Insert("users").
+	sql, args, err := database.QB.Insert("users").
 		Columns("id", "email", "password_hash", "created_at", "updated_at").
 		Values(u.ID, u.Email, u.PasswordHash, u.CreatedAt, u.UpdatedAt).
 		ToSql()
@@ -28,13 +26,23 @@ func (r *userRepository) Create(ctx context.Context, u *User) error {
 	}
 
 	_, err = database.GetDB(ctx, r.db).Exec(ctx, sql, args...)
-	return err
+	if err != nil {
+		// point 9: surface unique constraint violation as ErrConflict so the
+		// usecase doesn't need a racy pre-check (TOCTOU) and callers get a
+		// proper 409 instead of a 500 on concurrent registrations.
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return apperrors.ErrConflict
+		}
+		return err
+	}
+	return nil
 }
 
 func (r *userRepository) GetByEmail(ctx context.Context, email string) (*User, error) {
-	sql, args, err := psql.Select("id", "email", "password_hash", "created_at", "updated_at").
+	sql, args, err := database.QB.Select("id", "email", "password_hash", "created_at", "updated_at").
 		From("users").
-		Where(sq.Eq{"email": email}).
+		Where("email = ?", email).
 		ToSql()
 	if err != nil {
 		return nil, err
@@ -52,9 +60,9 @@ func (r *userRepository) GetByEmail(ctx context.Context, email string) (*User, e
 }
 
 func (r *userRepository) GetByID(ctx context.Context, id uuid.UUID) (*User, error) {
-	sql, args, err := psql.Select("id", "email", "password_hash", "created_at", "updated_at").
+	sql, args, err := database.QB.Select("id", "email", "password_hash", "created_at", "updated_at").
 		From("users").
-		Where(sq.Eq{"id": id}).
+		Where("id = ?", id).
 		ToSql()
 	if err != nil {
 		return nil, err
@@ -72,8 +80,8 @@ func (r *userRepository) GetByID(ctx context.Context, id uuid.UUID) (*User, erro
 }
 
 func (r *userRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	sql, args, err := psql.Delete("users").
-		Where(sq.Eq{"id": id}).
+	sql, args, err := database.QB.Delete("users").
+		Where("id = ?", id).
 		ToSql()
 	if err != nil {
 		return err

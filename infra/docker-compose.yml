@@ -8,21 +8,8 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:8080:8080"   # Only localhost — Caddy exposes externally
-    environment:
-      APP_ENV: production
-      APP_NAME: ${APP_NAME:-restful-template}
-      HTTP_PORT: "8080"
-      DATABASE_DSN: postgres://${POSTGRES_USER:-todo}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-todo}?sslmode=disable
-      DATABASE_MAX_OPEN_CONNS: "25"
-      DATABASE_MAX_IDLE_CONNS: "5"
-      DATABASE_CONN_MAX_LIFETIME: "5m"
-      REDIS_DSN: redis://:${REDIS_PASSWORD:-}@redis:6379/0
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-15m}
-      JWT_REFRESH_TTL: ${JWT_REFRESH_TTL:-168h}
-      LOG_LEVEL: ${LOG_LEVEL:-info}
-      LOG_FORMAT: json
-      TELEMETRY_OTLP_ENDPOINT: alloy:4317   # Routes traces → Alloy → Tempo
+    env_file:
+      - .env
     depends_on:
       db:
         condition: service_healthy

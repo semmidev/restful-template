@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -73,10 +74,29 @@ func Logger(log *slog.Logger) func(http.Handler) http.Handler {
 	}
 }
 
-func CORS() func(http.Handler) http.Handler {
+// CORS returns a middleware that enforces the given allowedOrigins list.
+// Pass []string{"*"} for development (allows all origins).
+// In production, pass explicit origins: []string{"https://app.example.com"}.
+//
+// Point 3: was previously hardcoded to "*" which bypasses browser CORS policy.
+func CORS(allowedOrigins []string) func(http.Handler) http.Handler {
+	allowAll := len(allowedOrigins) == 1 && allowedOrigins[0] == "*"
+	originSet := make(map[string]struct{}, len(allowedOrigins))
+	for _, o := range allowedOrigins {
+		originSet[o] = struct{}{}
+	}
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
+			origin := r.Header.Get("Origin")
+			if origin != "" {
+				if allowAll {
+					w.Header().Set("Access-Control-Allow-Origin", "*")
+				} else if _, ok := originSet[origin]; ok {
+					w.Header().Set("Access-Control-Allow-Origin", origin)
+					w.Header().Set("Vary", "Origin")
+				}
+			}
 			w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PATCH,DELETE,OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Authorization,Content-Type")
 			if r.Method == http.MethodOptions {
@@ -88,6 +108,8 @@ func CORS() func(http.Handler) http.Handler {
 	}
 }
 
+// SecurityHeaders sets hardened HTTP security headers on every response.
+// Point 19: added Content-Security-Policy.
 func SecurityHeaders() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -95,11 +117,19 @@ func SecurityHeaders() func(http.Handler) http.Handler {
 			w.Header().Set("X-Frame-Options", "DENY")
 			w.Header().Set("Referrer-Policy", "no-referrer")
 			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
+			// For a pure API server, disallow all content-loading from this origin.
+			// Adjust if you serve HTML from the same server.
+			w.Header().Set("Content-Security-Policy", "default-src 'none'")
 			next.ServeHTTP(w, r)
 		})
 	}
 }
 
+// RateLimiter enforces a per-IP rate limit using Redis.
+//
+// Point 4: was using r.RemoteAddr (always the load-balancer IP behind a proxy).
+// Now uses the X-Real-IP header populated by chi's RealIP middleware, which
+// correctly reflects the client's actual IP address.
 func RateLimiter(limiter *redis_rate.Limiter) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -108,7 +138,15 @@ func RateLimiter(limiter *redis_rate.Limiter) func(http.Handler) http.Handler {
 				return
 			}
 
-			res, err := limiter.Allow(r.Context(), "rate_limit:"+r.RemoteAddr, redis_rate.PerSecond(5))
+			// X-Real-IP is set by chi's RealIP middleware (which reads X-Forwarded-For
+			// or X-Real-IP from trusted proxies) and is the correct client IP.
+			// Fall back to RemoteAddr only for local development without a proxy.
+			clientIP := r.Header.Get("X-Real-IP")
+			if clientIP == "" {
+				clientIP = r.RemoteAddr
+			}
+
+			res, err := limiter.Allow(r.Context(), fmt.Sprintf("rate:%s", clientIP), redis_rate.PerSecond(5))
 			if err != nil {
 				// Log error and fallback to allowing request (fail open)
 				next.ServeHTTP(w, r)
@@ -116,8 +154,9 @@ func RateLimiter(limiter *redis_rate.Limiter) func(http.Handler) http.Handler {
 			}
 			if res.Allowed == 0 {
 				w.Header().Set("Content-Type", "application/problem+json")
+				w.Header().Set("Retry-After", fmt.Sprintf("%d", int(res.ResetAfter.Seconds())))
 				w.WriteHeader(http.StatusTooManyRequests)
-				_, _ = w.Write([]byte(`{"status": 429, "title": "Too Many Requests", "detail": "Rate limit exceeded"}`))
+				_, _ = w.Write([]byte(`{"status": 429, "title": "Too Many Requests", "code": "RATE_LIMITED", "detail": "Rate limit exceeded, please slow down"}`))
 				return
 			}
 			next.ServeHTTP(w, r)

@@ -12,7 +12,15 @@ import (
 	apperrors "github.com/semmidev/restful-template/internal/shared/errors"
 )
 
-var psql = sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
+// allowedSortCols is the explicit allowlist of sortable columns.
+// was previously string concatenation into SQL — this map approach
+// prevents any possibility of SQL injection if the allowlist grows incorrectly.
+var allowedSortCols = map[string]string{
+	"created_at": "created_at",
+	"updated_at": "updated_at",
+	"title":      "title",
+	"status":     "status",
+}
 
 // TodoRepository is the postgres-backed driven adapter for todos.
 type todoRepository struct{ db *pgxpool.Pool }
@@ -20,7 +28,7 @@ type todoRepository struct{ db *pgxpool.Pool }
 func NewTodoRepository(db *pgxpool.Pool) TodoRepository { return &todoRepository{db} }
 
 func (r *todoRepository) Create(ctx context.Context, t *Todo) error {
-	sql, args, err := psql.Insert("todos").
+	sql, args, err := database.QB.Insert("todos").
 		Columns("id", "user_id", "title", "description", "cover", "status", "created_at", "updated_at").
 		Values(t.ID, t.UserID, t.Title, t.Description, t.Cover, t.Status, t.CreatedAt, t.UpdatedAt).
 		ToSql()
@@ -33,7 +41,7 @@ func (r *todoRepository) Create(ctx context.Context, t *Todo) error {
 }
 
 func (r *todoRepository) GetByID(ctx context.Context, userID, id uuid.UUID) (*Todo, error) {
-	sql, args, err := psql.Select("id", "user_id", "title", "description", "cover", "status", "created_at", "updated_at").
+	sql, args, err := database.QB.Select("id", "user_id", "title", "description", "cover", "status", "created_at", "updated_at").
 		From("todos").
 		Where(sq.Eq{"id": id, "user_id": userID}).
 		ToSql()
@@ -52,10 +60,13 @@ func (r *todoRepository) GetByID(ctx context.Context, userID, id uuid.UUID) (*To
 	return &t, nil
 }
 
-// ListByUser returns paginated todos for a user with optional status and keyword filters.
+// ListByUser returns paginated todos using a single query with a window function
+// to avoid a second COUNT(*) round-trip.
+//
+// previously issued two sequential SQL queries (data + count).
+// COUNT(*) OVER() returns the total in every row at negligible cost.
 func (r *todoRepository) ListByUser(ctx context.Context, q ListTodosQuery) ([]*Todo, int, error) {
-
-	base := psql.Select().From("todos").Where(sq.Eq{"user_id": q.UserID})
+	base := database.QB.Select().From("todos").Where(sq.Eq{"user_id": q.UserID})
 
 	if q.Status != nil {
 		base = base.Where(sq.Eq{"status": *q.Status})
@@ -69,9 +80,10 @@ func (r *todoRepository) ListByUser(ctx context.Context, q ListTodosQuery) ([]*T
 		})
 	}
 
+	// allowlist map — safe against injection and future mistakes
 	sortBy := "created_at"
-	if q.SortBy == "title" || q.SortBy == "updated_at" || q.SortBy == "status" {
-		sortBy = q.SortBy
+	if col, ok := allowedSortCols[q.SortBy]; ok {
+		sortBy = col
 	}
 
 	sortDir := "DESC"
@@ -79,9 +91,12 @@ func (r *todoRepository) ListByUser(ctx context.Context, q ListTodosQuery) ([]*T
 		sortDir = "ASC"
 	}
 
-	// 1. Data query
 	dataQuery := base.
-		Columns("id", "user_id", "title", "description", "cover", "status", "created_at", "updated_at").
+		Columns(
+			"id", "user_id", "title", "description", "cover",
+			"status", "created_at", "updated_at",
+			"COUNT(*) OVER() AS total_count",
+		).
 		OrderBy(sortBy + " " + sortDir).
 		Limit(uint64(q.Limit)).
 		Offset(uint64(q.Offset))
@@ -97,10 +112,15 @@ func (r *todoRepository) ListByUser(ctx context.Context, q ListTodosQuery) ([]*T
 	}
 	defer rows.Close()
 
+	var total int
 	out := make([]*Todo, 0)
 	for rows.Next() {
 		var t Todo
-		if err := rows.Scan(&t.ID, &t.UserID, &t.Title, &t.Description, &t.Cover, &t.Status, &t.CreatedAt, &t.UpdatedAt); err != nil {
+		if err := rows.Scan(
+			&t.ID, &t.UserID, &t.Title, &t.Description, &t.Cover,
+			&t.Status, &t.CreatedAt, &t.UpdatedAt,
+			&total,
+		); err != nil {
 			return nil, 0, err
 		}
 		out = append(out, &t)
@@ -109,22 +129,16 @@ func (r *todoRepository) ListByUser(ctx context.Context, q ListTodosQuery) ([]*T
 		return nil, 0, err
 	}
 
-	// 2. Count query
-	countSQL, countArgs, err := base.Columns("COUNT(*)").ToSql()
-	if err != nil {
-		return nil, 0, err
-	}
-
-	var total int
-	if err := database.GetDB(ctx, r.db).QueryRow(ctx, countSQL, countArgs...).Scan(&total); err != nil {
-		return nil, 0, err
-	}
-
 	return out, total, nil
 }
 
+// Update persists the updated todo entity.
+//
+// now checks RowsAffected == 0 to detect concurrent deletes between
+// the handler's ETag fetch and this write, returning ErrNotFound instead of
+// silently no-op'ing.
 func (r *todoRepository) Update(ctx context.Context, t *Todo) error {
-	sql, args, err := psql.Update("todos").
+	sql, args, err := database.QB.Update("todos").
 		Set("title", t.Title).
 		Set("description", t.Description).
 		Set("cover", t.Cover).
@@ -136,12 +150,18 @@ func (r *todoRepository) Update(ctx context.Context, t *Todo) error {
 		return err
 	}
 
-	_, err = database.GetDB(ctx, r.db).Exec(ctx, sql, args...)
-	return err
+	res, err := database.GetDB(ctx, r.db).Exec(ctx, sql, args...)
+	if err != nil {
+		return err
+	}
+	if res.RowsAffected() == 0 {
+		return apperrors.ErrNotFound
+	}
+	return nil
 }
 
 func (r *todoRepository) Delete(ctx context.Context, userID, id uuid.UUID) error {
-	sql, args, err := psql.Delete("todos").
+	sql, args, err := database.QB.Delete("todos").
 		Where(sq.Eq{"id": id, "user_id": userID}).
 		ToSql()
 	if err != nil {
@@ -153,7 +173,7 @@ func (r *todoRepository) Delete(ctx context.Context, userID, id uuid.UUID) error
 }
 
 func (r *todoRepository) DeleteAllByUserID(ctx context.Context, userID uuid.UUID) error {
-	sql, args, err := psql.Delete("todos").
+	sql, args, err := database.QB.Delete("todos").
 		Where(sq.Eq{"user_id": userID}).
 		ToSql()
 	if err != nil {

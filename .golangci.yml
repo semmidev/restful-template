@@ -25,6 +25,8 @@ linters:
     - unparam
     - prealloc
     - bodyclose
+    - exhaustive   # catches switch statements missing enum cases
+    - nilerr       # catches functions that return nil error even when a non-nil is checked
   settings:
     govet:
       enable-all: true
@@ -45,6 +47,9 @@ linters:
     gosec:
       excludes:
         - G115
+    exhaustive:
+      # Require exhaustive switches for all named enum types defined in the module
+      default-signifies-exhaustive: true
   exclusions:
     rules:
       - path: _test\.go
@@ -53,3 +58,4 @@ linters:
           - errcheck
           - gosec
           - gocognit
+          - exhaustive

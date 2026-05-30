@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/semmidev/restful-template/internal/shared/database"
@@ -20,7 +19,7 @@ func NewTokenRepository(db *pgxpool.Pool) TokenRepository {
 }
 
 func (r *tokenRepository) StoreRefreshToken(ctx context.Context, userID uuid.UUID, tokenHash string, expiresAt time.Time) error {
-	sql, args, err := psql.Insert("refresh_tokens").
+	sql, args, err := database.QB.Insert("refresh_tokens").
 		Columns("token_hash", "user_id", "expires_at").
 		Values(tokenHash, userID, expiresAt).
 		ToSql()
@@ -33,8 +32,8 @@ func (r *tokenRepository) StoreRefreshToken(ctx context.Context, userID uuid.UUI
 }
 
 func (r *tokenRepository) DeleteRefreshToken(ctx context.Context, tokenHash string) error {
-	sql, args, err := psql.Delete("refresh_tokens").
-		Where(sq.Eq{"token_hash": tokenHash}).
+	sql, args, err := database.QB.Delete("refresh_tokens").
+		Where("token_hash = ?", tokenHash).
 		ToSql()
 	if err != nil {
 		return err

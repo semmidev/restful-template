@@ -14,19 +14,35 @@ type JWTService struct {
 	secret     []byte
 	accessTTL  time.Duration
 	refreshTTL time.Duration
+	issuer     string // point 5: validated on parse
+	audience   string // point 5: validated on parse
 }
 
-func NewJWTService(secret string, accessTTL, refreshTTL time.Duration) *JWTService {
-	return &JWTService{secret: []byte(secret), accessTTL: accessTTL, refreshTTL: refreshTTL}
+// NewJWTService constructs a JWTService.
+// issuer and audience are embedded as `iss` / `aud` claims and validated on
+// every parse to prevent token substitution attacks across environments.
+func NewJWTService(secret string, accessTTL, refreshTTL time.Duration, issuer, audience string) *JWTService {
+	return &JWTService{
+		secret:     []byte(secret),
+		accessTTL:  accessTTL,
+		refreshTTL: refreshTTL,
+		issuer:     issuer,
+		audience:   audience,
+	}
 }
 
+// GeneratePair creates a new access + refresh token pair.
+// Both tokens carry: jti, sub, email, iss, aud, exp, type claims.
 func (s *JWTService) GeneratePair(ctx context.Context, userID uuid.UUID, email string) (string, string, int64, int64, error) {
 	now := time.Now()
 	accessExp := now.Add(s.accessTTL).Unix()
+
 	access := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"jti":   uuid.New().String(),
 		"sub":   userID.String(),
 		"email": email,
+		"iss":   s.issuer,   // point 5
+		"aud":   s.audience, // point 5
 		"exp":   accessExp,
 		"type":  "access",
 	})
@@ -34,11 +50,14 @@ func (s *JWTService) GeneratePair(ctx context.Context, userID uuid.UUID, email s
 	if err != nil {
 		return "", "", 0, 0, err
 	}
+
 	refreshExp := now.Add(s.refreshTTL).Unix()
 	refresh := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"jti":   uuid.New().String(),
 		"sub":   userID.String(),
 		"email": email,
+		"iss":   s.issuer,   // point 5
+		"aud":   s.audience, // point 5
 		"exp":   refreshExp,
 		"type":  "refresh",
 	})
@@ -62,17 +81,40 @@ func (s *JWTService) parse(token, typ string) (*auth.TokenClaims, error) {
 		return s.secret, nil
 	})
 	if err != nil || !parsed.Valid {
-		return nil, err
+		return nil, apperrors.ErrUnauthorized
 	}
+
 	claims, ok := parsed.Claims.(jwt.MapClaims)
-	if !ok || claims["type"] != typ {
-		return nil, jwt.ErrTokenInvalidClaims
+	if !ok {
+		return nil, apperrors.ErrUnauthorized
 	}
+
+	// point 5: validate token type
+	if claims["type"] != typ {
+		return nil, apperrors.ErrUnauthorized
+	}
+
+	// point 5: validate issuer
+	if iss, _ := claims["iss"].(string); iss != s.issuer {
+		return nil, apperrors.ErrUnauthorized
+	}
+
+	// point 5: validate audience
+	if aud, _ := claims["aud"].(string); aud != s.audience {
+		return nil, apperrors.ErrUnauthorized
+	}
+
 	sub, ok1 := claims["sub"].(string)
 	email, ok2 := claims["email"].(string)
 	if !ok1 || !ok2 {
 		return nil, apperrors.ErrUnauthorized
 	}
-	uid, _ := uuid.Parse(sub)
+
+	// point 5: do NOT discard uuid.Parse error
+	uid, err := uuid.Parse(sub)
+	if err != nil {
+		return nil, apperrors.ErrUnauthorized
+	}
+
 	return &auth.TokenClaims{UserID: uid, Email: email}, nil
 }

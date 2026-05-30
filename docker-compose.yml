@@ -9,9 +9,9 @@ services:
   postgres:
     image: postgres:18-alpine
     environment:
-      POSTGRES_USER: todo
-      POSTGRES_PASSWORD: todo
-      POSTGRES_DB: todo
+      POSTGRES_USER: ${POSTGRES_USER:-todo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-todo}
+      POSTGRES_DB: ${POSTGRES_DB:-todo}
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "5432:5432"
@@ -36,14 +36,6 @@ services:
         condition: service_healthy
     ports:
       - "8080:8080"
-    environment:
-      DATABASE_DSN: postgres://todo:todo@postgres:5432/todo?sslmode=disable
-      REDIS_DSN: redis://redis:6379/0
-      JWT_SECRET: change-me-in-prod-32-bytes-minimum!
-      APP_ENV: production
-      LOG_FORMAT: json
-      LOG_LEVEL: info
-      TELEMETRY_OTLP_ENDPOINT: alloy:4317
     env_file:
       - path: .env
         required: false
@@ -74,10 +66,11 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_AUTH_ANONYMOUS_ENABLED=true
-      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
-      - GF_AUTH_DISABLE_LOGIN_FORM=false
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_AUTH_ANONYMOUS_ENABLED=${GF_AUTH_ANONYMOUS_ENABLED:-true}
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=${GF_AUTH_ANONYMOUS_ORG_ROLE:-Admin}
+      - GF_AUTH_DISABLE_LOGIN_FORM=${GF_AUTH_DISABLE_LOGIN_FORM:-false}
     volumes:
       - grafana-data:/var/lib/grafana
       - ./config/grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro

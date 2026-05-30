@@ -12,6 +12,7 @@
 package config
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -27,6 +28,7 @@ type Config struct {
 	JWT       JWT
 	Log       Log
 	Telemetry Telemetry
+	CORS      CORS
 }
 
 type App struct {
@@ -49,6 +51,7 @@ type Database struct {
 	MaxOpenConns    int
 	MaxIdleConns    int
 	ConnMaxLifetime time.Duration
+	RunMigrations   bool // set false to skip auto-migration (e.g. in multi-replica deploys)
 }
 
 type Redis struct {
@@ -59,6 +62,8 @@ type JWT struct {
 	Secret     string
 	AccessTTL  time.Duration
 	RefreshTTL time.Duration
+	Issuer     string // iss claim
+	Audience   string // aud claim
 }
 
 type Log struct {
@@ -68,6 +73,13 @@ type Log struct {
 
 type Telemetry struct {
 	OTLPEndpoint string
+}
+
+// CORS holds allowed origin configuration.
+// AllowedOrigins is a comma-separated list of origins (e.g. "https://app.example.com").
+// Use "*" to allow all origins (development only).
+type CORS struct {
+	AllowedOrigins []string
 }
 
 // Load reads configuration from `.env` (if present) and then overlays any
@@ -100,17 +112,31 @@ func Load() Config {
 	v.SetDefault("DATABASE_MAX_OPEN_CONNS", 25)
 	v.SetDefault("DATABASE_MAX_IDLE_CONNS", 5)
 	v.SetDefault("DATABASE_CONN_MAX_LIFETIME", "5m")
+	v.SetDefault("DATABASE_RUN_MIGRATIONS", false)
 
 	v.SetDefault("REDIS_DSN", "redis://localhost:6379/0")
 
 	v.SetDefault("JWT_SECRET", "change-me-in-production-min-32-bytes!")
 	v.SetDefault("JWT_ACCESS_TTL", "15m")
 	v.SetDefault("JWT_REFRESH_TTL", "168h")
+	v.SetDefault("JWT_ISSUER", "restful-template")
+	v.SetDefault("JWT_AUDIENCE", "restful-template")
 
 	v.SetDefault("LOG_LEVEL", "info")
 	v.SetDefault("LOG_FORMAT", "json")
 
 	v.SetDefault("TELEMETRY_OTLP_ENDPOINT", "localhost:4317")
+
+	v.SetDefault("CORS_ALLOWED_ORIGINS", "*") // override in production
+
+	rawOrigins := v.GetString("CORS_ALLOWED_ORIGINS")
+	var allowedOrigins []string
+	for _, o := range strings.Split(rawOrigins, ",") {
+		o = strings.TrimSpace(o)
+		if o != "" {
+			allowedOrigins = append(allowedOrigins, o)
+		}
+	}
 
 	return Config{
 		App: App{
@@ -131,6 +157,7 @@ func Load() Config {
 			MaxOpenConns:    v.GetInt("DATABASE_MAX_OPEN_CONNS"),
 			MaxIdleConns:    v.GetInt("DATABASE_MAX_IDLE_CONNS"),
 			ConnMaxLifetime: mustDuration(v, "DATABASE_CONN_MAX_LIFETIME"),
+			RunMigrations:   v.GetBool("DATABASE_RUN_MIGRATIONS"),
 		},
 		Redis: Redis{
 			DSN: v.GetString("REDIS_DSN"),
@@ -139,6 +166,8 @@ func Load() Config {
 			Secret:     v.GetString("JWT_SECRET"),
 			AccessTTL:  mustDuration(v, "JWT_ACCESS_TTL"),
 			RefreshTTL: mustDuration(v, "JWT_REFRESH_TTL"),
+			Issuer:     v.GetString("JWT_ISSUER"),
+			Audience:   v.GetString("JWT_AUDIENCE"),
 		},
 		Log: Log{
 			Level:  v.GetString("LOG_LEVEL"),
@@ -147,17 +176,21 @@ func Load() Config {
 		Telemetry: Telemetry{
 			OTLPEndpoint: v.GetString("TELEMETRY_OTLP_ENDPOINT"),
 		},
+		CORS: CORS{
+			AllowedOrigins: allowedOrigins,
+		},
 	}
 }
 
-// mustDuration parses a duration string from viper, falling back to viper's
-// default if the value is invalid. It never panics.
+// mustDuration parses a duration string from viper.
+// It panics on misconfiguration — fail-fast at startup is correct for timeouts.
+// A zero/missing timeout would silently create an infinite timeout, which is
+// a reliability hazard in production.
 func mustDuration(v *viper.Viper, key string) time.Duration {
 	s := v.GetString(key)
 	d, err := time.ParseDuration(s)
 	if err != nil {
-		// Fall back to the registered default
-		d, _ = time.ParseDuration(v.GetString(key))
+		panic(fmt.Sprintf("config: invalid duration for %s=%q: %v", key, s, err))
 	}
 	return d
 }

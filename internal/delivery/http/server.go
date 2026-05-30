@@ -29,7 +29,15 @@ type Server struct {
 // NewServer wires up all middleware, Huma API, and registers routes.
 // tokens (auth.TokenService) is passed separately so AuthMiddleware can
 // validate JWTs without depending on the full AuthService (clean arch).
-func NewServer(cfg config.Config, log *slog.Logger, authUsecase *auth.Usecase, todosUsecase *todos.Usecase, tokens auth.TokenService, limiter *redis_rate.Limiter) *Server {
+func NewServer(
+	cfg config.Config,
+	log *slog.Logger,
+	authUsecase *auth.Usecase,
+	todosUsecase *todos.Usecase,
+	tokens auth.TokenService,
+	limiter *redis_rate.Limiter,
+	healthCheckers map[string]HealthChecker,
+) *Server {
 	r := chi.NewRouter()
 
 	promMiddleware, err := sharedmw.NewPrometheusMiddleware(prometheus.DefaultRegisterer)
@@ -50,7 +58,7 @@ func NewServer(cfg config.Config, log *slog.Logger, authUsecase *auth.Usecase, t
 	r.Use(sharedmw.Logger(log))
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(cfg.HTTP.ReadTimeout))
-	r.Use(sharedmw.CORS())
+	r.Use(sharedmw.CORS(cfg.CORS.AllowedOrigins)) // point 3: configurable origins
 	r.Use(sharedmw.SecurityHeaders())
 	r.Use(sharedmw.RateLimiter(limiter))
 
@@ -72,7 +80,7 @@ func NewServer(cfg config.Config, log *slog.Logger, authUsecase *auth.Usecase, t
 	api := humachi.New(r, humaConfig)
 	api.UseMiddleware(auth.AuthMiddleware(api, tokens))
 
-	RegisterRoutes(api, authUsecase, todosUsecase, log)
+	RegisterRoutes(api, healthCheckers, authUsecase, todosUsecase)
 
 	return &Server{router: r, api: api}
 }
