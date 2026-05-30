@@ -83,6 +83,7 @@ func newTestAPI(ctx context.Context, pgDSN string, redisDSN string) (http.Handle
 	_ = os.Setenv("REDIS_DSN", redisDSN)
 	_ = os.Setenv("JWT_SECRET", testJWTSecret)
 	_ = os.Setenv("LOG_LEVEL", "error")
+	_ = os.Setenv("DATABASE_RUN_MIGRATIONS", "true")
 
 	cfg := config.Load()
 	logger := observability.NewLogger(cfg.Log.Level, cfg.Log.Format, "test")
