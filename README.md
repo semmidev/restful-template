@@ -81,6 +81,7 @@ make run
   - **Modular Monolith (Package by Feature)**: Batasan (*boundaries*) yang tegas mencegah *technical debt* dan arsitektur *ball-of-mud*.
   - *Synchronous Interface Injection* untuk *Consumer-Driven Contracts* yang bersih antar modul.
   - Transaksi lintas modul dikelola secara aman menggunakan `database.TxManager`.
+  - **Dedicated Background Scheduler**: Menjalankan cron jobs terpisah dari API utama menggunakan `gocron/v2`.
 
 - **Routing & Documentation**
   - Integrasi Huma v2 + Chi v5 dengan *typed HTTP handlers* dan validasi otomatis.
@@ -124,6 +125,9 @@ Proyek ini melampaui sekadar kerangka kerja RESTful biasa dan menerapkan pola *E
    - Pembatasan laju (*Rate Limiter*) berbasis Redis dirancang agar **Fail-Open**. Artinya, jika server Redis mengalami *down*, permintaan klien tetap diproses agar API tidak ikut lumpuh total. Didukung dengan lapisan *Security Headers* (HSTS, nosniff, frame-options) bawaan.
 5. **Observability Zero-Configuration**
    - Jejak terdistribusi (*Trace ID*) dari OpenTelemetry secara cerdas disuntikkan kembali ke dalam *HTTP Response Header* (`X-Trace-Id`). Klien atau *Frontend Developer* yang mendapatkan error bisa melaporkan ID tersebut, dan Anda bisa langsung melihat urutan *SQL query* mana yang memicu *bug* di dasbor Grafana Tempo.
+6. **Dedicated Background Scheduler (Cron Jobs)**
+   - Menjalankan tugas di latar belakang (seperti membersihkan *refresh token* kedaluwarsa) langsung dari web API rentan terhadap isu *race conditions* dan pemborosan CPU ketika aplikasi di-*scale* secara horizontal (banyak replika).
+   - Proyek ini memisahkan *scheduler* menjadi *binary* dan *container* independen (`cmd/scheduler`). *Logic* pekerjaannya (*job logic*) tetap terenkapsulasi secara modular di dalam domainnya (contoh: `AuthJob` di modul `auth`) dengan arsitektur yang bersih tanpa perlu menyentuh *query* database mentah secara langsung.
 
 ---
 
@@ -154,7 +158,8 @@ Template ini tidak sekadar menggunakan Huma sebagai generator OpenAPI, melainkan
 ```text
 .
 ├── cmd/
-│   └── server/       # Entrypoint utama — tipis, hanya mendelegasikan ke internal/app
+│   ├── server/       # Entrypoint utama API
+│   └── scheduler/    # Entrypoint terpisah untuk background cron jobs (gocron/v2)
 ├── config/           # Konfigurasi infrastruktur (Prometheus, Grafana, Loki, Tempo, Alloy)
 ├── internal/
 │   ├── app/          # Dependency injection & wiring terpusat (Setup)
