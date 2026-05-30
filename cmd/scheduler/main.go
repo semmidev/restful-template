@@ -56,7 +56,7 @@ func run(ctx context.Context) error {
 		logger.Error("failed to connect to redis", "err", err)
 		os.Exit(1)
 	}
-	defer rdb.Close()
+	defer func() { _ = rdb.Close() }()
 
 	// Initialize Repositories and Jobs
 	tokenRepo := auth.NewTokenRepository(pool)
