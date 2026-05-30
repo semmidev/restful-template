@@ -43,6 +43,22 @@ services:
     networks:
       - monitoring
 
+  scheduler:
+    container_name: restful-template-scheduler
+    build:
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: ["/scheduler"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    restart: unless-stopped
+    networks:
+      - monitoring
+
   prometheus:
     image: prom/prometheus
     container_name: prometheus

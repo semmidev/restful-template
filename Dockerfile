@@ -13,11 +13,15 @@ RUN go mod download
 
 COPY . .
 
-# Build a fully static binary
+# Build fully static binaries
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build -ldflags="-s -w -extldflags '-static'" \
     -trimpath \
-    -o /bin/server ./cmd/server
+    -o /bin/server ./cmd/server && \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -ldflags="-s -w -extldflags '-static'" \
+    -trimpath \
+    -o /bin/scheduler ./cmd/scheduler
 
 # ─── Stage 2: Distroless runtime ─────────────────────────────────────────────
 FROM gcr.io/distroless/static-debian12
@@ -26,6 +30,7 @@ WORKDIR /
 
 # Copy binary and runtime config (migrations are embedded in the binary)
 COPY --from=builder /bin/server /server
+COPY --from=builder /bin/scheduler /scheduler
 COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
 
 EXPOSE 8080

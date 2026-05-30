@@ -35,6 +35,32 @@ services:
         max-file: "3"
 
   # ─────────────────────────────────────────
+  # Scheduler — Cron jobs
+  # ─────────────────────────────────────────
+  scheduler:
+    image: ${DOCKER_IMAGE:-sammidev/restful-template}:${IMAGE_TAG:-latest}
+    container_name: restful-template-scheduler
+    restart: unless-stopped
+    entrypoint: ["/scheduler"]
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      alloy:
+        condition: service_started
+    networks:
+      - internal
+      - monitoring
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ─────────────────────────────────────────
   # PostgreSQL
   # ─────────────────────────────────────────
   db:

@@ -43,3 +43,4 @@ infra/ansible/inventory
 *.log
 tmp/
 /tmp/
+/references
