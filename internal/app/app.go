@@ -89,5 +89,3 @@ func Setup(ctx context.Context, cfg config.Config, logger *slog.Logger) (http.Ha
 
 	return server.Handler(), cleanup, nil
 }
-
-

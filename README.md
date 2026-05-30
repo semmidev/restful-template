@@ -125,9 +125,10 @@ Proyek ini melampaui sekadar kerangka kerja RESTful biasa dan menerapkan pola *E
    - Pembatasan laju (*Rate Limiter*) berbasis Redis dirancang agar **Fail-Open**. Artinya, jika server Redis mengalami *down*, permintaan klien tetap diproses agar API tidak ikut lumpuh total. Didukung dengan lapisan *Security Headers* (HSTS, nosniff, frame-options) bawaan.
 5. **Observability Zero-Configuration**
    - Jejak terdistribusi (*Trace ID*) dari OpenTelemetry secara cerdas disuntikkan kembali ke dalam *HTTP Response Header* (`X-Trace-Id`). Klien atau *Frontend Developer* yang mendapatkan error bisa melaporkan ID tersebut, dan Anda bisa langsung melihat urutan *SQL query* mana yang memicu *bug* di dasbor Grafana Tempo.
-6. **Dedicated Background Scheduler (Cron Jobs)**
+6. **Dedicated Background Scheduler (Cron Jobs) & Distributed Locking**
    - Menjalankan tugas di latar belakang (seperti membersihkan *refresh token* kedaluwarsa) langsung dari web API rentan terhadap isu *race conditions* dan pemborosan CPU ketika aplikasi di-*scale* secara horizontal (banyak replika).
    - Proyek ini memisahkan *scheduler* menjadi *binary* dan *container* independen (`cmd/scheduler`). *Logic* pekerjaannya (*job logic*) tetap terenkapsulasi secara modular di dalam domainnya (contoh: `AuthJob` di modul `auth`) dengan arsitektur yang bersih tanpa perlu menyentuh *query* database mentah secara langsung.
+   - **Distributed Locking via Redis**: Scheduler dilengkapi dengan implementasi `gocron.Locker` kustom (`internal/shared/redis/locker.go`) yang menggunakan Redis `SetNX`. Mekanisme ini menjamin bahwa sebuah tugas tidak akan pernah tumpang tindih (*overlap*) dengan eksekusi sebelumnya, dan menjaga sistem tetap aman meskipun *scheduler* di-*scale* ke beberapa *instance*. Terdapat *TTL auto-expire* untuk mencegah *deadlock* jika *worker* mendadak lumpuh saat memegang kunci.
 
 ---
 

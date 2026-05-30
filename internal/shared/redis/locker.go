@@ -34,7 +34,7 @@ func NewRedisLocker(client *redisclient.Client, prefix string, ttl time.Duration
 // Lock attempts to acquire a lock for the given key.
 func (l *RedisLocker) Lock(ctx context.Context, key string) (gocron.Lock, error) {
 	lockKey := fmt.Sprintf("%s%s", l.prefix, key)
-	
+
 	// Use SetNX to acquire the lock only if it doesn't already exist
 	acquired, err := l.client.SetNX(ctx, lockKey, "locked", l.ttl).Result()
 	if err != nil {
