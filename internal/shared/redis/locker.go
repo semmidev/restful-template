@@ -16,21 +16,24 @@ var ErrFailedToAcquireLock = errors.New("failed to acquire lock")
 // RedisLocker implements gocron.Locker using Redis SetNX
 type RedisLocker struct {
 	client *redisclient.Client
+	prefix string
 	ttl    time.Duration
 }
 
-// NewRedisLocker creates a new RedisLocker for gocron.
+// NewRedisLocker creates a new RedisLocker for gocron or other uses.
+// The prefix is prepended to the lock key.
 // The ttl is the expiration time of the lock to prevent deadlocks if the instance crashes.
-func NewRedisLocker(client *redisclient.Client, ttl time.Duration) *RedisLocker {
+func NewRedisLocker(client *redisclient.Client, prefix string, ttl time.Duration) *RedisLocker {
 	return &RedisLocker{
 		client: client,
+		prefix: prefix,
 		ttl:    ttl,
 	}
 }
 
 // Lock attempts to acquire a lock for the given key.
 func (l *RedisLocker) Lock(ctx context.Context, key string) (gocron.Lock, error) {
-	lockKey := fmt.Sprintf("gocron:lock:%s", key)
+	lockKey := fmt.Sprintf("%s%s", l.prefix, key)
 	
 	// Use SetNX to acquire the lock only if it doesn't already exist
 	acquired, err := l.client.SetNX(ctx, lockKey, "locked", l.ttl).Result()

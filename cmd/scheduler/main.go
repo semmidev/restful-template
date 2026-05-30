@@ -63,7 +63,7 @@ func run(ctx context.Context) error {
 	authJob := auth.NewAuthJob(tokenRepo, logger)
 
 	// Initialize Redis Locker (5 minutes TTL to prevent deadlocks)
-	locker := redis.NewRedisLocker(rdb, 5*time.Minute)
+	locker := redis.NewRedisLocker(rdb, "gocron:lock:", 5*time.Minute)
 
 	// Initialize Scheduler
 	s, err := gocron.NewScheduler(
