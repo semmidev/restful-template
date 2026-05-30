@@ -7,12 +7,14 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/go-co-op/gocron/v2"
 	"github.com/semmidev/restful-template/internal/config"
 	"github.com/semmidev/restful-template/internal/modules/auth"
 	"github.com/semmidev/restful-template/internal/shared/database"
 	"github.com/semmidev/restful-template/internal/shared/observability"
+	"github.com/semmidev/restful-template/internal/shared/redis"
 )
 
 func main() {
@@ -48,12 +50,25 @@ func run(ctx context.Context) error {
 	}
 	defer pool.Close()
 
+	// Initialize Redis
+	rdb, _, err := redis.NewClient(ctx, cfg.Redis.DSN)
+	if err != nil {
+		logger.Error("failed to connect to redis", "err", err)
+		os.Exit(1)
+	}
+	defer rdb.Close()
+
 	// Initialize Repositories and Jobs
 	tokenRepo := auth.NewTokenRepository(pool)
 	authJob := auth.NewAuthJob(tokenRepo, logger)
 
+	// Initialize Redis Locker (5 minutes TTL to prevent deadlocks)
+	locker := redis.NewRedisLocker(rdb, 5*time.Minute)
+
 	// Initialize Scheduler
-	s, err := gocron.NewScheduler()
+	s, err := gocron.NewScheduler(
+		gocron.WithDistributedLocker(locker),
+	)
 	if err != nil {
 		return fmt.Errorf("failed to create scheduler: %w", err)
 	}
