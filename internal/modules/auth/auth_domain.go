@@ -83,6 +83,7 @@ type UserRepository interface {
 type TokenRepository interface {
 	StoreRefreshToken(ctx context.Context, userID uuid.UUID, tokenHash string, expiresAt time.Time) error
 	DeleteRefreshToken(ctx context.Context, tokenHash string) error
+	DeleteExpiredRefreshTokens(ctx context.Context) (int64, error)
 }
 
 // AuthService is the interface that RegisterAuthRoutes consumes.

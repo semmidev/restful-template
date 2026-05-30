@@ -48,3 +48,11 @@ func (r *tokenRepository) DeleteRefreshToken(ctx context.Context, tokenHash stri
 	}
 	return nil
 }
+
+func (r *tokenRepository) DeleteExpiredRefreshTokens(ctx context.Context) (int64, error) {
+	tag, err := database.GetDB(ctx, r.db).Exec(ctx, "DELETE FROM refresh_tokens WHERE expires_at < NOW()")
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
+}

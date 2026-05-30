@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-co-op/gocron/v2"
 	"github.com/semmidev/restful-template/internal/config"
-	"github.com/semmidev/restful-template/internal/jobs"
+	"github.com/semmidev/restful-template/internal/modules/auth"
 	"github.com/semmidev/restful-template/internal/shared/database"
 	"github.com/semmidev/restful-template/internal/shared/observability"
 )
@@ -48,6 +48,10 @@ func run(ctx context.Context) error {
 	}
 	defer pool.Close()
 
+	// Initialize Repositories and Jobs
+	tokenRepo := auth.NewTokenRepository(pool)
+	authJob := auth.NewAuthJob(tokenRepo, logger)
+
 	// Initialize Scheduler
 	s, err := gocron.NewScheduler()
 	if err != nil {
@@ -58,11 +62,7 @@ func run(ctx context.Context) error {
 	// Run hourly (0th minute of every hour)
 	_, err = s.NewJob(
 		gocron.CronJob("0 * * * *", false),
-		gocron.NewTask(
-			func() {
-				jobs.CleanupExpiredTokens(context.Background(), pool, logger)
-			},
-		),
+		gocron.NewTask(authJob.CleanupExpiredTokens),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to register cleanup job: %w", err)
@@ -73,7 +73,7 @@ func run(ctx context.Context) error {
 	logger.Info("scheduler started successfully", "jobs", len(s.Jobs()))
 
 	// Run once immediately on startup to clear backlog
-	jobs.CleanupExpiredTokens(context.Background(), pool, logger)
+	authJob.CleanupExpiredTokens()
 
 	// Wait for shutdown signal
 	<-ctx.Done()

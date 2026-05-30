@@ -47,8 +47,7 @@ services:
     container_name: restful-template-scheduler
     build:
       context: .
-      dockerfile: Dockerfile
-    entrypoint: ["/scheduler"]
+      dockerfile: Dockerfile.scheduler
     depends_on:
       postgres:
         condition: service_healthy
