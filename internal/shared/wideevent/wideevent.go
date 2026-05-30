@@ -76,7 +76,7 @@ func Emit(ctx context.Context, log *slog.Logger, level slog.Level, msg string, e
 		return
 	}
 
-	// Capture the program counter of Emit's caller to ensure the "source" field 
+	// Capture the program counter of Emit's caller to ensure the "source" field
 	// (file/line) points to the middleware/handler, not this helper function.
 	var pcs [1]uintptr
 	runtime.Callers(2, pcs[:])
@@ -88,7 +88,7 @@ func Emit(ctx context.Context, log *slog.Logger, level slog.Level, msg string, e
 	args := make([]any, 0, len(extra)+len(accumulated))
 	args = append(args, extra...)
 	args = append(args, accumulated...)
-	
+
 	r.Add(args...)
 	_ = log.Handler().Handle(ctx, r)
 }
