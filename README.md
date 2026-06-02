@@ -204,6 +204,11 @@ type TodoService interface {
 
 Modul `todos` mengimplementasikan kontrak ini, lalu di-*inject* ke `auth` saat inisialisasi di `cmd/server/main.go`. Hasilnya: `auth` memanggil `todos` tanpa pernah terhubung secara statis.
 
+**Mengapa Service/Usecase diekspos sebagai Interface?**
+- **Isolated Unit Testing**: Layer HTTP (`delivery/http`) bergantung pada *interface*, bukan *concrete struct*. Ini memungkinkan pembuatan unit test untuk HTTP Handler secara terisolasi menggunakan *mock* (tanpa setup database/Redis).
+- **Mencegah Circular Dependencies**: Jika modul `auth` bergantung pada konkrit struktur `todos`, dan suatu saat `todos` butuh fungsi dari `auth`, akan terjadi *circular import* (yang dilarang keras di Go). Interface menjaga kedua modul tetap terisolasi.
+- **Architectural Boundary**: Compiler Go menjamin bahwa layer luar (seperti router/HTTP) hanya bisa memanggil fungsi yang terdaftar secara eksplisit di kontrak *interface*, mencegah kebocoran logika internal *usecase*.
+
 ### Transaksi Lintas Modul (Cross-Module Transactions)
 
 Integritas data lintas modul dijaga menggunakan `TxManager` sebagai *cross-cutting concern*:
