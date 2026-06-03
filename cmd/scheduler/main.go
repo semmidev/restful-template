@@ -66,6 +66,7 @@ func run(ctx context.Context) error {
 
 	s, err := gocron.NewScheduler(
 		gocron.WithDistributedLocker(locker),
+		gocron.WithLogger(logger),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create scheduler: %w", err)

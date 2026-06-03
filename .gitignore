@@ -44,3 +44,4 @@ infra/ansible/inventory
 tmp/
 /tmp/
 /references
+scheduler

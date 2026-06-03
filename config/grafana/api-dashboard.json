@@ -1042,12 +1042,54 @@
           },
           "direction": "backward",
           "editorMode": "code",
-          "expr": "{service=\"restful-template\"} | json",
+          "expr": "{service=\"restful-template\"} | json | __error__ = \"\"",
           "queryType": "range",
           "refId": "A"
         }
       ],
-      "title": "Logs",
+      "title": "API Logs",
+      "type": "logs"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 23
+      },
+      "id": 11,
+      "options": {
+        "dedupStrategy": "exact",
+        "enableInfiniteScrolling": false,
+        "enableLogDetails": false,
+        "fontSize": "small",
+        "showControls": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "syntaxHighlighting": true,
+        "timestampResolution": "ms",
+        "wrapLogMessage": false
+      },
+      "pluginVersion": "12.3.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "direction": "backward",
+          "editorMode": "code",
+          "expr": "{service=\"restful-template-scheduler\"} | json | __error__ = \"\"",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Scheduler Logs",
       "type": "logs"
     }
   ],
