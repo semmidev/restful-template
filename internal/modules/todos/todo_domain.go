@@ -167,7 +167,7 @@ type TodoRepository interface {
 // *Usecase satisfies this interface implicitly — it exists solely to enable
 // handler unit-testing with mocks (e.g. via humatest) without a real database.
 //
-// point 10: Update now accepts a pre-loaded *Todo entity (fetched by the handler
+// Update now accepts a pre-loaded *Todo entity (fetched by the handler
 // for ETag check) to avoid a redundant repo.GetByID call inside the usecase.
 type TodoService interface {
 	List(ctx context.Context, q ListTodosQuery) ([]*Todo, int, error)

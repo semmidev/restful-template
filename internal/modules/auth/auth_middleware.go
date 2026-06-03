@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"net/http"
 	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -14,7 +13,7 @@ import (
 // RegisterPublicPath allows route registration functions to self-declare their
 // public status — single source of truth, no fragile hardcoded list here.
 //
-// point 14: was previously a chained string comparison which required manual
+// was previously a chained string comparison which required manual
 // updates whenever a new public route was added (OCP violation) and did O(n)
 // linear scan.
 var publicPaths = map[string]struct{}{
@@ -59,14 +58,14 @@ func AuthMiddleware(api huma.API, tokens TokenService) func(ctx huma.Context, ne
 
 		authHeader := ctx.Header("Authorization")
 		if !strings.HasPrefix(authHeader, "Bearer ") {
-			_ = huma.WriteErr(api, ctx, http.StatusUnauthorized, "missing or malformed authorization header")
+			httpapi.WriteHumaErr(api, ctx, httpapi.ToHumaErrUnauthorized("missing or malformed authorization header"))
 			return
 		}
 
 		token := strings.TrimPrefix(authHeader, "Bearer ")
 		claims, err := tokens.ParseAccess(ctx.Context(), token)
 		if err != nil {
-			_ = huma.WriteErr(api, ctx, http.StatusUnauthorized, "invalid or expired token")
+			httpapi.WriteHumaErr(api, ctx, httpapi.ToHumaErrUnauthorized("invalid or expired token"))
 			return
 		}
 

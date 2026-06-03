@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -12,6 +11,31 @@ import (
 	apperrors "github.com/semmidev/restful-template/internal/shared/errors"
 	"github.com/semmidev/restful-template/internal/shared/wideevent"
 )
+
+// init overrides huma.NewError so that every error path in Huma —
+// auth middleware huma.WriteErr calls, built-in validation failures,
+// 404/405/415 responses — all produce the same APIError shape.
+//
+// This is the canonical hook documented at https://huma.rocks/features/response-errors/
+func init() {
+	huma.NewError = func(status int, msg string, errs ...error) huma.StatusError {
+		code := statusToCode(status)
+		apiErr := newAPIError(status, code, msg)
+		for _, e := range errs {
+			if e == nil {
+				continue
+			}
+			var det *huma.ErrorDetail
+			if ed, ok := e.(huma.ErrorDetailer); ok {
+				det = ed.ErrorDetail()
+			} else {
+				det = &huma.ErrorDetail{Message: e.Error()}
+			}
+			apiErr.Errors = append(apiErr.Errors, det)
+		}
+		return apiErr
+	}
+}
 
 type CtxKey string
 
@@ -21,8 +45,13 @@ const (
 )
 
 // APIError is the canonical application error response.
-// It extends the RFC 9457 Problem Details format with a machine-readable
-// `code` field that clients can use for i18n and programmatic error handling.
+// It fully implements RFC 9457 Problem Details and is extended with:
+//   - `code`: machine-readable string for i18n / programmatic handling
+//   - `errors`: optional list of sub-errors (Huma validation details)
+//
+// Every Huma error path — handler returns, huma.WriteErr, built-in
+// validation, 404/405/415 — produces this exact shape via the huma.NewError
+// override in init().
 //
 // Example response body:
 //
@@ -31,24 +60,63 @@ const (
 //	  "title":   "Not Found",
 //	  "status":  404,
 //	  "detail":  "The requested todo does not exist",
-//	  "instance": "/api/v1/todos/123",
-//	  "code":    "TODO_NOT_FOUND"
+//	  "code":    "NOT_FOUND"
 //	}
 type APIError struct {
-	Type     string `json:"type" default:"about:blank"`
-	Title    string `json:"title"`
-	Status   int    `json:"status"`
-	Detail   string `json:"detail,omitempty"`
-	Instance string `json:"instance,omitempty"`
-	Code     string `json:"code,omitempty"`
+	Type     string              `json:"type"`
+	Title    string              `json:"title"`
+	Status   int                 `json:"status"`
+	Detail   string              `json:"detail,omitempty"`
+	Instance string              `json:"instance,omitempty"`
+	Code     string              `json:"code,omitempty"`
+	Errors   []*huma.ErrorDetail `json:"errors,omitempty"`
 }
 
-// GetStatus implements huma.StatusError so Huma uses our custom struct as the
-// error response body instead of its own ErrorModel.
+// GetStatus implements huma.StatusError — Huma uses our struct as the body.
 func (e *APIError) GetStatus() int { return e.Status }
 
 // Error implements the error interface.
 func (e *APIError) Error() string { return e.Detail }
+
+// ContentType tells Huma to return application/problem+json (RFC 9457)
+// instead of application/json for all error responses.
+func (e *APIError) ContentType(ct string) string {
+	if ct == "application/json" {
+		return "application/problem+json"
+	}
+	if ct == "application/cbor" {
+		return "application/problem+cbor"
+	}
+	return ct
+}
+
+// statusToCode derives a default machine-readable code from an HTTP status.
+// This is used for errors that originate inside Huma itself (routing, validation)
+// rather than from application SafeErrors (which carry their own Code).
+func statusToCode(status int) string {
+	switch status {
+	case http.StatusBadRequest:
+		return "BAD_REQUEST"
+	case http.StatusUnauthorized:
+		return "UNAUTHORIZED"
+	case http.StatusForbidden:
+		return "FORBIDDEN"
+	case http.StatusNotFound:
+		return "NOT_FOUND"
+	case http.StatusConflict:
+		return "CONFLICT"
+	case http.StatusUnprocessableEntity:
+		return "UNPROCESSABLE_ENTITY"
+	case http.StatusTooManyRequests:
+		return "RATE_LIMITED"
+	case http.StatusInternalServerError:
+		return "INTERNAL_ERROR"
+	case http.StatusServiceUnavailable:
+		return "SERVICE_UNAVAILABLE"
+	default:
+		return http.StatusText(status)
+	}
+}
 
 func newAPIError(status int, code, detail string) *APIError {
 	return &APIError{
@@ -60,6 +128,8 @@ func newAPIError(status int, code, detail string) *APIError {
 	}
 }
 
+// ExtractUserID retrieves the authenticated user's UUID from the request context.
+// Returns ErrUnauthorized if the key is missing (i.e. the auth middleware did not run).
 func ExtractUserID(ctx context.Context) (uuid.UUID, error) {
 	val := ctx.Value(UserIDKey)
 	if val == nil {
@@ -67,59 +137,66 @@ func ExtractUserID(ctx context.Context) (uuid.UUID, error) {
 	}
 	id, ok := val.(uuid.UUID)
 	if !ok {
-		return uuid.Nil, fmt.Errorf("invalid type for user_id in context")
+		return uuid.Nil, apperrors.NewInternal("invalid user_id type in context", nil)
 	}
 	return id, nil
 }
 
 // ToHumaErr maps an application error to a Huma-compatible *APIError.
-// It always carries:
-//   - The safe user-facing message (never leaks internal details)
-//   - A machine-readable code (from SafeError.Code or derived from the sentinel)
-//   - Enriches the wide event with error context for canonical log lines
+//
+// Priority order:
+//  1. If the error wraps a *SafeError, use its Code and UserMsg directly —
+//     the message is already safe for clients.
+//  2. Otherwise fall back to the sentinel (ErrNotFound etc.) for HTTP status,
+//     and derive a generic code + message.
+//
+// The wide event is always enriched with error context for canonical log lines.
 func ToHumaErr(ctx context.Context, err error) error {
 	var safeErr *apperrors.SafeError
-	code := "INTERNAL_ERROR"
-	userMsg := "internal server error"
-
 	if errors.As(err, &safeErr) {
-		code = safeErr.Code
-		userMsg = safeErr.UserMsg
+		// SafeError carries both the safe user message and a structured log string.
 		wideevent.Add(ctx, "error", safeErr.LogString())
-	} else {
-		wideevent.Add(ctx, "error", err.Error())
-		switch {
-		case errors.Is(err, apperrors.ErrNotFound):
-			code = "NOT_FOUND"
-			userMsg = "resource not found"
-		case errors.Is(err, apperrors.ErrConflict):
-			code = "CONFLICT"
-			userMsg = "resource conflict"
-		case errors.Is(err, apperrors.ErrUnauthorized):
-			code = "UNAUTHORIZED"
-			userMsg = "unauthorized access"
-		case errors.Is(err, apperrors.ErrForbidden):
-			code = "FORBIDDEN"
-			userMsg = "forbidden access"
-		case errors.Is(err, apperrors.ErrInvalidInput):
-			code = "INVALID_INPUT"
-			userMsg = "invalid input data"
-		}
+		return newAPIError(sentinelStatus(err), safeErr.Code, safeErr.UserMsg)
 	}
 
+	// Plain sentinel — log the raw error, derive safe defaults.
+	wideevent.Add(ctx, "error", err.Error())
+	return newAPIError(sentinelStatus(err), statusToCode(sentinelStatus(err)), sentinelMsg(err))
+}
+
+// sentinelStatus maps the error chain to an HTTP status code.
+func sentinelStatus(err error) int {
 	switch {
 	case errors.Is(err, apperrors.ErrNotFound):
-		return newAPIError(http.StatusNotFound, code, userMsg)
+		return http.StatusNotFound
 	case errors.Is(err, apperrors.ErrConflict):
-		return newAPIError(http.StatusConflict, code, userMsg)
+		return http.StatusConflict
 	case errors.Is(err, apperrors.ErrUnauthorized):
-		return newAPIError(http.StatusUnauthorized, code, userMsg)
+		return http.StatusUnauthorized
 	case errors.Is(err, apperrors.ErrForbidden):
-		return newAPIError(http.StatusForbidden, code, userMsg)
+		return http.StatusForbidden
 	case errors.Is(err, apperrors.ErrInvalidInput):
-		return newAPIError(http.StatusBadRequest, code, userMsg)
+		return http.StatusBadRequest
 	default:
-		return newAPIError(http.StatusInternalServerError, code, userMsg)
+		return http.StatusInternalServerError
+	}
+}
+
+// sentinelMsg returns a generic safe message for bare sentinel errors.
+func sentinelMsg(err error) string {
+	switch {
+	case errors.Is(err, apperrors.ErrNotFound):
+		return "resource not found"
+	case errors.Is(err, apperrors.ErrConflict):
+		return "resource conflict"
+	case errors.Is(err, apperrors.ErrUnauthorized):
+		return "unauthorized access"
+	case errors.Is(err, apperrors.ErrForbidden):
+		return "forbidden"
+	case errors.Is(err, apperrors.ErrInvalidInput):
+		return "invalid input data"
+	default:
+		return "internal server error"
 	}
 }
 
@@ -129,12 +206,8 @@ func ToHumaErrUnauthorized(msg string) *APIError {
 	return newAPIError(http.StatusUnauthorized, "UNAUTHORIZED", msg)
 }
 
-// ToHumaErrBadRequest is a convenience for 400 without a SafeError.
-func ToHumaErrBadRequest(msg string) *APIError {
-	return newAPIError(http.StatusBadRequest, "BAD_REQUEST", msg)
-}
-
-// WriteHumaErr writes an *APIError directly to a huma.Context (for use in Huma middleware).
+// WriteHumaErr writes an *APIError directly to a huma.Context.
+// The content type is set to application/problem+json per RFC 9457.
 func WriteHumaErr(api huma.API, ctx huma.Context, apiErr *APIError) {
 	ctx.SetHeader("Content-Type", "application/problem+json")
 	ctx.SetStatus(apiErr.Status)

@@ -27,7 +27,7 @@ func (r *userRepository) Create(ctx context.Context, u *User) error {
 
 	_, err = database.GetDB(ctx, r.db).Exec(ctx, sql, args...)
 	if err != nil {
-		// point 9: surface unique constraint violation as ErrConflict so the
+		// surface unique constraint violation as ErrConflict so the
 		// usecase doesn't need a racy pre-check (TOCTOU) and callers get a
 		// proper 409 instead of a 500 on concurrent registrations.
 		var pgErr *pgconn.PgError

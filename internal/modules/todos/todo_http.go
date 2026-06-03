@@ -17,7 +17,7 @@ import (
 )
 
 // maxCoverSize is the upper bound for uploaded cover images.
-// point 2: was previously io.ReadAll with no limit — an attacker could upload
+// previously io.ReadAll with no limit — an attacker could upload
 // an arbitrary-size payload to exhaust server memory.
 const maxCoverSize = 5 << 20 // 5 MB
 
@@ -271,7 +271,7 @@ func (h *todoHandler) handleGet(ctx context.Context, in *getTodoReq) (*TodoResp,
 
 // handleUpdate applies a partial update to a todo.
 //
-// point 10: The entity is fetched once here for ETag validation and then passed
+// The entity is fetched once here for ETag validation and then passed
 // directly into the usecase, which no longer does an internal re-fetch.
 // Total DB calls: GET (1) + UPDATE (1) = 2, down from 3.
 func (h *todoHandler) handleUpdate(ctx context.Context, in *updateTodoReq) (*TodoResp, error) {
@@ -329,7 +329,7 @@ func (h *todoHandler) handleUpdate(ctx context.Context, in *updateTodoReq) (*Tod
 		}
 	}
 
-	// Pass pre-fetched entity — usecase skips the re-fetch (point 10)
+	// Pass pre-fetched entity — usecase skips the re-fetch
 	t, err := h.todos.Update(ctx, existing, UpdateTodoInput{
 		ID:          in.ID,
 		UserID:      userID,
@@ -369,7 +369,7 @@ func (h *todoHandler) handleDelete(ctx context.Context, in *deleteTodoReq) (*str
 // processCoverImage reads, size-checks, and MIME-validates an uploaded cover file.
 // Returns nil if no file was set, a *string base64 data-URI if valid, or an error.
 //
-// point 2: LimitReader enforces maxCoverSize (5 MB), preventing memory exhaustion.
+// LimitReader enforces maxCoverSize (5 MB), preventing memory exhaustion.
 // http.DetectContentType sniffs the actual bytes to verify it's really an image,
 // regardless of the client-supplied Content-Type header.
 func processCoverImage(f huma.FormFile) (*string, error) {

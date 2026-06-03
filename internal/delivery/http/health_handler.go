@@ -20,7 +20,7 @@ type HealthResp struct {
 
 // RegisterHealthRoutes registers the /api/v1/health endpoint.
 //
-// point 18: the handler now probes each registered HealthChecker dependency.
+// the handler now probes each registered HealthChecker dependency.
 // If all are healthy → 200 {"status":"ok","postgres":"ok","redis":"ok"}.
 // If any fail       → 503 with the degraded dependency listed.
 // This ensures Kubernetes readiness probes correctly shed traffic when the

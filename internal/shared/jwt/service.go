@@ -14,8 +14,8 @@ type JWTService struct {
 	secret     []byte
 	accessTTL  time.Duration
 	refreshTTL time.Duration
-	issuer     string // point 5: validated on parse
-	audience   string // point 5: validated on parse
+	issuer     string
+	audience   string
 }
 
 // NewJWTService constructs a JWTService.
@@ -41,8 +41,8 @@ func (s *JWTService) GeneratePair(ctx context.Context, userID uuid.UUID, email s
 		"jti":   uuid.New().String(),
 		"sub":   userID.String(),
 		"email": email,
-		"iss":   s.issuer,   // point 5
-		"aud":   s.audience, // point 5
+		"iss":   s.issuer,
+		"aud":   s.audience,
 		"exp":   accessExp,
 		"type":  "access",
 	})
@@ -56,8 +56,8 @@ func (s *JWTService) GeneratePair(ctx context.Context, userID uuid.UUID, email s
 		"jti":   uuid.New().String(),
 		"sub":   userID.String(),
 		"email": email,
-		"iss":   s.issuer,   // point 5
-		"aud":   s.audience, // point 5
+		"iss":   s.issuer,
+		"aud":   s.audience,
 		"exp":   refreshExp,
 		"type":  "refresh",
 	})
@@ -89,17 +89,17 @@ func (s *JWTService) parse(token, typ string) (*auth.TokenClaims, error) {
 		return nil, apperrors.ErrUnauthorized
 	}
 
-	// point 5: validate token type
+	// validate token type
 	if claims["type"] != typ {
 		return nil, apperrors.ErrUnauthorized
 	}
 
-	// point 5: validate issuer
+	// validate issuer
 	if iss, _ := claims["iss"].(string); iss != s.issuer {
 		return nil, apperrors.ErrUnauthorized
 	}
 
-	// point 5: validate audience
+	// validate audience
 	if aud, _ := claims["aud"].(string); aud != s.audience {
 		return nil, apperrors.ErrUnauthorized
 	}
@@ -110,7 +110,6 @@ func (s *JWTService) parse(token, typ string) (*auth.TokenClaims, error) {
 		return nil, apperrors.ErrUnauthorized
 	}
 
-	// point 5: do NOT discard uuid.Parse error
 	uid, err := uuid.Parse(sub)
 	if err != nil {
 		return nil, apperrors.ErrUnauthorized

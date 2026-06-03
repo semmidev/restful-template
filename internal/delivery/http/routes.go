@@ -10,7 +10,8 @@ import (
 
 // RegisterRoutes wires all module routes onto the Huma API.
 //
-// point 16: removed the unused `log *slog.Logger` parameter.
+//	removed the unused `log *slog.Logger` parameter.
+//
 // Logging is handled at the middleware layer via canonical wide events;
 // individual route registrations don't need a logger reference.
 func RegisterRoutes(

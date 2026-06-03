@@ -96,8 +96,6 @@ func Logger(log *slog.Logger) func(http.Handler) http.Handler {
 // CORS returns a middleware that enforces the given allowedOrigins list.
 // Pass []string{"*"} for development (allows all origins).
 // In production, pass explicit origins: []string{"https://app.example.com"}.
-//
-// Point 3: was previously hardcoded to "*" which bypasses browser CORS policy.
 func CORS(allowedOrigins []string) func(http.Handler) http.Handler {
 	allowAll := len(allowedOrigins) == 1 && allowedOrigins[0] == "*"
 	originSet := make(map[string]struct{}, len(allowedOrigins))
@@ -128,7 +126,6 @@ func CORS(allowedOrigins []string) func(http.Handler) http.Handler {
 }
 
 // SecurityHeaders sets hardened HTTP security headers on every response.
-// Point 19: added Content-Security-Policy.
 func SecurityHeaders() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -145,10 +142,6 @@ func SecurityHeaders() func(http.Handler) http.Handler {
 }
 
 // RateLimiter enforces a per-IP rate limit using Redis.
-//
-// Point 4: was using r.RemoteAddr (always the load-balancer IP behind a proxy).
-// Now uses the X-Real-IP header populated by chi's RealIP middleware, which
-// correctly reflects the client's actual IP address.
 func RateLimiter(limiter *redis_rate.Limiter) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

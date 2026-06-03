@@ -41,7 +41,7 @@ func (s *Usecase) Create(ctx context.Context, in CreateTodoInput) (*Todo, error)
 
 // Get retrieves a todo by ID, using the Redis cache as a read-through layer.
 //
-// point 11: CacheRepository was injected but never used. Now:
+// CacheRepository was injected but never used. Now:
 //   - On cache hit: return the cached entity (avoids a DB query).
 //   - On cache miss: fetch from DB, populate cache, return.
 func (s *Usecase) Get(ctx context.Context, userID, id uuid.UUID) (*Todo, error) {
@@ -86,11 +86,11 @@ func (s *Usecase) List(ctx context.Context, q ListTodosQuery) ([]*Todo, int, err
 
 // Update applies the given input to the pre-loaded entity and persists it.
 //
-// point 10: The handler already fetches the entity for ETag validation.
+// The handler already fetches the entity for ETag validation.
 // Accepting it here eliminates the redundant repo.GetByID call that was
 // previously inside the usecase, reducing a PATCH from 3 DB calls → 2.
 //
-// point 11: Invalidates and re-populates the cache after a successful update.
+// Invalidates and re-populates the cache after a successful update.
 func (s *Usecase) Update(ctx context.Context, existing *Todo, in UpdateTodoInput) (*Todo, error) {
 	ctx, span := s.tracer.Start(ctx, "todo.Update")
 	defer span.End()
@@ -116,7 +116,7 @@ func (s *Usecase) Update(ctx context.Context, existing *Todo, in UpdateTodoInput
 
 // Delete removes a todo and invalidates its cache entry.
 //
-// point 11: cache invalidation on delete.
+// cache invalidation on delete.
 func (s *Usecase) Delete(ctx context.Context, userID, id uuid.UUID) error {
 	ctx, span := s.tracer.Start(ctx, "todo.Delete")
 	defer span.End()

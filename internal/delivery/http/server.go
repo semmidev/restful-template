@@ -58,7 +58,7 @@ func NewServer(
 	r.Use(sharedmw.Logger(log))
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(cfg.HTTP.ReadTimeout))
-	r.Use(sharedmw.CORS(cfg.CORS.AllowedOrigins)) // point 3: configurable origins
+	r.Use(sharedmw.CORS(cfg.CORS.AllowedOrigins))
 	r.Use(sharedmw.SecurityHeaders())
 	r.Use(sharedmw.RateLimiter(limiter))
 

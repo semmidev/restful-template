@@ -28,7 +28,7 @@ func NewAuth(users UserRepository, tokens TokenService, tokenRepo TokenRepositor
 
 // Register creates a new user and returns a token pair.
 //
-// point 9: The previous implementation did a GetByEmail pre-check before Insert,
+// The previous implementation did a GetByEmail pre-check before Insert,
 // which was a TOCTOU race: two concurrent requests could both pass the check and
 // then one fails with a raw DB unique-violation (returning 500). Now we attempt
 // the INSERT directly and let the repository translate the unique constraint
