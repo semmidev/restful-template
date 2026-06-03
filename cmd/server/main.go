@@ -13,6 +13,7 @@ import (
 
 	"github.com/semmidev/restful-template/internal/app"
 	"github.com/semmidev/restful-template/internal/config"
+	"github.com/semmidev/restful-template/internal/shared/banner"
 	"github.com/semmidev/restful-template/internal/shared/observability"
 )
 
@@ -56,6 +57,13 @@ func run(ctx context.Context) error {
 		IdleTimeout:       cfg.HTTP.IdleTimeout,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
+
+	banner.Print(cfg.App.Name, cfg.App.Version, []banner.Field{
+		{Key: "env", Value: cfg.App.Env},
+		{Key: "listening", Value: "http://localhost" + srv.Addr},
+		{Key: "docs", Value: "http://localhost" + srv.Addr + "/docs"},
+		{Key: "metrics", Value: "http://localhost" + srv.Addr + "/metrics"},
+	})
 
 	errChan := make(chan error, 1)
 	go func() {

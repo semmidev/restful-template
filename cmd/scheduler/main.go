@@ -12,6 +12,7 @@ import (
 	"github.com/go-co-op/gocron/v2"
 	"github.com/semmidev/restful-template/internal/config"
 	"github.com/semmidev/restful-template/internal/modules/auth"
+	"github.com/semmidev/restful-template/internal/shared/banner"
 	"github.com/semmidev/restful-template/internal/shared/database"
 	"github.com/semmidev/restful-template/internal/shared/observability"
 	"github.com/semmidev/restful-template/internal/shared/redis"
@@ -78,6 +79,12 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to register cleanup job: %w", err)
 	}
+
+	banner.Print(cfg.App.Name+" (Scheduler)", cfg.App.Version, []banner.Field{
+		{Key: "env", Value: cfg.App.Env},
+		{Key: "jobs", Value: "1 (cleanup tokens)"},
+		{Key: "lock", Value: "redis (5m TTL)"},
+	})
 
 	s.Start()
 	logger.Info("scheduler started successfully", "jobs", len(s.Jobs()))
