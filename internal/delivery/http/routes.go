@@ -6,14 +6,10 @@ import (
 	"github.com/semmidev/restful-template/internal/modules/todos"
 )
 
-// ─── Route Registration ─────────────────────────────────────────────────────
-
 // RegisterRoutes wires all module routes onto the Huma API.
 //
-//	removed the unused `log *slog.Logger` parameter.
-//
 // Logging is handled at the middleware layer via canonical wide events;
-// individual route registrations don't need a logger reference.
+// individual route registration functions must not receive a logger.
 func RegisterRoutes(
 	api huma.API,
 	healthCheckers map[string]HealthChecker,

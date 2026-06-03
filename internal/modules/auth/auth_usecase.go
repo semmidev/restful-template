@@ -26,13 +26,10 @@ func NewAuth(users UserRepository, tokens TokenService, tokenRepo TokenRepositor
 	return &Usecase{users: users, tokens: tokens, tokenRepo: tokenRepo, todos: todos, txManager: txManager, tracer: tracer}
 }
 
-// Register creates a new user and returns a token pair.
-//
-// The previous implementation did a GetByEmail pre-check before Insert,
-// which was a TOCTOU race: two concurrent requests could both pass the check and
-// then one fails with a raw DB unique-violation (returning 500). Now we attempt
-// the INSERT directly and let the repository translate the unique constraint
-// violation (pgErrCode 23505) into apperrors.ErrConflict → proper 409.
+// Register inserts the user directly and lets the repository translate a unique
+// constraint violation (pg code 23505) into ErrConflict.
+// A pre-check GetByEmail before INSERT would be a TOCTOU race: two concurrent
+// requests could both pass the check, then one fails with a raw 500.
 func (s *Usecase) Register(ctx context.Context, in RegisterInput) (TokenPair, error) {
 	if err := in.Validate(); err != nil {
 		return TokenPair{}, err

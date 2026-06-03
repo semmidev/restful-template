@@ -43,14 +43,12 @@ func run(ctx context.Context) error {
 		}()
 	}
 
-	// Initialize Postgres Pool
 	pool, err := database.NewPool(ctx, cfg.Database)
 	if err != nil {
 		return fmt.Errorf("db connect failed: %w", err)
 	}
 	defer pool.Close()
 
-	// Initialize Redis
 	rdb, _, err := redis.NewClient(ctx, cfg.Redis.DSN)
 	if err != nil {
 		logger.Error("failed to connect to redis", "err", err)
@@ -58,14 +56,13 @@ func run(ctx context.Context) error {
 	}
 	defer func() { _ = rdb.Close() }()
 
-	// Initialize Repositories and Jobs
 	tokenRepo := auth.NewTokenRepository(pool)
 	authJob := auth.NewAuthJob(tokenRepo, logger)
 
-	// Initialize Redis Locker (5 minutes TTL to prevent deadlocks)
+	// 5-minute TTL prevents a dead scheduler replica from holding a lock past a
+	// reasonable job window and blocking the next election.
 	locker := redis.NewRedisLocker(rdb, "gocron:lock:", 5*time.Minute)
 
-	// Initialize Scheduler
 	s, err := gocron.NewScheduler(
 		gocron.WithDistributedLocker(locker),
 	)
@@ -73,8 +70,7 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("failed to create scheduler: %w", err)
 	}
 
-	// Register Jobs
-	// Run hourly (0th minute of every hour)
+	// Run at the top of every hour.
 	_, err = s.NewJob(
 		gocron.CronJob("0 * * * *", false),
 		gocron.NewTask(authJob.CleanupExpiredTokens),
@@ -83,19 +79,16 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("failed to register cleanup job: %w", err)
 	}
 
-	// Start Scheduler
 	s.Start()
 	logger.Info("scheduler started successfully", "jobs", len(s.Jobs()))
 
-	// Run once immediately on startup to clear backlog
-	// Langsung dijalankan sekali untuk membersihkan token expired yang mungkin sudah menumpuk.
+	// Run once immediately so tokens that expired while the scheduler was down
+	// are cleared without waiting up to an hour.
 	authJob.CleanupExpiredTokens()
 
-	// Wait for shutdown signal
 	<-ctx.Done()
 	logger.Info("shutdown signal received")
 
-	// Graceful shutdown of scheduler
 	if err := s.Shutdown(); err != nil {
 		logger.Error("scheduler shutdown failed", "err", err)
 		return fmt.Errorf("scheduler shutdown failed: %w", err)

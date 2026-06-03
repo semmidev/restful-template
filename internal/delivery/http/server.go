@@ -20,7 +20,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// Server holds the chi router and huma API.
 type Server struct {
 	router *chi.Mux
 	api    huma.API
@@ -45,7 +44,6 @@ func NewServer(
 		log.Error("failed to create prometheus middleware", "err", err)
 	}
 
-	// Middleware stack (order matters)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(otelchi.Middleware(cfg.App.Name, otelchi.WithChiRoutes(r)))
@@ -62,7 +60,6 @@ func NewServer(
 	r.Use(sharedmw.SecurityHeaders())
 	r.Use(sharedmw.RateLimiter(limiter))
 
-	// Expose Prometheus metrics endpoint
 	r.Get("/metrics", promhttp.Handler().ServeHTTP)
 
 	humaConfig := huma.DefaultConfig(cfg.App.Name, cfg.App.Version)
@@ -87,8 +84,8 @@ func NewServer(
 
 func (s *Server) Handler() http.Handler { return s.router }
 
-// TraceIDMiddleware extracts the OpenTelemetry Trace ID from the context
-// and injects it into the HTTP response header for debugging.
+// TraceIDMiddleware propagates the OpenTelemetry Trace ID into the response so
+// clients and proxies can correlate a request with its trace in Tempo/Jaeger.
 func TraceIDMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		spanContext := trace.SpanContextFromContext(r.Context())

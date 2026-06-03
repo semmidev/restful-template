@@ -78,20 +78,15 @@ func NewPrometheusMiddleware(reg prometheus.Registerer) (*PrometheusMiddleware, 
 	}, nil
 }
 
-// Handler returns the chi middleware handler.
 func (m *PrometheusMiddleware) Handler() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Exclude /metrics from being counted
 			if r.URL.Path == "/metrics" {
 				next.ServeHTTP(w, r)
 				return
 			}
 
 			start := time.Now()
-
-			// Use chi's built-in response wrapper to capture status code
-			// Wait, chi doesn't have a built-in response wrapper exposed easily, we'll need a custom wrapper
 			rw := &responseWriter{ResponseWriter: w, status: http.StatusOK}
 
 			next.ServeHTTP(rw, r)

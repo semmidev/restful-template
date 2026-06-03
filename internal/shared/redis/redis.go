@@ -21,12 +21,12 @@ func NewClient(ctx context.Context, dsn string) (*redis.Client, *redis_rate.Limi
 		return nil, nil, err
 	}
 
-	// Enable tracing for all Redis commands
+	// Instrument Redis with OTel tracing and metrics so all Redis commands
+	// appear in traces and Prometheus without per-call instrumentation.
 	if err := redisotel.InstrumentTracing(rdb); err != nil {
 		return nil, nil, err
 	}
 
-	// Enable metrics for Redis commands
 	if err := redisotel.InstrumentMetrics(rdb); err != nil {
 		return nil, nil, err
 	}

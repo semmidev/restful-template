@@ -15,7 +15,9 @@ type Querier interface {
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
 
-// getDb returns the pgx.Tx from context if it exists, otherwise returns the default pool.
+// GetDB returns the pgx.Tx from context if a transaction was injected by TxManager;
+// otherwise it returns the default pool. Repositories call this on every query
+// so transaction propagation via context is transparent to callers.
 func GetDB(ctx context.Context, pool *pgxpool.Pool) Querier {
 	if tx := ExtractTx(ctx); tx != nil {
 		return tx

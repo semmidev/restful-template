@@ -18,17 +18,14 @@ import (
 // Setup wires all application dependencies and returns an http.Handler
 // along with a cleanup function to close resources (like DB pools).
 func Setup(ctx context.Context, cfg config.Config, logger *slog.Logger) (http.Handler, func(), error) {
-	// Initialize Postgres Pool
 	pool, err := database.NewPool(ctx, cfg.Database)
 	if err != nil {
 		logger.Error("db connect failed", "err", err)
 		return nil, nil, err
 	}
 
-	// run migrations only when explicitly enabled (default: true).
-	// In multi-replica deployments set DATABASE_RUN_MIGRATIONS=false and run
-	// migrations as a separate init-container / CLI step to avoid advisory-lock
-	// contention and startup latency.
+	// Multi-replica deploys set DATABASE_RUN_MIGRATIONS=false and run migrations
+	// as an init-container to avoid advisory-lock contention and startup latency.
 	if cfg.Database.RunMigrations {
 		if err := database.RunMigrations(cfg.Database.DSN, "up"); err != nil {
 			logger.Error("migrate failed", "err", err)
@@ -37,7 +34,6 @@ func Setup(ctx context.Context, cfg config.Config, logger *slog.Logger) (http.Ha
 		}
 	}
 
-	// Initialize Redis
 	rdb, limiter, err := redispkg.NewClient(ctx, cfg.Redis.DSN)
 	if err != nil {
 		logger.Error("redis connect failed", "err", err)
@@ -52,14 +48,13 @@ func Setup(ctx context.Context, cfg config.Config, logger *slog.Logger) (http.Ha
 		pool.Close()
 	}
 
-	// Repositories
 	userRepo := auth.NewUserRepository(pool)
 	todoRepo := todos.NewTodoRepository(pool)
 	tokenRepo := auth.NewTokenRepository(pool)
 	cacheRepo := redispkg.NewCacheRepository(rdb)
 
-	// Services & Adapters
-	// pass issuer and audience so JWTs carry iss/aud claims
+	// issuer and audience are embedded in JWT claims so tokens issued in one
+	// environment are rejected in another (prevents substitution attacks).
 	tokenSvc := jwtpkg.NewJWTService(
 		cfg.JWT.Secret,
 		cfg.JWT.AccessTTL,
@@ -70,11 +65,9 @@ func Setup(ctx context.Context, cfg config.Config, logger *slog.Logger) (http.Ha
 	tracerAdapter := observability.NewOtelTracer("usecase")
 	txManager := database.NewPostgresTxManager(pool)
 
-	// Usecases
 	todoSvc := todos.NewTodo(todoRepo, cacheRepo, tracerAdapter)
 	authSvc := auth.NewAuth(userRepo, tokenSvc, tokenRepo, todoSvc, txManager, tracerAdapter)
 
-	// build health checkers so the /health endpoint probes real deps
 	healthCheckers := map[string]delivery.HealthChecker{
 		"postgres": func(hctx context.Context) error {
 			return pool.Ping(hctx)
@@ -84,7 +77,6 @@ func Setup(ctx context.Context, cfg config.Config, logger *slog.Logger) (http.Ha
 		},
 	}
 
-	// Server Handler
 	server := delivery.NewServer(cfg, logger, authSvc, todoSvc, tokenSvc, limiter, healthCheckers)
 
 	return server.Handler(), cleanup, nil

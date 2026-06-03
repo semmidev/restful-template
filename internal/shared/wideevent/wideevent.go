@@ -40,10 +40,10 @@ func New(ctx context.Context) context.Context {
 	return context.WithValue(ctx, ctxKey{}, &WideEvent{})
 }
 
-// Add appends a key-value pair to the wide event stored in ctx.
-// It is safe to call from multiple goroutines.
-// If no wide event is in ctx (e.g. in tests that skip the middleware),
-// the call is a no-op.
+// Add enriches the wide event for this request with a key-value pair.
+// Safe to call from concurrent goroutines.
+// No-op when called outside of a request context (e.g. in unit tests that
+// skip the middleware), so callers never need a nil check.
 func Add(ctx context.Context, key string, value any) {
 	ev, ok := ctx.Value(ctxKey{}).(*WideEvent)
 	if !ok || ev == nil {
@@ -54,8 +54,6 @@ func Add(ctx context.Context, key string, value any) {
 	ev.mu.Unlock()
 }
 
-// Fields returns all accumulated key-value pairs as a flat slice suitable
-// for passing to slog as variadic args.
 func Fields(ctx context.Context) []any {
 	ev, ok := ctx.Value(ctxKey{}).(*WideEvent)
 	if !ok || ev == nil {

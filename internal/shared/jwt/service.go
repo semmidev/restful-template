@@ -31,8 +31,6 @@ func NewJWTService(secret string, accessTTL, refreshTTL time.Duration, issuer, a
 	}
 }
 
-// GeneratePair creates a new access + refresh token pair.
-// Both tokens carry: jti, sub, email, iss, aud, exp, type claims.
 func (s *JWTService) GeneratePair(ctx context.Context, userID uuid.UUID, email string) (string, string, int64, int64, error) {
 	now := time.Now()
 	accessExp := now.Add(s.accessTTL).Unix()
@@ -89,17 +87,16 @@ func (s *JWTService) parse(token, typ string) (*auth.TokenClaims, error) {
 		return nil, apperrors.ErrUnauthorized
 	}
 
-	// validate token type
+	// validate token type, issuer, and audience to prevent token substitution
+	// across environments and between access/refresh endpoints.
 	if claims["type"] != typ {
 		return nil, apperrors.ErrUnauthorized
 	}
 
-	// validate issuer
 	if iss, _ := claims["iss"].(string); iss != s.issuer {
 		return nil, apperrors.ErrUnauthorized
 	}
 
-	// validate audience
 	if aud, _ := claims["aud"].(string); aud != s.audience {
 		return nil, apperrors.ErrUnauthorized
 	}

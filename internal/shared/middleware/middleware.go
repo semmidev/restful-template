@@ -44,14 +44,11 @@ func Logger(log *slog.Logger) func(http.Handler) http.Handler {
 
 			start := time.Now()
 
-			// Initialise the wide event for this request.
 			ctx := wideevent.New(r.Context())
 			r = r.WithContext(ctx)
 
-			// Wrap the writer so we can read the status code afterwards.
 			ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 
-			// Seed the event with infrastructure context available at the start.
 			reqID := middleware.GetReqID(r.Context())
 			var traceID string
 			if sc := trace.SpanContextFromContext(r.Context()); sc.HasTraceID() {
@@ -71,7 +68,6 @@ func Logger(log *slog.Logger) func(http.Handler) http.Handler {
 			}
 			durationMS := time.Since(start).Milliseconds()
 
-			// Determine outcome and log level from HTTP status.
 			outcome := "success"
 			level := slog.LevelInfo
 			if status >= 500 {
@@ -82,7 +78,6 @@ func Logger(log *slog.Logger) func(http.Handler) http.Handler {
 				level = slog.LevelWarn
 			}
 
-			// Emit the single canonical wide event.
 			wideevent.Emit(ctx, log, level, "request",
 				"status", status,
 				"duration_ms", durationMS,
@@ -126,6 +121,8 @@ func CORS(allowedOrigins []string) func(http.Handler) http.Handler {
 }
 
 // SecurityHeaders sets hardened HTTP security headers on every response.
+// CSP uses default-src 'none' because this is a pure API server; adjust if
+// you ever serve HTML from the same origin.
 func SecurityHeaders() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -133,8 +130,6 @@ func SecurityHeaders() func(http.Handler) http.Handler {
 			w.Header().Set("X-Frame-Options", "DENY")
 			w.Header().Set("Referrer-Policy", "no-referrer")
 			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
-			// For a pure API server, disallow all content-loading from this origin.
-			// Adjust if you serve HTML from the same server.
 			w.Header().Set("Content-Security-Policy", "default-src 'none'")
 			next.ServeHTTP(w, r)
 		})
@@ -150,9 +145,9 @@ func RateLimiter(limiter *redis_rate.Limiter) func(http.Handler) http.Handler {
 				return
 			}
 
-			// X-Real-IP is set by chi's RealIP middleware (which reads X-Forwarded-For
-			// or X-Real-IP from trusted proxies) and is the correct client IP.
-			// Fall back to RemoteAddr only for local development without a proxy.
+			// X-Real-IP is populated by chi's RealIP middleware from X-Forwarded-For.
+			// Falling back to RemoteAddr means the load-balancer IP is used behind a
+			// proxy — acceptable only in local development.
 			clientIP := r.Header.Get("X-Real-IP")
 			if clientIP == "" {
 				clientIP = r.RemoteAddr
@@ -160,7 +155,7 @@ func RateLimiter(limiter *redis_rate.Limiter) func(http.Handler) http.Handler {
 
 			res, err := limiter.Allow(r.Context(), fmt.Sprintf("rate:%s", clientIP), redis_rate.PerSecond(5))
 			if err != nil {
-				// Log error and fallback to allowing request (fail open)
+				// Redis is unavailable — fail open rather than taking the service down.
 				next.ServeHTTP(w, r)
 				return
 			}

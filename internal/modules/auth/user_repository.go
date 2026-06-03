@@ -27,9 +27,8 @@ func (r *userRepository) Create(ctx context.Context, u *User) error {
 
 	_, err = database.GetDB(ctx, r.db).Exec(ctx, sql, args...)
 	if err != nil {
-		// surface unique constraint violation as ErrConflict so the
-		// usecase doesn't need a racy pre-check (TOCTOU) and callers get a
-		// proper 409 instead of a 500 on concurrent registrations.
+		// Map unique constraint violation to ErrConflict so callers get a 409
+		// instead of an opaque 500 on duplicate emails.
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			return apperrors.ErrConflict

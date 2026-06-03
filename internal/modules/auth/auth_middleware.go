@@ -37,18 +37,17 @@ func RegisterPublicPath(path string) {
 	publicPaths[path] = struct{}{}
 }
 
-// AuthMiddleware is a Huma middleware that validates Bearer JWTs on protected routes.
-// Depends on TokenService (not Usecase) — clean dependency flow.
+// AuthMiddleware validates Bearer JWTs on protected routes.
+// TokenService is injected instead of the full Usecase so this middleware
+// has no dependency on business logic or the database.
 func AuthMiddleware(api huma.API, tokens TokenService) func(ctx huma.Context, next func(huma.Context)) {
 	return func(ctx huma.Context, next func(huma.Context)) {
 		path := ctx.URL().Path
 
-		// Fast O(1) set lookup for exact-match public paths
 		if _, ok := publicPaths[path]; ok {
 			next(ctx)
 			return
 		}
-		// Prefix check for /docs/...
 		for _, prefix := range publicPrefixes {
 			if strings.HasPrefix(path, prefix) {
 				next(ctx)
@@ -69,9 +68,8 @@ func AuthMiddleware(api huma.API, tokens TokenService) func(ctx huma.Context, ne
 			return
 		}
 
-		// Enrich the canonical wide event with the authenticated user's identity.
-		// This means every log line for an authenticated request carries user_id
-		// and user_email without any handler needing to log it explicitly.
+		// Enrich the wide event so every authenticated request's log line carries
+		// user identity without handlers needing to add it manually.
 		wideevent.Add(ctx.Context(), "user_id", claims.UserID.String())
 		wideevent.Add(ctx.Context(), "user_email", claims.Email)
 
@@ -81,7 +79,6 @@ func AuthMiddleware(api huma.API, tokens TokenService) func(ctx huma.Context, ne
 	}
 }
 
-// GetUserID extracts the authenticated user ID from a standard context.
 func GetUserID(ctx context.Context) string {
 	id, err := httpapi.ExtractUserID(ctx)
 	if err != nil {
@@ -90,7 +87,6 @@ func GetUserID(ctx context.Context) string {
 	return id.String()
 }
 
-// GetUserEmail extracts the authenticated user email from a standard context.
 func GetUserEmail(ctx context.Context) string {
 	if v := ctx.Value(httpapi.UserEmailKey); v != nil {
 		if s, ok := v.(string); ok {

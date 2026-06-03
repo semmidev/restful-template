@@ -12,9 +12,8 @@ import (
 	apperrors "github.com/semmidev/restful-template/internal/shared/errors"
 )
 
-// allowedSortCols is the explicit allowlist of sortable columns.
-// was previously string concatenation into SQL — this map approach
-// prevents any possibility of SQL injection if the allowlist grows incorrectly.
+// allowedSortCols is an explicit allowlist to prevent SQL injection via the
+// sort parameter — never interpolate user-supplied column names directly.
 var allowedSortCols = map[string]string{
 	"created_at": "created_at",
 	"updated_at": "updated_at",
@@ -22,7 +21,6 @@ var allowedSortCols = map[string]string{
 	"status":     "status",
 }
 
-// TodoRepository is the postgres-backed driven adapter for todos.
 type todoRepository struct{ db *pgxpool.Pool }
 
 func NewTodoRepository(db *pgxpool.Pool) TodoRepository { return &todoRepository{db} }
@@ -60,11 +58,8 @@ func (r *todoRepository) GetByID(ctx context.Context, userID, id uuid.UUID) (*To
 	return &t, nil
 }
 
-// ListByUser returns paginated todos using a single query with a window function
-// to avoid a second COUNT(*) round-trip.
-//
-// previously issued two sequential SQL queries (data + count).
-// COUNT(*) OVER() returns the total in every row at negligible cost.
+// ListByUser returns paginated todos using COUNT(*) OVER() to get the total
+// in the same query, avoiding a second round-trip for pagination metadata.
 func (r *todoRepository) ListByUser(ctx context.Context, q ListTodosQuery) ([]*Todo, int, error) {
 	base := database.QB.Select().From("todos").Where(sq.Eq{"user_id": q.UserID})
 
@@ -80,7 +75,7 @@ func (r *todoRepository) ListByUser(ctx context.Context, q ListTodosQuery) ([]*T
 		})
 	}
 
-	// allowlist map — safe against injection and future mistakes
+	// Fall back to the default if the caller supplied an unknown column.
 	sortBy := "created_at"
 	if col, ok := allowedSortCols[q.SortBy]; ok {
 		sortBy = col
@@ -132,9 +127,8 @@ func (r *todoRepository) ListByUser(ctx context.Context, q ListTodosQuery) ([]*T
 	return out, total, nil
 }
 
-// Update persists the updated todo entity.
-//
-// now checks RowsAffected == 0 to detect concurrent deletes between
+// Update persists the mutated todo entity.
+// Checking RowsAffected == 0 catches concurrent deletes that happen between
 // the handler's ETag fetch and this write, returning ErrNotFound instead of
 // silently no-op'ing.
 func (r *todoRepository) Update(ctx context.Context, t *Todo) error {

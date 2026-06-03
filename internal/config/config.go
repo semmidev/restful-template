@@ -19,7 +19,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Config is the root application configuration.
 type Config struct {
 	App       App
 	HTTP      HTTP
@@ -87,12 +86,10 @@ type CORS struct {
 func Load() Config {
 	v := viper.New()
 
-	// Read .env file (optional — silently ignored if missing)
 	v.SetConfigFile(".env")
 	v.SetConfigType("dotenv")
 	_ = v.ReadInConfig()
 
-	// OS env vars always win (uses the same key names, case-insensitive)
 	v.AutomaticEnv()
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
