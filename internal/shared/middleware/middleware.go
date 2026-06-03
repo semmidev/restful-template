@@ -12,6 +12,17 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+// logSkipPaths contains paths that should not produce a canonical log line.
+// These are infrastructure/observability endpoints that are polled frequently
+// and would generate noise without any business value.
+var logSkipPaths = map[string]struct{}{
+	"/metrics":      {},
+	"/docs":         {},
+	"/openapi.yaml": {},
+	"/favicon.ico":  {},
+	"/health":       {},
+}
+
 // Logger is the canonical wide-event middleware.
 // It initialises a fresh WideEvent in the request context, runs the handler,
 // then emits ONE structured log line containing every field accumulated during
@@ -20,9 +31,17 @@ import (
 //
 // This implements the "Canonical Log Line" pattern from loggingsucks.com:
 // one wide event per request instead of many scattered log statements.
+//
+// Paths in logSkipPaths are served normally but produce no log output.
 func Logger(log *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Skip logging for noisy infrastructure endpoints.
+			if _, skip := logSkipPaths[r.URL.Path]; skip {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			start := time.Now()
 
 			// Initialise the wide event for this request.

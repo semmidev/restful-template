@@ -88,6 +88,7 @@ func run(ctx context.Context) error {
 	logger.Info("scheduler started successfully", "jobs", len(s.Jobs()))
 
 	// Run once immediately on startup to clear backlog
+	// Langsung dijalankan sekali untuk membersihkan token expired yang mungkin sudah menumpuk.
 	authJob.CleanupExpiredTokens()
 
 	// Wait for shutdown signal
