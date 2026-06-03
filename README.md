@@ -8,6 +8,14 @@
 
 Template ini mengusung arsitektur **Modular Monolith (Package by Feature)**, *routing* berkinerja tinggi menggunakan Chi, *auto-generation* OpenAPI 3.1 dengan Huma v2, serta menggunakan PostgreSQL 18 untuk men-generate UUID yang aman dan terurut berdasarkan waktu (*time-ordered*).
 
+## Preview
+
+### OpenAPI Auto-Generation & Swagger UI
+![API Documentation](assets/api-docs.png)
+
+### Grafana LGTM Observability Dashboard
+![API Monitoring](assets/api-monitoring.png)
+
 ## Tech Stack
 
 | Layer | Teknologi |
