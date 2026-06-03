@@ -15,13 +15,13 @@ type Field struct {
 // It is used to present a human-readable startup summary in the terminal
 // and avoids polluting the structured log stream.
 func Print(name, version string, fields []Field) {
-	fmt.Fprintf(os.Stdout, "\n")
-	fmt.Fprintf(os.Stdout, "  ┌──────────────────────────────────────────────────┐\n")
-	fmt.Fprintf(os.Stdout, "  │  %-48s│\n", name+" "+version)
-	fmt.Fprintf(os.Stdout, "  ├──────────────────────────────────────────────────┤\n")
+	_, _ = fmt.Fprintf(os.Stdout, "\n")
+	_, _ = fmt.Fprintf(os.Stdout, "  ┌──────────────────────────────────────────────────┐\n")
+	_, _ = fmt.Fprintf(os.Stdout, "  │  %-48s│\n", name+" "+version)
+	_, _ = fmt.Fprintf(os.Stdout, "  ├──────────────────────────────────────────────────┤\n")
 	for _, f := range fields {
-		fmt.Fprintf(os.Stdout, "  │  %-10s %-37s│\n", f.Key, f.Value)
+		_, _ = fmt.Fprintf(os.Stdout, "  │  %-10s %-37s│\n", f.Key, f.Value)
 	}
-	fmt.Fprintf(os.Stdout, "  └──────────────────────────────────────────────────┘\n")
-	fmt.Fprintf(os.Stdout, "\n")
+	_, _ = fmt.Fprintf(os.Stdout, "  └──────────────────────────────────────────────────┘\n")
+	_, _ = fmt.Fprintf(os.Stdout, "\n")
 }
