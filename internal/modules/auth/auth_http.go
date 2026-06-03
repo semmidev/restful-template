@@ -82,20 +82,20 @@ func RegisterAuthRoutes(api huma.API, auth AuthService) {
 }
 
 func (h *authHandler) handleRegister(ctx context.Context, in *authRegisterReq) (*TokenResp, error) {
+	wideevent.Add(ctx, "user_email", in.Body.Email)
 	pair, err := h.auth.Register(ctx, RegisterInput{Email: in.Body.Email, Password: in.Body.Password})
 	if err != nil {
 		return nil, httpapi.ToHumaErr(ctx, err)
 	}
-	wideevent.Add(ctx, "user_email", in.Body.Email)
 	return tokenResp(pair), nil
 }
 
 func (h *authHandler) handleLogin(ctx context.Context, in *authLoginReq) (*TokenResp, error) {
+	wideevent.Add(ctx, "user_email", in.Body.Email)
 	pair, err := h.auth.Login(ctx, LoginInput{Email: in.Body.Email, Password: in.Body.Password})
 	if err != nil {
 		return nil, httpapi.ToHumaErr(ctx, err)
 	}
-	wideevent.Add(ctx, "user_email", in.Body.Email)
 	return tokenResp(pair), nil
 }
 

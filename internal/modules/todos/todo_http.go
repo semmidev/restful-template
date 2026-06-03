@@ -216,12 +216,14 @@ func (h *todoHandler) handleList(ctx context.Context, in *listTodosReq) (*ListRe
 }
 
 func (h *todoHandler) handleCreate(ctx context.Context, in *createTodoReq) (*TodoResp, error) {
+	data := in.RawBody.Data()
+	wideevent.Add(ctx, "todo_title", data.Title)
+
 	userID, err := httpapi.ExtractUserID(ctx)
 	if err != nil {
 		return nil, httpapi.ToHumaErr(ctx, err)
 	}
 
-	data := in.RawBody.Data()
 	coverBase64, err := processCoverImage(data.Cover)
 	if err != nil {
 		return nil, err
@@ -237,7 +239,6 @@ func (h *todoHandler) handleCreate(ctx context.Context, in *createTodoReq) (*Tod
 		return nil, httpapi.ToHumaErr(ctx, err)
 	}
 	wideevent.Add(ctx, "todo_id", t.ID.String())
-	wideevent.Add(ctx, "todo_title", t.Title)
 	resp := &TodoResp{}
 	resp.ETag = fmt.Sprintf(`"%s"`, t.UpdatedAt.Format(time.RFC3339Nano))
 	resp.LastModified = t.UpdatedAt
@@ -246,16 +247,15 @@ func (h *todoHandler) handleCreate(ctx context.Context, in *createTodoReq) (*Tod
 }
 
 func (h *todoHandler) handleGet(ctx context.Context, in *getTodoReq) (*TodoResp, error) {
+	wideevent.Add(ctx, "todo_id", in.ID.String())
 	userID, err := httpapi.ExtractUserID(ctx)
 	if err != nil {
 		return nil, httpapi.ToHumaErr(ctx, err)
 	}
 	t, err := h.todos.Get(ctx, userID, in.ID)
 	if err != nil {
-		wideevent.Add(ctx, "todo_id", in.ID.String())
 		return nil, httpapi.ToHumaErr(ctx, err)
 	}
-	wideevent.Add(ctx, "todo_id", t.ID.String())
 
 	etag := fmt.Sprintf(`"%s"`, t.UpdatedAt.Format(time.RFC3339Nano))
 	if err := in.PreconditionFailed(etag, t.UpdatedAt); err != nil {
@@ -275,6 +275,7 @@ func (h *todoHandler) handleGet(ctx context.Context, in *getTodoReq) (*TodoResp,
 // directly into the usecase, which no longer does an internal re-fetch.
 // Total DB calls: GET (1) + UPDATE (1) = 2, down from 3.
 func (h *todoHandler) handleUpdate(ctx context.Context, in *updateTodoReq) (*TodoResp, error) {
+	wideevent.Add(ctx, "todo_id", in.ID.String())
 	userID, err := httpapi.ExtractUserID(ctx)
 	if err != nil {
 		return nil, httpapi.ToHumaErr(ctx, err)
@@ -283,7 +284,6 @@ func (h *todoHandler) handleUpdate(ctx context.Context, in *updateTodoReq) (*Tod
 	// Optimistic locking check before update (1st and only GET)
 	existing, err := h.todos.Get(ctx, userID, in.ID)
 	if err != nil {
-		wideevent.Add(ctx, "todo_id", in.ID.String())
 		return nil, httpapi.ToHumaErr(ctx, err)
 	}
 	etag := fmt.Sprintf(`"%s"`, existing.UpdatedAt.Format(time.RFC3339Nano))
@@ -340,10 +340,8 @@ func (h *todoHandler) handleUpdate(ctx context.Context, in *updateTodoReq) (*Tod
 		UpdateMask:  updateMask,
 	})
 	if err != nil {
-		wideevent.Add(ctx, "todo_id", in.ID.String())
 		return nil, httpapi.ToHumaErr(ctx, err)
 	}
-	wideevent.Add(ctx, "todo_id", t.ID.String())
 	wideevent.Add(ctx, "todo_title", t.Title)
 	wideevent.Add(ctx, "todo_status", string(t.Status))
 	resp := &TodoResp{}
@@ -354,15 +352,14 @@ func (h *todoHandler) handleUpdate(ctx context.Context, in *updateTodoReq) (*Tod
 }
 
 func (h *todoHandler) handleDelete(ctx context.Context, in *deleteTodoReq) (*struct{}, error) {
+	wideevent.Add(ctx, "todo_id", in.ID.String())
 	userID, err := httpapi.ExtractUserID(ctx)
 	if err != nil {
 		return nil, httpapi.ToHumaErr(ctx, err)
 	}
 	if err := h.todos.Delete(ctx, userID, in.ID); err != nil {
-		wideevent.Add(ctx, "todo_id", in.ID.String())
 		return nil, httpapi.ToHumaErr(ctx, err)
 	}
-	wideevent.Add(ctx, "todo_id", in.ID.String())
 	return &struct{}{}, nil
 }
 
