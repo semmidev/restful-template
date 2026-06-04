@@ -6,14 +6,12 @@
 [![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-enabled-f5a800?style=flat-square&logo=opentelemetry)](https://opentelemetry.io/)
 [![CI](https://img.shields.io/github/actions/workflow/status/semmidev/restful-template/ci.yml?label=CI&style=flat-square)](https://github.com/semmidev/restful-template/actions/workflows/ci.yml)
 [![CD](https://img.shields.io/github/actions/workflow/status/semmidev/restful-template/cd.yml?label=CD&style=flat-square)](https://github.com/semmidev/restful-template/actions/workflows/cd.yml)
+
 Template ini mengusung arsitektur **Modular Monolith (Package by Feature)**, *routing* berkinerja tinggi menggunakan Chi, *auto-generation* OpenAPI 3.1 dengan Huma v2, serta menggunakan PostgreSQL 18 untuk men-generate UUID yang aman dan terurut berdasarkan waktu (*time-ordered*).
 
 ## Preview
 
-### OpenAPI Auto-Generation & Swagger UI
 ![API Documentation](assets/api-docs.png)
-
-### Grafana LGTM Observability Dashboard
 ![API Monitoring](assets/api-monitoring.png)
 
 ## Tech Stack
