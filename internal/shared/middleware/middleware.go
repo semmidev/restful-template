@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
@@ -12,7 +13,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// logSkipPaths contains paths that should not produce a canonical log line.
+// logSkipPaths contains exact paths that should not produce a canonical log line.
 // These are infrastructure/observability endpoints that are polled frequently
 // and would generate noise without any business value.
 var logSkipPaths = map[string]struct{}{
@@ -21,6 +22,15 @@ var logSkipPaths = map[string]struct{}{
 	"/openapi.yaml": {},
 	"/favicon.ico":  {},
 	"/health":       {},
+	// Chrome DevTools auto-probe — not a real request
+	"/.well-known/appspecific/com.chrome.devtools.json": {},
+}
+
+// logSkipPrefixes contains path prefixes whose requests should not produce a
+// canonical log line. Use for entire sub-trees (e.g. admin UIs with many static
+// assets) where exact-path enumeration is impractical.
+var logSkipPrefixes = []string{
+	"/admin/asynq/", // asynqmon SPA static assets & polling endpoints
 }
 
 // Logger is the canonical wide-event middleware.
@@ -36,10 +46,17 @@ var logSkipPaths = map[string]struct{}{
 func Logger(log *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Skip logging for noisy infrastructure endpoints.
+			// Skip logging for noisy infrastructure endpoints (exact match).
 			if _, skip := logSkipPaths[r.URL.Path]; skip {
 				next.ServeHTTP(w, r)
 				return
+			}
+			// Skip logging for entire sub-trees (prefix match).
+			for _, prefix := range logSkipPrefixes {
+				if strings.HasPrefix(r.URL.Path, prefix) {
+					next.ServeHTTP(w, r)
+					return
+				}
 			}
 
 			start := time.Now()

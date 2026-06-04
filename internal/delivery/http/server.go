@@ -59,8 +59,9 @@ func NewServer(
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(cfg.HTTP.ReadTimeout))
 	r.Use(sharedmw.CORS(cfg.CORS.AllowedOrigins))
-	r.Use(sharedmw.SecurityHeaders())
-	r.Use(sharedmw.RateLimiter(limiter))
+	// SecurityHeaders and RateLimiter are applied per-group below so that the
+	// asynqmon admin UI (a full SPA) can use a relaxed CSP without weakening
+	// the API's strict default-src 'none' policy.
 
 	r.Get("/metrics", promhttp.Handler().ServeHTTP)
 
@@ -73,11 +74,33 @@ func NewServer(
 				RedisConnOpt: clientOpt,
 			})
 
+			// Admin group: Basic Auth + permissive CSP so the asynqmon SPA can
+			// load its inline scripts, chunk JS, stylesheets, and Google Fonts.
 			r.Group(func(r chi.Router) {
 				r.Use(middleware.BasicAuth("Asynqmon", map[string]string{
 					cfg.Asynqmon.Username: cfg.Asynqmon.Password,
 				}))
-				r.Mount(asynqmonUI.RootPath(), asynqmonUI)
+				r.Use(func(next http.Handler) http.Handler {
+					return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						w.Header().Set("X-Content-Type-Options", "nosniff")
+						w.Header().Set("Referrer-Policy", "no-referrer")
+						w.Header().Set("X-Frame-Options", "SAMEORIGIN")
+						w.Header().Set("Content-Security-Policy",
+							"default-src 'self'; "+
+								"script-src 'self' 'unsafe-inline'; "+
+								"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "+
+								"font-src 'self' https://fonts.gstatic.com; "+
+								"img-src 'self' data:; "+
+								"connect-src 'self'; "+
+								"manifest-src 'self'")
+						next.ServeHTTP(w, r)
+					})
+				})
+				// chi Mount strips the prefix which breaks asynqmon's internal
+				// ServeMux; Handle preserves the full path.
+				rootPath := asynqmonUI.RootPath()
+				r.Handle(rootPath, http.RedirectHandler(rootPath+"/", http.StatusMovedPermanently))
+				r.Handle(rootPath+"/*", asynqmonUI)
 			})
 		} else {
 			log.Error("parsed redis DSN is not a RedisClientOpt")
@@ -86,24 +109,30 @@ func NewServer(
 		log.Error("failed to parse redis DSN for asynqmon", "err", err)
 	}
 
-	humaConfig := huma.DefaultConfig(cfg.App.Name, cfg.App.Version)
-	humaConfig.Info.Description = cfg.App.Description
-	humaConfig.Components = &huma.Components{
-		SecuritySchemes: map[string]*huma.SecurityScheme{
-			"bearerAuth": {
-				Type:         "http",
-				Scheme:       "bearer",
-				BearerFormat: "JWT",
+	// API + docs group: strict security headers and rate limiting.
+	r.Group(func(r chi.Router) {
+		r.Use(sharedmw.SecurityHeaders())
+		r.Use(sharedmw.RateLimiter(limiter))
+
+		humaConfig := huma.DefaultConfig(cfg.App.Name, cfg.App.Version)
+		humaConfig.Info.Description = cfg.App.Description
+		humaConfig.Components = &huma.Components{
+			SecuritySchemes: map[string]*huma.SecurityScheme{
+				"bearerAuth": {
+					Type:         "http",
+					Scheme:       "bearer",
+					BearerFormat: "JWT",
+				},
 			},
-		},
-	}
+		}
 
-	api := humachi.New(r, humaConfig)
-	api.UseMiddleware(auth.AuthMiddleware(api, tokens))
+		api := humachi.New(r, humaConfig)
+		api.UseMiddleware(auth.AuthMiddleware(api, tokens))
 
-	RegisterRoutes(api, healthCheckers, authUsecase, todosUsecase)
+		RegisterRoutes(api, healthCheckers, authUsecase, todosUsecase)
+	})
 
-	return &Server{router: r, api: api}
+	return &Server{router: r, api: nil}
 }
 
 func (s *Server) Handler() http.Handler { return s.router }
