@@ -28,6 +28,12 @@ type Config struct {
 	Log       Log
 	Telemetry Telemetry
 	CORS      CORS
+	Asynqmon  Asynqmon
+}
+
+type Asynqmon struct {
+	Username string
+	Password string
 }
 
 type App struct {
@@ -126,6 +132,9 @@ func Load() Config {
 
 	v.SetDefault("CORS_ALLOWED_ORIGINS", "*") // override in production
 
+	v.SetDefault("ASYNQMON_USERNAME", "admin")
+	v.SetDefault("ASYNQMON_PASSWORD", "admin")
+
 	rawOrigins := v.GetString("CORS_ALLOWED_ORIGINS")
 	var allowedOrigins []string
 	for _, o := range strings.Split(rawOrigins, ",") {
@@ -175,6 +184,10 @@ func Load() Config {
 		},
 		CORS: CORS{
 			AllowedOrigins: allowedOrigins,
+		},
+		Asynqmon: Asynqmon{
+			Username: v.GetString("ASYNQMON_USERNAME"),
+			Password: v.GetString("ASYNQMON_PASSWORD"),
 		},
 	}
 }

@@ -8,22 +8,24 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/semmidev/restful-template/internal/shared/asynqtask"
 	"github.com/semmidev/restful-template/internal/shared/database"
 	apperrors "github.com/semmidev/restful-template/internal/shared/errors"
 	"github.com/semmidev/restful-template/internal/shared/observability"
 )
 
 type Usecase struct {
-	users     UserRepository
-	tokens    TokenService
-	tokenRepo TokenRepository
-	todos     TodoService
-	txManager database.TxManager
-	tracer    observability.Tracer
+	users       UserRepository
+	tokens      TokenService
+	tokenRepo   TokenRepository
+	todos       TodoService
+	txManager   database.TxManager
+	tracer      observability.Tracer
+	distributor TaskDistributor
 }
 
-func NewAuth(users UserRepository, tokens TokenService, tokenRepo TokenRepository, todos TodoService, txManager database.TxManager, tracer observability.Tracer) *Usecase {
-	return &Usecase{users: users, tokens: tokens, tokenRepo: tokenRepo, todos: todos, txManager: txManager, tracer: tracer}
+func NewAuth(users UserRepository, tokens TokenService, tokenRepo TokenRepository, todos TodoService, txManager database.TxManager, tracer observability.Tracer, distributor TaskDistributor) *Usecase {
+	return &Usecase{users: users, tokens: tokens, tokenRepo: tokenRepo, todos: todos, txManager: txManager, tracer: tracer, distributor: distributor}
 }
 
 // Register inserts the user directly and lets the repository translate a unique
@@ -46,6 +48,15 @@ func (s *Usecase) Register(ctx context.Context, in RegisterInput) (TokenPair, er
 		}
 		return TokenPair{}, apperrors.NewInternal("Failed to create user", err)
 	}
+
+	// Dispatch welcome email task asynchronously
+	if s.distributor != nil {
+		_ = s.distributor.DistributeTaskSendWelcomeEmail(ctx, &asynqtask.TaskPayloadSendWelcomeEmail{
+			UserID: u.ID,
+			Email:  u.Email,
+		})
+	}
+
 	return s.issuePair(ctx, u)
 }
 

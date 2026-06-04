@@ -62,6 +62,33 @@ services:
         max-file: "3"
 
   # ─────────────────────────────────────────
+  # Worker — Asynq background tasks
+  # ─────────────────────────────────────────
+  worker:
+    image: ${WORKER_IMAGE:-sammidev/restful-template-worker}:${IMAGE_TAG:-latest}
+    container_name: restful-template-worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      app:
+        condition: service_started
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      alloy:
+        condition: service_started
+    networks:
+      - internal
+      - monitoring
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ─────────────────────────────────────────
   # PostgreSQL
   # ─────────────────────────────────────────
   db:

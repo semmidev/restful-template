@@ -10,6 +10,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-redis/redis_rate/v10"
+	"github.com/hibiken/asynq"
+	"github.com/hibiken/asynqmon"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/riandyrn/otelchi"
@@ -61,6 +63,23 @@ func NewServer(
 	r.Use(sharedmw.RateLimiter(limiter))
 
 	r.Get("/metrics", promhttp.Handler().ServeHTTP)
+
+	redisOpt, err := asynq.ParseRedisURI(cfg.Redis.DSN)
+	if err == nil {
+		asynqmonUI := asynqmon.New(asynqmon.Options{
+			RootPath:     "/admin/asynq",
+			RedisConnOpt: redisOpt.(asynq.RedisClientOpt),
+		})
+
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.BasicAuth("Asynqmon", map[string]string{
+				cfg.Asynqmon.Username: cfg.Asynqmon.Password,
+			}))
+			r.Mount(asynqmonUI.RootPath(), asynqmonUI)
+		})
+	} else {
+		log.Error("failed to parse redis DSN for asynqmon", "err", err)
+	}
 
 	humaConfig := huma.DefaultConfig(cfg.App.Name, cfg.App.Version)
 	humaConfig.Info.Description = cfg.App.Description

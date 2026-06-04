@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/semmidev/restful-template/internal/shared/asynqtask"
 	"github.com/semmidev/restful-template/internal/shared/errors"
 	"github.com/semmidev/restful-template/internal/shared/password"
 	"github.com/semmidev/restful-template/internal/shared/uuidgen"
@@ -71,6 +72,10 @@ type TokenService interface {
 
 type TodoService interface {
 	DeleteAllByUserID(ctx context.Context, userID uuid.UUID) error
+}
+
+type TaskDistributor interface {
+	DistributeTaskSendWelcomeEmail(ctx context.Context, payload *asynqtask.TaskPayloadSendWelcomeEmail) error
 }
 
 type UserRepository interface {

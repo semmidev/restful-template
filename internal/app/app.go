@@ -5,10 +5,12 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/hibiken/asynq"
 	"github.com/semmidev/restful-template/internal/config"
 	delivery "github.com/semmidev/restful-template/internal/delivery/http"
 	"github.com/semmidev/restful-template/internal/modules/auth"
 	"github.com/semmidev/restful-template/internal/modules/todos"
+	"github.com/semmidev/restful-template/internal/shared/asynqtask"
 	"github.com/semmidev/restful-template/internal/shared/database"
 	jwtpkg "github.com/semmidev/restful-template/internal/shared/jwt"
 	"github.com/semmidev/restful-template/internal/shared/observability"
@@ -66,7 +68,15 @@ func Setup(ctx context.Context, cfg config.Config, logger *slog.Logger) (http.Ha
 	txManager := database.NewPostgresTxManager(pool)
 
 	todoSvc := todos.NewTodo(todoRepo, cacheRepo, tracerAdapter)
-	authSvc := auth.NewAuth(userRepo, tokenSvc, tokenRepo, todoSvc, txManager, tracerAdapter)
+
+	redisOpt, err := asynq.ParseRedisURI(cfg.Redis.DSN)
+	if err != nil {
+		logger.Error("invalid redis dsn for asynq", "err", err)
+		return nil, nil, err
+	}
+	distributor := asynqtask.NewDistributor(redisOpt.(asynq.RedisClientOpt))
+
+	authSvc := auth.NewAuth(userRepo, tokenSvc, tokenRepo, todoSvc, txManager, tracerAdapter, distributor)
 
 	healthCheckers := map[string]delivery.HealthChecker{
 		"postgres": func(hctx context.Context) error {
