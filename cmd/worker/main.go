@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -46,8 +47,13 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("failed to parse redis dsn: %w", err)
 	}
 
+	clientOpt, ok := redisOpt.(asynq.RedisClientOpt)
+	if !ok {
+		return errors.New("parsed redis dsn is not a RedisClientOpt")
+	}
+
 	taskProcessor := worker.NewRedisTaskProcessor(
-		redisOpt.(asynq.RedisClientOpt),
+		clientOpt,
 		logger,
 	)
 

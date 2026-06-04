@@ -66,17 +66,22 @@ func NewServer(
 
 	redisOpt, err := asynq.ParseRedisURI(cfg.Redis.DSN)
 	if err == nil {
-		asynqmonUI := asynqmon.New(asynqmon.Options{
-			RootPath:     "/admin/asynq",
-			RedisConnOpt: redisOpt.(asynq.RedisClientOpt),
-		})
+		clientOpt, ok := redisOpt.(asynq.RedisClientOpt)
+		if ok {
+			asynqmonUI := asynqmon.New(asynqmon.Options{
+				RootPath:     "/admin/asynq",
+				RedisConnOpt: clientOpt,
+			})
 
-		r.Group(func(r chi.Router) {
-			r.Use(middleware.BasicAuth("Asynqmon", map[string]string{
-				cfg.Asynqmon.Username: cfg.Asynqmon.Password,
-			}))
-			r.Mount(asynqmonUI.RootPath(), asynqmonUI)
-		})
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.BasicAuth("Asynqmon", map[string]string{
+					cfg.Asynqmon.Username: cfg.Asynqmon.Password,
+				}))
+				r.Mount(asynqmonUI.RootPath(), asynqmonUI)
+			})
+		} else {
+			log.Error("parsed redis DSN is not a RedisClientOpt")
+		}
 	} else {
 		log.Error("failed to parse redis DSN for asynqmon", "err", err)
 	}

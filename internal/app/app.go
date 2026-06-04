@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -74,7 +75,13 @@ func Setup(ctx context.Context, cfg config.Config, logger *slog.Logger) (http.Ha
 		logger.Error("invalid redis dsn for asynq", "err", err)
 		return nil, nil, err
 	}
-	distributor := asynqtask.NewDistributor(redisOpt.(asynq.RedisClientOpt))
+	clientOpt, ok := redisOpt.(asynq.RedisClientOpt)
+	if !ok {
+		err := errors.New("parsed redis dsn is not a RedisClientOpt")
+		logger.Error("invalid redis opt type", "err", err)
+		return nil, nil, err
+	}
+	distributor := asynqtask.NewDistributor(clientOpt)
 
 	authSvc := auth.NewAuth(userRepo, tokenSvc, tokenRepo, todoSvc, txManager, tracerAdapter, distributor)
 
