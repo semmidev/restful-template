@@ -27,6 +27,8 @@ Template ini mengusung arsitektur **Modular Monolith (Package by Feature)**, *ro
 | **Cache** | Redis via `go-redis/v9` |
 | **Auth** | JWT (Access + Refresh) · Argon2id password hashing |
 | **Observability** | OpenTelemetry · Prometheus · Grafana LGTM Stack |
+| **Async Worker** | [asynq](https://github.com/hibiken/asynq) — Redis-backed task queue (separate binary) |
+| **Worker UI** | [asynqmon](https://github.com/hibiken/asynqmon) — Web UI mounted at `/admin/asynq` (Basic Auth) |
 | **Config** | [Viper](https://github.com/spf13/viper) — `.env` + OS env vars |
 | **Testing** | [testcontainers-go](https://github.com/testcontainers/testcontainers-go) — E2E Integration Tests |
 
@@ -88,6 +90,7 @@ make run
   - *Synchronous Interface Injection* untuk *Consumer-Driven Contracts* yang bersih antar modul.
   - Transaksi lintas modul dikelola secara aman menggunakan `database.TxManager`.
   - **Dedicated Background Scheduler**: Menjalankan cron jobs terpisah dari API utama menggunakan `gocron/v2`.
+  - **Async Background Worker**: Menjalankan task asinkron (seperti kirim email) menggunakan `asynq` — Redis-backed, separate binary (`cmd/worker`).
 
 - **Routing & Documentation**
   - Integrasi Huma v2 + Chi v5 dengan *typed HTTP handlers* dan validasi otomatis.
@@ -108,10 +111,11 @@ make run
   - **OpenTelemetry** (OTEL) untuk *distributed tracing* (`otelchi`) dan DB traces (`otelpgx`).
   - *Graceful shutdown*, propagasi Request ID, *panic recovery middleware*.
   - Format error RFC 9457 (`application/problem+json`).
+  - **Asynqmon Web UI** (`/admin/asynq`) — pantau antrian task, worker, dan job history secara visual, dilindungi dengan Basic Auth.
 
 - **Configuration & Deployment**
   - Standar *12-Factor App* via Viper (`.env` + OS environment variables).
-  - Dockerfile *multi-stage distroless* — image kecil dan aman.
+  - Dockerfile *multi-stage distroless* untuk API, Scheduler, **dan Worker** — image kecil dan aman.
   - `docker-compose` lengkap dengan *healthchecks*, *restart policies*, dan full observability stack.
   - **CI/CD** otomatis via GitHub Actions (golangci-lint & E2E Testing).
 
@@ -135,6 +139,11 @@ Proyek ini melampaui sekadar kerangka kerja RESTful biasa dan menerapkan pola *E
    - Menjalankan tugas di latar belakang (seperti membersihkan *refresh token* kedaluwarsa) langsung dari web API rentan terhadap isu *race conditions* dan pemborosan CPU ketika aplikasi di-*scale* secara horizontal (banyak replika).
    - Proyek ini memisahkan *scheduler* menjadi *binary* dan *container* independen (`cmd/scheduler`). *Logic* pekerjaannya (*job logic*) tetap terenkapsulasi secara modular di dalam domainnya (contoh: `AuthJob` di modul `auth`) dengan arsitektur yang bersih tanpa perlu menyentuh *query* database mentah secara langsung.
    - **Distributed Locking via Redis**: Scheduler dilengkapi dengan implementasi `gocron.Locker` kustom (`internal/shared/redis/locker.go`) yang menggunakan Redis `SetNX`. Mekanisme ini menjamin bahwa sebuah tugas tidak akan pernah tumpang tindih (*overlap*) dengan eksekusi sebelumnya, dan menjaga sistem tetap aman meskipun *scheduler* di-*scale* ke beberapa *instance*. Terdapat *TTL auto-expire* untuk mencegah *deadlock* jika *worker* mendadak lumpuh saat memegang kunci.
+7. **Async Background Worker (Event-Driven Tasks)**
+   - Untuk tugas *fire-and-forget* (seperti kirim email selamat datang setelah registrasi), proyek ini menggunakan pola **Task Distributor / Task Processor** berbasis `asynq`.
+   - **Distributor** (`internal/shared/asynqtask`) memiliki peran sebagai *Producer* — modul memanggil `distributor.DistributeTask...()` via interface (`TaskDistributor`), lalu task diserialisasi dan dikirim ke Redis queue tanpa blocking request HTTP.
+   - **Processor** (`internal/worker`) adalah *Consumer* terpisah — `cmd/worker` binary mendengarkan Redis queue dan mengeksekusi handler task secara konkuren.
+   - **Asynqmon Web UI** (`/admin/asynq`) built-in untuk memantau queue, retry, dan dead-letter tasks secara real-time.
 
 ---
 
@@ -166,7 +175,8 @@ Template ini tidak sekadar menggunakan Huma sebagai generator OpenAPI, melainkan
 .
 ├── cmd/
 │   ├── server/       # Entrypoint utama API
-│   └── scheduler/    # Entrypoint terpisah untuk background cron jobs (gocron/v2)
+│   ├── scheduler/    # Entrypoint terpisah untuk background cron jobs (gocron/v2)
+│   └── worker/       # Entrypoint terpisah untuk async task worker (asynq)
 ├── config/           # Konfigurasi infrastruktur (Prometheus, Grafana, Loki, Tempo, Alloy)
 ├── internal/
 │   ├── app/          # Dependency injection & wiring terpusat (Setup)
@@ -175,7 +185,10 @@ Template ini tidak sekadar menggunakan Huma sebagai generator OpenAPI, melainkan
 │   ├── modules/      # Seluruh fitur bisnis
 │   │   ├── auth/         # Auth: login, register, user management
 │   │   └── todos/        # Todo: operasi CRUD
-│   └── shared/       # Cross-cutting utilities (errors, httpapi, observability, database, jwt, redis, wideevent)
+│   ├── worker/       # Task processor & handler implementations (asynq consumer)
+│   └── shared/       # Cross-cutting utilities
+│       ├── asynqtask/    # Task type definitions & Distributor (asynq producer)
+│       └── ...           # errors, httpapi, observability, database, jwt, redis, wideevent
 └── tests/            # Black-box End-to-End Integration Tests
 ```
 
@@ -360,6 +373,7 @@ Selama server berjalan, dokumentasi interaktif dapat diakses di:
 | :--- | :--- |
 | **Swagger UI** | [http://localhost:8080/docs](http://localhost:8080/docs) |
 | **OpenAPI 3.1 JSON** | [http://localhost:8080/openapi.json](http://localhost:8080/openapi.json) |
+| **Asynqmon Worker UI** | [http://localhost:8080/admin/asynq](http://localhost:8080/admin/asynq) (login: `ASYNQMON_USERNAME` / `ASYNQMON_PASSWORD`) |
 | **Grafana Dashboard** | [http://localhost:3000](http://localhost:3000) |
 
 ---
@@ -375,12 +389,15 @@ Salin `.env.example` ke `.env` dan sesuaikan nilai-nilainya.
 | `APP_DESCRIPTION` | Deskripsi singkat aplikasi | `Template RESTful API menggunakan Go 1.26` |
 | `HTTP_PORT` | Port server HTTP | `8080` |
 | `DATABASE_DSN` | Connection string PostgreSQL | `postgres://todo:todo@localhost:5432/todo?sslmode=disable` |
+| `REDIS_DSN` | Connection string Redis | `redis://localhost:6379/0` |
 | `JWT_SECRET` | Secret key untuk signing JWT (**WAJIB** diganti di production) | `change-me-in-production-min-32-bytes!` |
 | `JWT_ACCESS_TTL` | Masa berlaku Access Token | `15m` |
 | `JWT_REFRESH_TTL` | Masa berlaku Refresh Token | `168h` |
 | `LOG_LEVEL` | Verbositas log (`debug`, `info`, `warn`, `error`) | `info` |
 | `LOG_FORMAT` | Format log (`json` untuk production, `text` untuk lokal) | `json` |
 | `TELEMETRY_OTLP_ENDPOINT` | OpenTelemetry gRPC target endpoint | `localhost:4317` |
+| `ASYNQMON_USERNAME` | Username untuk Basic Auth Asynqmon Web UI | `admin` |
+| `ASYNQMON_PASSWORD` | Password untuk Basic Auth Asynqmon Web UI (**WAJIB** diganti di production) | `admin` |
 
 ---
 

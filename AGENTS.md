@@ -22,6 +22,8 @@ intentionally kept simple so the *infrastructure and engineering patterns* take 
 |                  | Prometheus → Grafana (metrics)                       |
 |                  | Grafana Loki (logs via structured `slog`)             |
 | Scheduler        | `go-co-op/gocron v2` (separate binary)               |
+| Async Worker     | `hibiken/asynq` (separate binary, Redis-backed queue)|
+| Worker UI        | `hibiken/asynqmon` (mounted at `/admin/asynq`, Basic Auth) |
 | Testing          | `smartystreets/goconvey` + `testcontainers-go`       |
 | Linting          | `golangci-lint v2` (see `.golangci.yml`)             |
 
@@ -34,8 +36,8 @@ This project follows **Clean / Hexagonal Architecture** with strict dependency d
 ```
 cmd/
 └── server/          ← entry point — wires config, logger, calls app.Setup()
-└── scheduler/       ← separate binary for background jobs
-└── worker/          ← separate binary for async workers
+└── scheduler/       ← separate binary for background cron jobs
+└── worker/          ← separate binary for asynq async task processing
 
 internal/
 ├── app/             ← dependency injection root (app.Setup)
@@ -44,7 +46,9 @@ internal/
 ├── modules/
 │   ├── auth/        ← auth domain, repository, usecase, HTTP handler, middleware
 │   └── todos/       ← todos domain, repository, usecase, HTTP handler
+├── worker/          ← asynq task processor + per-task handler implementations
 └── shared/
+    ├── asynqtask/   ← task type constants, payload structs, TaskDistributor (producer)
     ├── cache/       ← CacheRepository interface
     ├── database/    ← pgxpool, squirrel QB, TxManager, migrations
     ├── errors/      ← SafeError (never leaks internals to clients)
@@ -263,6 +267,7 @@ The following patterns are **explicitly prohibited** in this codebase:
 | API        | http://localhost:8080     | Main application                 |
 | OpenAPI    | http://localhost:8080/docs| Huma auto-generated Swagger UI   |
 | Metrics    | http://localhost:8080/metrics | Prometheus scrape endpoint   |
+| Asynqmon   | http://localhost:8080/admin/asynq | Worker queue monitor (Basic Auth) |
 | Prometheus | http://localhost:9090     | Metrics storage                  |
 | Grafana    | http://localhost:3000     | Dashboards (metrics + logs + traces) |
 | Loki       | http://localhost:3100     | Log aggregation                  |
@@ -285,3 +290,4 @@ Logs are structured JSON via `log/slog`, collected by Alloy and forwarded to Lok
 6. **Wide events via `wideevent`**: A single structured log line per request carries all domain context (user ID, todo ID, counts) rather than multiple log statements scattered through the call stack. This makes Loki queries dramatically more useful.
 7. **`SafeError` with `Unwrap()`**: Allows `errors.Is(err, apperrors.ErrNotFound)` to work through the stack while keeping the public-facing message safe and the internal cause available for structured logging.
 8. **Service Interfaces over Concrete Structs**: Usecases (`AuthService`, `TodoService`) are exposed as interfaces to the HTTP layer and other modules. This enables isolated unit testing of HTTP handlers (mocking the service without DB setup), prevents strict cross-module coupling (circular dependencies), and enforces architectural boundaries.
+9. **Separate `cmd/worker` binary (asynq)**: Async task processing runs in its own isolated binary. The `TaskDistributor` interface (defined in the calling module's domain file) points to `internal/shared/asynqtask.Distributor` — this keeps the boundary clean. Modules never import `internal/worker` directly. The `ASYNQMON_USERNAME`/`ASYNQMON_PASSWORD` env vars guard the built-in Web UI at `/admin/asynq`.

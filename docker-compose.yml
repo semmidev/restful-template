@@ -60,6 +60,25 @@ services:
     networks:
       - monitoring
 
+  worker:
+    container_name: restful-template-worker
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      app:
+        condition: service_started
+    env_file:
+      - path: .env
+        required: false
+    restart: unless-stopped
+    networks:
+      - monitoring
+
   prometheus:
     image: prom/prometheus
     container_name: prometheus

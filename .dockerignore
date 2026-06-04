@@ -39,3 +39,10 @@ docker-compose.yml
 *.log
 *.tmp
 *.bak
+
+AGENTS.md
+assets/
+references/
+server
+scheduler
+worker
