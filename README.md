@@ -4,8 +4,8 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square)](LICENSE)
 [![OpenAPI](https://img.shields.io/badge/OpenAPI-3.1-6BA539?style=flat-square&logo=swagger)](http://localhost:8080/docs)
 [![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-enabled-f5a800?style=flat-square&logo=opentelemetry)](https://opentelemetry.io/)
-[![CI](https://github.com/semmidev/restful-template/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/semmidev/restful-template/actions/workflows/ci-cd.yml)
-
+[![CI](https://img.shields.io/github/actions/workflow/status/semmidev/restful-template/ci.yml?label=CI&style=flat-square)](https://github.com/semmidev/restful-template/actions/workflows/ci.yml)
+[![CD](https://img.shields.io/github/actions/workflow/status/semmidev/restful-template/cd.yml?label=CD&style=flat-square)](https://github.com/semmidev/restful-template/actions/workflows/cd.yml)
 Template ini mengusung arsitektur **Modular Monolith (Package by Feature)**, *routing* berkinerja tinggi menggunakan Chi, *auto-generation* OpenAPI 3.1 dengan Huma v2, serta menggunakan PostgreSQL 18 untuk men-generate UUID yang aman dan terurut berdasarkan waktu (*time-ordered*).
 
 ## Preview
