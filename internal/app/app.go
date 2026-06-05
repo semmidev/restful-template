@@ -96,7 +96,7 @@ func Setup(ctx context.Context, cfg config.Config, logger *slog.Logger) (http.Ha
 		},
 	}
 
-	server := delivery.NewServer(cfg, logger, authSvc, todoSvc, tokenSvc, limiter, healthCheckers)
+	server := delivery.NewServer(cfg, logger, authSvc, todoSvc, tokenSvc, limiter, healthCheckers, clientOpt)
 
 	return server.Handler(), cleanup, nil
 }

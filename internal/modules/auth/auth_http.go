@@ -5,8 +5,6 @@ import (
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/google/uuid"
-	"github.com/semmidev/restful-template/internal/shared/errors"
 	"github.com/semmidev/restful-template/internal/shared/httpapi"
 	"github.com/semmidev/restful-template/internal/shared/wideevent"
 )
@@ -108,14 +106,11 @@ func (h *authHandler) handleRefresh(ctx context.Context, in *authRefreshReq) (*T
 }
 
 func (h *authHandler) handleDeleteAccount(ctx context.Context, in *authDeleteAccountReq) (*struct{}, error) {
-	userIDStr := GetUserID(ctx)
-	if userIDStr == "" {
-		return nil, httpapi.ToHumaErr(ctx, errors.ErrUnauthorized)
-	}
-	userID, err := uuid.Parse(userIDStr)
+	userID, err := httpapi.ExtractUserID(ctx)
 	if err != nil {
-		return nil, httpapi.ToHumaErr(ctx, errors.ErrUnauthorized)
+		return nil, httpapi.ToHumaErr(ctx, err)
 	}
+	wideevent.Add(ctx, "user_id", userID.String())
 
 	if err := h.auth.DeleteAccount(ctx, userID); err != nil {
 		return nil, httpapi.ToHumaErr(ctx, err)

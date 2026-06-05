@@ -79,14 +79,7 @@ func AuthMiddleware(api huma.API, tokens TokenService) func(ctx huma.Context, ne
 	}
 }
 
-func GetUserID(ctx context.Context) string {
-	id, err := httpapi.ExtractUserID(ctx)
-	if err != nil {
-		return ""
-	}
-	return id.String()
-}
-
+// GetUserEmail retrieves the authenticated user's email from the request context.
 func GetUserEmail(ctx context.Context) string {
 	if v := ctx.Value(httpapi.UserEmailKey); v != nil {
 		if s, ok := v.(string); ok {

@@ -22,22 +22,35 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+// rateLimitSkipPaths is the set of exact paths that bypass rate limiting.
+// Health checks are exempt so Kubernetes readiness probes are never throttled.
+var rateLimitSkipPaths = map[string]struct{}{
+	"/api/v1/health": {},
+}
+
 type Server struct {
 	router *chi.Mux
 	api    huma.API
 }
 
 // NewServer wires up all middleware, Huma API, and registers routes.
-// tokens (auth.TokenService) is passed separately so AuthMiddleware can
-// validate JWTs without depending on the full AuthService (clean arch).
+//
+//   - authService / todosService are consumed as interfaces so the delivery
+//     layer never touches concrete Usecase types (clean arch boundary).
+//   - tokens (auth.TokenService) is kept separate so AuthMiddleware can
+//     validate JWTs without depending on the full AuthService.
+//   - redisClientOpt is resolved once in app.Setup and passed in here to
+//     avoid parsing the Redis DSN a second time just for the asynqmon UI.
+//     Pass nil to skip mounting the asynqmon UI (e.g. in tests).
 func NewServer(
 	cfg config.Config,
 	log *slog.Logger,
-	authUsecase *auth.Usecase,
-	todosUsecase *todos.Usecase,
+	authService auth.AuthService,
+	todosService todos.TodoService,
 	tokens auth.TokenService,
 	limiter *redis_rate.Limiter,
 	healthCheckers map[string]HealthChecker,
+	redisClientOpt asynq.RedisClientOpt,
 ) *Server {
 	r := chi.NewRouter()
 
@@ -65,54 +78,44 @@ func NewServer(
 
 	r.Get("/metrics", promhttp.Handler().ServeHTTP)
 
-	redisOpt, err := asynq.ParseRedisURI(cfg.Redis.DSN)
-	if err == nil {
-		clientOpt, ok := redisOpt.(asynq.RedisClientOpt)
-		if ok {
-			asynqmonUI := asynqmon.New(asynqmon.Options{
-				RootPath:     "/admin/asynq",
-				RedisConnOpt: clientOpt,
-			})
+	asynqmonUI := asynqmon.New(asynqmon.Options{
+		RootPath:     "/admin/asynq",
+		RedisConnOpt: redisClientOpt,
+	})
 
-			// Admin group: Basic Auth + permissive CSP so the asynqmon SPA can
-			// load its inline scripts, chunk JS, stylesheets, and Google Fonts.
-			r.Group(func(r chi.Router) {
-				r.Use(middleware.BasicAuth("Asynqmon", map[string]string{
-					cfg.Asynqmon.Username: cfg.Asynqmon.Password,
-				}))
-				r.Use(func(next http.Handler) http.Handler {
-					return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-						w.Header().Set("X-Content-Type-Options", "nosniff")
-						w.Header().Set("Referrer-Policy", "no-referrer")
-						w.Header().Set("X-Frame-Options", "SAMEORIGIN")
-						w.Header().Set("Content-Security-Policy",
-							"default-src 'self'; "+
-								"script-src 'self' 'unsafe-inline'; "+
-								"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "+
-								"font-src 'self' https://fonts.gstatic.com; "+
-								"img-src 'self' data:; "+
-								"connect-src 'self'; "+
-								"manifest-src 'self'")
-						next.ServeHTTP(w, r)
-					})
-				})
-				// chi Mount strips the prefix which breaks asynqmon's internal
-				// ServeMux; Handle preserves the full path.
-				rootPath := asynqmonUI.RootPath()
-				r.Handle(rootPath, http.RedirectHandler(rootPath+"/", http.StatusMovedPermanently))
-				r.Handle(rootPath+"/*", asynqmonUI)
+	// Admin group: Basic Auth + permissive CSP so the asynqmon SPA can
+	// load its inline scripts, chunk JS, stylesheets, and Google Fonts.
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.BasicAuth("Asynqmon", map[string]string{
+			cfg.Asynqmon.Username: cfg.Asynqmon.Password,
+		}))
+		r.Use(func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("X-Content-Type-Options", "nosniff")
+				w.Header().Set("Referrer-Policy", "no-referrer")
+				w.Header().Set("X-Frame-Options", "SAMEORIGIN")
+				w.Header().Set("Content-Security-Policy",
+					"default-src 'self'; "+
+						"script-src 'self' 'unsafe-inline'; "+
+						"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "+
+						"font-src 'self' https://fonts.gstatic.com; "+
+						"img-src 'self' data:; "+
+						"connect-src 'self'; "+
+						"manifest-src 'self'")
+				next.ServeHTTP(w, r)
 			})
-		} else {
-			log.Error("parsed redis DSN is not a RedisClientOpt")
-		}
-	} else {
-		log.Error("failed to parse redis DSN for asynqmon", "err", err)
-	}
+		})
+		// chi Mount strips the prefix which breaks asynqmon's internal
+		// ServeMux; Handle preserves the full path.
+		rootPath := asynqmonUI.RootPath()
+		r.Handle(rootPath, http.RedirectHandler(rootPath+"/", http.StatusMovedPermanently))
+		r.Handle(rootPath+"/*", asynqmonUI)
+	})
 
 	// API + docs group: strict security headers and rate limiting.
 	r.Group(func(r chi.Router) {
 		r.Use(sharedmw.SecurityHeaders())
-		r.Use(sharedmw.RateLimiter(limiter))
+		r.Use(sharedmw.RateLimiter(limiter, rateLimitSkipPaths))
 
 		humaConfig := huma.DefaultConfig(cfg.App.Name, cfg.App.Version)
 		humaConfig.Info.Description = cfg.App.Description
@@ -129,7 +132,7 @@ func NewServer(
 		api := humachi.New(r, humaConfig)
 		api.UseMiddleware(auth.AuthMiddleware(api, tokens))
 
-		RegisterRoutes(api, healthCheckers, authUsecase, todosUsecase)
+		RegisterRoutes(api, healthCheckers, authService, todosService)
 	})
 
 	return &Server{router: r, api: nil}

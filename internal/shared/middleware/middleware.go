@@ -154,10 +154,13 @@ func SecurityHeaders() func(http.Handler) http.Handler {
 }
 
 // RateLimiter enforces a per-IP rate limit using Redis.
-func RateLimiter(limiter *redis_rate.Limiter) func(http.Handler) http.Handler {
+// skipPaths is an optional set of exact paths that bypass rate limiting
+// (e.g. health-check endpoints polled by Kubernetes probes). The map
+// is defined by the caller so this package stays unaware of route structure.
+func RateLimiter(limiter *redis_rate.Limiter, skipPaths map[string]struct{}) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path == "/api/v1/health" {
+			if _, skip := skipPaths[r.URL.Path]; skip {
 				next.ServeHTTP(w, r)
 				return
 			}

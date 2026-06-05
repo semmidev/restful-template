@@ -2,10 +2,10 @@ package todos
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/google/uuid"
+	apperrors "github.com/semmidev/restful-template/internal/shared/errors"
 	"github.com/semmidev/restful-template/internal/shared/uuidgen"
 )
 
@@ -28,19 +28,23 @@ type Todo struct {
 	UpdatedAt   time.Time  `json:"updated_at"`
 }
 
+// Validate checks business invariants on a Todo entity.
+// Uses SafeError so the Code field is available for RFC 9457 responses —
+// never raw errors.New which would lose structured context.
 func (t *Todo) Validate() error {
 	if t.Title == "" {
-		return errors.New("todo title cannot be empty")
+		return apperrors.NewInvalidInput("todo title cannot be empty", apperrors.ErrInvalidInput)
 	}
 	if t.Status != TodoStatusPending && t.Status != TodoStatusInProgress && t.Status != TodoStatusDone {
-		return errors.New("invalid todo status")
+		return apperrors.NewInvalidInput("invalid todo status", apperrors.ErrInvalidInput)
 	}
 	return nil
 }
 
+// ChangeStatus updates the status field only; the caller is responsible
+// for setting UpdatedAt on the aggregate after all mutations are applied.
 func (t *Todo) ChangeStatus(status TodoStatus) {
 	t.Status = status
-	t.UpdatedAt = time.Now().UTC()
 }
 
 func NewTodoEntity(in CreateTodoInput) *Todo {
@@ -57,6 +61,13 @@ func NewTodoEntity(in CreateTodoInput) *Todo {
 	}
 }
 
+// ApplyUpdate mutates the entity according to the given input.
+//
+// If UpdateMask is provided (AIP-134), only the listed fields are touched.
+// Otherwise all non-nil fields in the input are applied.
+// UpdatedAt is stamped exactly once at the end of the method — not inside
+// ChangeStatus — so the timestamp is consistent regardless of how many
+// fields are mutated.
 func (t *Todo) ApplyUpdate(in UpdateTodoInput) {
 	if len(in.UpdateMask) > 0 {
 		for _, field := range in.UpdateMask {
@@ -91,7 +102,6 @@ func (t *Todo) ApplyUpdate(in UpdateTodoInput) {
 				}
 			}
 		}
-		t.UpdatedAt = time.Now().UTC()
 	} else {
 		if in.Title != nil {
 			t.Title = *in.Title
@@ -109,8 +119,9 @@ func (t *Todo) ApplyUpdate(in UpdateTodoInput) {
 		if in.Status != nil {
 			t.ChangeStatus(*in.Status)
 		}
-		t.UpdatedAt = time.Now().UTC()
 	}
+	// Stamp UpdatedAt exactly once regardless of which branch ran.
+	t.UpdatedAt = time.Now().UTC()
 }
 
 type CreateTodoInput struct {
@@ -138,7 +149,6 @@ type ListTodosQuery struct {
 	SortBy  string
 	SortDir string
 	Status  *TodoStatus `query:"status"`
-	Search  string      `query:"search"`
 }
 
 func (q *ListTodosQuery) Normalize() {
