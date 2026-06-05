@@ -13,7 +13,7 @@ import { uuidv4 } from 'https://jslib.k6.io/k6-utils/1.4.0/index.js';
 // ─── Load Test Configuration ──────────────────────────────────────────────────
 export const options = {
     stages: [
-        { duration: '1m', target: 500  }, // ramp up to 500 VUs
+        { duration: '2m', target: 100  }, // ramp up to 500 VUs
         // { duration: '2m', target: 1000 }, // ramp up to 1000 VUs
         // { duration: '1m', target: 2000 }, // ramp up to 2000 VUs
         // { duration: '1m', target: 2000 }, // hold at 2000 VUs

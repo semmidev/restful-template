@@ -1,21 +1,17 @@
 package asynqtask
 
-import (
-	"github.com/google/uuid"
-)
+import "context"
 
 const (
-	// TaskSendWelcomeEmail is the unique identifier for the welcome email task.
-	TaskSendWelcomeEmail = "task:send_welcome_email"
-
 	// QueueCritical handles high-priority tasks.
 	QueueCritical = "critical"
 	// QueueDefault handles standard-priority tasks.
 	QueueDefault = "default"
 )
 
-// TaskPayloadSendWelcomeEmail defines the payload for sending a welcome email.
-type TaskPayloadSendWelcomeEmail struct {
-	UserID uuid.UUID `json:"user_id"`
-	Email  string    `json:"email"`
+// TaskEnqueuer is the interface module-level distributor adapters depend on.
+// *Distributor satisfies this automatically; modules never hold a concrete *Distributor,
+// which keeps them decoupled from the Redis implementation and easy to mock in tests.
+type TaskEnqueuer interface {
+	EnqueueTask(ctx context.Context, taskType string, payload any, queue string) error
 }

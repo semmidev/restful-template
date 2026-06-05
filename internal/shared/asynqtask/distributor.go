@@ -11,8 +11,9 @@ import (
 	"github.com/hibiken/asynq"
 )
 
-// Distributor implements the TaskDistributor using Asynq and Redis.
-// It is responsible for serializing task payloads and enqueuing them.
+// Distributor implements a generic task distributor using Asynq and Redis.
+// It serializes payloads and enqueues them into the appropriate queue.
+// Module-specific dispatch methods live in each module's own distributor adapter.
 type Distributor struct {
 	client *asynq.Client
 }
@@ -25,17 +26,10 @@ func NewDistributor(redisOpt asynq.RedisClientOpt) *Distributor {
 	}
 }
 
-// DistributeTaskSendWelcomeEmail serializes the payload and enqueues a SendWelcomeEmail task
-// into the critical queue with a maximum of 5 retries.
-func (d *Distributor) DistributeTaskSendWelcomeEmail(
-	ctx context.Context,
-	payload *TaskPayloadSendWelcomeEmail,
-) error {
-	return d.enqueueTask(ctx, TaskSendWelcomeEmail, payload, QueueCritical)
-}
-
-// enqueueTask is a helper method to serialize the payload and enqueue an Asynq task.
-func (d *Distributor) enqueueTask(
+// EnqueueTask serializes payload and enqueues an Asynq task by type and queue name.
+// Module-specific distributor adapters call this to avoid polluting the shared package
+// with domain knowledge.
+func (d *Distributor) EnqueueTask(
 	ctx context.Context,
 	taskType string,
 	payload any,

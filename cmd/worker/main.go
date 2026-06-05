@@ -2,18 +2,16 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/hibiken/asynq"
+	"github.com/semmidev/restful-template/internal/app"
 	"github.com/semmidev/restful-template/internal/config"
 	"github.com/semmidev/restful-template/internal/shared/banner"
 	"github.com/semmidev/restful-template/internal/shared/observability"
-	"github.com/semmidev/restful-template/internal/worker"
 )
 
 func main() {
@@ -42,20 +40,10 @@ func run(ctx context.Context) error {
 		}()
 	}
 
-	redisOpt, err := asynq.ParseRedisURI(cfg.Redis.DSN)
+	taskProcessor, err := app.SetupWorker(cfg, logger)
 	if err != nil {
-		return fmt.Errorf("failed to parse redis dsn: %w", err)
+		return fmt.Errorf("worker setup: %w", err)
 	}
-
-	clientOpt, ok := redisOpt.(asynq.RedisClientOpt)
-	if !ok {
-		return errors.New("parsed redis dsn is not a RedisClientOpt")
-	}
-
-	taskProcessor := worker.NewRedisTaskProcessor(
-		clientOpt,
-		logger,
-	)
 
 	banner.Print(cfg.App.Name, cfg.App.Version, []banner.Field{
 		{Key: "env", Value: cfg.App.Env},

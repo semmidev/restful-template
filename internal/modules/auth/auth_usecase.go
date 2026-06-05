@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/semmidev/restful-template/internal/shared/asynqtask"
 	"github.com/semmidev/restful-template/internal/shared/database"
 	apperrors "github.com/semmidev/restful-template/internal/shared/errors"
 	"github.com/semmidev/restful-template/internal/shared/observability"
@@ -49,9 +48,9 @@ func (s *Usecase) Register(ctx context.Context, in RegisterInput) (TokenPair, er
 		return TokenPair{}, apperrors.NewInternal("Failed to create user", err)
 	}
 
-	// Dispatch welcome email task asynchronously
+	// Dispatch welcome email task asynchronously (best-effort — never fail the request).
 	if s.distributor != nil {
-		_ = s.distributor.DistributeTaskSendWelcomeEmail(ctx, &asynqtask.TaskPayloadSendWelcomeEmail{
+		_ = s.distributor.DistributeTaskSendWelcomeEmail(ctx, &TaskPayloadSendWelcomeEmail{
 			UserID: u.ID,
 			Email:  u.Email,
 		})

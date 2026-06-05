@@ -5,11 +5,23 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/semmidev/restful-template/internal/shared/asynqtask"
 	"github.com/semmidev/restful-template/internal/shared/errors"
 	"github.com/semmidev/restful-template/internal/shared/password"
 	"github.com/semmidev/restful-template/internal/shared/uuidgen"
 )
+
+const (
+	// TaskSendWelcomeEmail is the unique asynq task type for sending a welcome email.
+	// Owned by the auth module because it is the only producer and consumer of this task.
+	TaskSendWelcomeEmail = "task:send_welcome_email"
+)
+
+// TaskPayloadSendWelcomeEmail carries the data needed to send a welcome email
+// to a newly registered user.
+type TaskPayloadSendWelcomeEmail struct {
+	UserID uuid.UUID `json:"user_id"`
+	Email  string    `json:"email"`
+}
 
 type User struct {
 	ID           uuid.UUID `json:"id"`
@@ -74,8 +86,10 @@ type TodoService interface {
 	DeleteAllByUserID(ctx context.Context, userID uuid.UUID) error
 }
 
+// TaskDistributor is the interface the auth usecase uses to enqueue background work.
+// The concrete implementation lives in auth_distributor.go and wraps asynqtask.Distributor.
 type TaskDistributor interface {
-	DistributeTaskSendWelcomeEmail(ctx context.Context, payload *asynqtask.TaskPayloadSendWelcomeEmail) error
+	DistributeTaskSendWelcomeEmail(ctx context.Context, payload *TaskPayloadSendWelcomeEmail) error
 }
 
 type UserRepository interface {

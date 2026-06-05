@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -82,8 +83,9 @@ func Setup(ctx context.Context, cfg config.Config, logger *slog.Logger) (http.Ha
 		return nil, nil, err
 	}
 	distributor := asynqtask.NewDistributor(clientOpt)
+	authDistributor := auth.NewTaskDistributor(distributor)
 
-	authSvc := auth.NewAuth(userRepo, tokenSvc, tokenRepo, todoSvc, txManager, tracerAdapter, distributor)
+	authSvc := auth.NewAuth(userRepo, tokenSvc, tokenRepo, todoSvc, txManager, tracerAdapter, authDistributor)
 
 	healthCheckers := map[string]delivery.HealthChecker{
 		"postgres": func(hctx context.Context) error {
@@ -97,4 +99,27 @@ func Setup(ctx context.Context, cfg config.Config, logger *slog.Logger) (http.Ha
 	server := delivery.NewServer(cfg, logger, authSvc, todoSvc, tokenSvc, limiter, healthCheckers)
 
 	return server.Handler(), cleanup, nil
+}
+
+// SetupWorker wires task handlers and returns a ready-to-start Processor.
+// All module task handlers are registered here via AddTask — this is the only
+// place that knows about both the Processor and each module's handler functions.
+// Mirrors Setup() so cmd/worker/main.go stays as thin as cmd/server/main.go.
+func SetupWorker(cfg config.Config, logger *slog.Logger) (asynqtask.Processor, error) {
+	redisOpt, err := asynq.ParseRedisURI(cfg.Redis.DSN)
+	if err != nil {
+		return nil, fmt.Errorf("invalid redis dsn: %w", err)
+	}
+
+	clientOpt, ok := redisOpt.(asynq.RedisClientOpt)
+	if !ok {
+		return nil, errors.New("parsed redis dsn is not a RedisClientOpt")
+	}
+
+	processor := asynqtask.NewProcessor(clientOpt, logger)
+
+	// ── auth module tasks ────────────────────────────────────────────────────
+	processor.AddTask(auth.TaskSendWelcomeEmail, auth.HandleSendWelcomeEmail(logger))
+
+	return processor, nil
 }
