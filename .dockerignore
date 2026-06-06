@@ -46,3 +46,10 @@ references/
 server
 scheduler
 worker
+
+# Testing & Linting
+tests/
+.golangci.yml
+
+# Other Dockerfiles
+Dockerfile.*
