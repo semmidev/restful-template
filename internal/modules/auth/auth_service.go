@@ -64,6 +64,8 @@ func (s *Service) Register(ctx context.Context, in RegisterInput) (TokenPair, er
 		return TokenPair{}, apperrors.NewInternal("Failed to create user", err)
 	}
 
+	observability.AuthRegistrationsTotal.Inc()
+
 	// Dispatch welcome email task asynchronously (best-effort — never fail the request).
 	if s.distributor != nil {
 		_ = s.distributor.DistributeTaskSendWelcomeEmail(ctx, &TaskPayloadSendWelcomeEmail{

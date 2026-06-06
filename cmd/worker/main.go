@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/semmidev/restful-template/internal/app"
 	"github.com/semmidev/restful-template/internal/config"
@@ -66,8 +67,22 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("worker error: %w", err)
 	}
 
-	taskProcessor.Shutdown()
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+	defer cancel()
 
-	logger.Info("worker stopped")
+	done := make(chan struct{})
+	go func() {
+		taskProcessor.Shutdown()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		logger.Info("worker stopped gracefully")
+	case <-shutdownCtx.Done():
+		logger.Error("worker shutdown timed out, forcing exit")
+		os.Exit(1)
+	}
+
 	return nil
 }

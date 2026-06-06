@@ -9,12 +9,14 @@ import (
 	"github.com/semmidev/restful-template/internal/shared/cache"
 	apperrors "github.com/semmidev/restful-template/internal/shared/errors"
 	"github.com/semmidev/restful-template/internal/shared/observability"
+	"golang.org/x/sync/singleflight"
 )
 
 type Service struct {
 	repo   TodoRepository
 	cache  cache.CacheRepository
 	tracer observability.Tracer
+	sf     singleflight.Group
 }
 
 func NewTodoService(repo TodoRepository, cache cache.CacheRepository, tracer observability.Tracer) *Service {
@@ -33,6 +35,8 @@ func (s *Service) Create(ctx context.Context, in CreateTodoInput) (*Todo, error)
 	if err := s.repo.Create(ctx, t); err != nil {
 		return nil, apperrors.NewInternal("Failed to create todo", err)
 	}
+
+	observability.TodosCreatedTotal.Inc()
 	return t, nil
 }
 
@@ -47,18 +51,34 @@ func (s *Service) Get(ctx context.Context, userID, id uuid.UUID) (*Todo, error) 
 	if cached, err := s.cache.Get(ctx, key); err == nil {
 		var t Todo
 		if jsonErr := json.Unmarshal([]byte(cached), &t); jsonErr == nil {
+			observability.CacheHitsTotal.WithLabelValues("todo").Inc()
 			return &t, nil
 		}
 	}
 
-	t, err := s.repo.GetByID(ctx, userID, id)
+	observability.CacheMissesTotal.WithLabelValues("todo").Inc()
+
+	res, err, _ := s.sf.Do(key, func() (any, error) {
+		t, repoErr := s.repo.GetByID(ctx, userID, id)
+		if repoErr != nil {
+			return nil, repoErr
+		}
+
+		// Cache writes are best-effort: a failure here must not degrade availability.
+		if b, jsonErr := json.Marshal(t); jsonErr == nil {
+			_ = s.cache.Set(ctx, key, string(b), todoCacheTTL)
+		}
+
+		return t, nil
+	})
+
 	if err != nil {
 		return nil, apperrors.NewNotFound("The requested todo does not exist", err)
 	}
 
-	// Cache writes are best-effort: a failure here must not degrade availability.
-	if b, jsonErr := json.Marshal(t); jsonErr == nil {
-		_ = s.cache.Set(ctx, key, string(b), todoCacheTTL)
+	t, ok := res.(*Todo)
+	if !ok {
+		return nil, apperrors.NewInternal("Unexpected type returned from singleflight", nil)
 	}
 
 	return t, nil

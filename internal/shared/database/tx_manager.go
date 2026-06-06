@@ -5,6 +5,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	apperrors "github.com/semmidev/restful-template/internal/shared/errors"
 )
 
 type txKey struct{}
@@ -37,19 +38,24 @@ func NewPostgresTxManager(pool *pgxpool.Pool) *PostgresTxManager {
 // The deferred Rollback is a no-op after a successful Commit, so it is safe
 // to defer unconditionally — this avoids the common mistake of forgetting
 // rollback on every early-return error path.
-func (tm *PostgresTxManager) RunInTx(ctx context.Context, fn func(ctx context.Context) error) error {
+func (tm *PostgresTxManager) RunInTx(ctx context.Context, fn func(ctx context.Context) error) (err error) {
 	tx, err := tm.pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
 
 	defer func() {
-		_ = tx.Rollback(ctx)
+		if p := recover(); p != nil {
+			err = apperrors.NewInternal("panic during transaction execution", nil)
+			_ = tx.Rollback(ctx)
+		} else {
+			_ = tx.Rollback(ctx)
+		}
 	}()
 
 	ctxWithTx := InjectTx(ctx, tx)
 
-	if err := fn(ctxWithTx); err != nil {
+	if err = fn(ctxWithTx); err != nil {
 		return err
 	}
 
