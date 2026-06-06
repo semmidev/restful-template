@@ -28,12 +28,21 @@ type Config struct {
 	Log       Log
 	Telemetry Telemetry
 	CORS      CORS
+	SMTP      SMTP
 	Asynqmon  Asynqmon
 }
 
 type Asynqmon struct {
 	Username string
 	Password string
+}
+
+type SMTP struct {
+	Host     string
+	Port     int
+	Username string
+	Password string
+	From     string
 }
 
 type App struct {
@@ -128,6 +137,12 @@ func Load() Config {
 	v.SetDefault("LOG_LEVEL", "info")
 	v.SetDefault("LOG_FORMAT", "json")
 
+	v.SetDefault("SMTP_HOST", "localhost")
+	v.SetDefault("SMTP_PORT", 1025)
+	v.SetDefault("SMTP_USERNAME", "")
+	v.SetDefault("SMTP_PASSWORD", "")
+	v.SetDefault("SMTP_FROM", "noreply@todo.local")
+
 	v.SetDefault("TELEMETRY_OTLP_ENDPOINT", "localhost:4317")
 
 	v.SetDefault("CORS_ALLOWED_ORIGINS", "*") // override in production
@@ -184,6 +199,13 @@ func Load() Config {
 		},
 		CORS: CORS{
 			AllowedOrigins: allowedOrigins,
+		},
+		SMTP: SMTP{
+			Host:     v.GetString("SMTP_HOST"),
+			Port:     v.GetInt("SMTP_PORT"),
+			Username: v.GetString("SMTP_USERNAME"),
+			Password: v.GetString("SMTP_PASSWORD"),
+			From:     v.GetString("SMTP_FROM"),
 		},
 		Asynqmon: Asynqmon{
 			Username: v.GetString("ASYNQMON_USERNAME"),

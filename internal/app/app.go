@@ -14,6 +14,7 @@ import (
 	"github.com/semmidev/restful-template/internal/modules/todos"
 	"github.com/semmidev/restful-template/internal/shared/asynqtask"
 	"github.com/semmidev/restful-template/internal/shared/database"
+	"github.com/semmidev/restful-template/internal/shared/email/smtp"
 	jwtpkg "github.com/semmidev/restful-template/internal/shared/jwt"
 	"github.com/semmidev/restful-template/internal/shared/observability"
 	redispkg "github.com/semmidev/restful-template/internal/shared/redis"
@@ -118,8 +119,15 @@ func SetupWorker(cfg config.Config, logger *slog.Logger) (asynqtask.Processor, e
 
 	processor := asynqtask.NewProcessor(clientOpt, logger)
 
+	// ── email sender ─────────────────────────────────────────────────────────
+	emailSender, err := smtp.NewSender(cfg.SMTP)
+	if err != nil {
+		return nil, fmt.Errorf("failed to init smtp sender: %w", err)
+	}
+
 	// ── auth module tasks ────────────────────────────────────────────────────
-	processor.AddTask(auth.TaskSendWelcomeEmail, auth.HandleSendWelcomeEmail(logger))
+	authWorker := auth.NewAuthWorker(logger, emailSender)
+	processor.AddTask(auth.TaskSendWelcomeEmail, authWorker.HandleSendWelcomeEmail())
 
 	return processor, nil
 }

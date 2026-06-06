@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Welcome to Todo App</title>
+  <style>
+    body { margin:0; padding:0; background:#f4f6f9; font-family:'Segoe UI',Arial,sans-serif; }
+    .wrapper { max-width:560px; margin:40px auto; background:#ffffff; border-radius:12px;
+               box-shadow:0 4px 24px rgba(0,0,0,.08); overflow:hidden; }
+    .header  { background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);
+               padding:32px 40px; color:#fff; text-align:center; }
+    .header h1 { margin:0; font-size:24px; font-weight:700; letter-spacing:-.3px; }
+    .header p  { margin:6px 0 0; opacity:.85; font-size:14px; }
+    .body    { padding:36px 40px; }
+    .greeting { font-size:18px; font-weight:600; color:#1e1b4b; margin:0 0 16px; }
+    .content { color:#475569; font-size:15px; line-height:1.6; margin:0 0 24px; }
+    .feature-list { background:#f8f9ff; border:1.5px solid #e0e3ff; border-radius:10px;
+                 padding:20px 24px; margin-bottom:24px; list-style-type: none; }
+    .feature-list li { margin-bottom: 10px; color: #334155; }
+    .feature-list li::before { content: "✓"; color: #6366f1; font-weight: bold; margin-right: 8px; }
+    .cta { text-align:center; margin-top:16px; }
+    .cta a { display:inline-block; background:#6366f1; color:#fff; text-decoration:none;
+             padding:14px 32px; border-radius:8px; font-weight:600; font-size:15px; }
+    .cta a:hover { background:#4f46e5; }
+    .footer { padding:20px 40px; text-align:center; font-size:12px; color:#94a3b8;
+              border-top:1px solid #f1f5f9; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>🚀 Welcome to Todo App!</h1>
+      <p>Your productivity journey starts here.</p>
+    </div>
+    <div class="body">
+      <div class="greeting">Hi {{.UserName}},</div>
+      <p class="content">
+        We're thrilled to have you on board! The Todo App is designed to help you organize your life, boost your productivity, and never miss a deadline again.
+      </p>
+      
+      <ul class="feature-list">
+        <li>Create and manage tasks effortlessly</li>
+        <li>Set priorities and deadlines</li>
+        <li>Access your list from anywhere securely</li>
+      </ul>
+      
+      <p class="content">
+        Ready to get started? Log in now to create your first task and take control of your day!
+      </p>
+
+      <div class="cta">
+        <a href="{{.AppURL}}">Go to Dashboard →</a>
+      </div>
+    </div>
+    <div class="footer">
+      You received this email because you registered for an account at Todo App.<br/>
+      © Todo App — keep crushing it 🚀
+    </div>
+  </div>
+</body>
+</html>
