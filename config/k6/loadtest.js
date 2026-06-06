@@ -13,11 +13,7 @@ import { uuidv4 } from 'https://jslib.k6.io/k6-utils/1.4.0/index.js';
 // ─── Load Test Configuration ──────────────────────────────────────────────────
 export const options = {
     stages: [
-        { duration: '2m', target: 100  }, // ramp up to 500 VUs
-        // { duration: '2m', target: 1000 }, // ramp up to 1000 VUs
-        // { duration: '1m', target: 2000 }, // ramp up to 2000 VUs
-        // { duration: '1m', target: 2000 }, // hold at 2000 VUs
-        // { duration: '1m', target: 1000 }, // ramp down to 1000 VUs
+        { duration: '2m', target: 25  }, // ramp up to 25 VUs
         { duration: '1m', target: 0    }, // ramp down to 0 VUs
     ],
     thresholds: {
@@ -48,16 +44,16 @@ export default function () {
     const password = `P@ss-${randomString(12)}`;
 
     // ── 1. Health Check ───────────────────────────────────────────────────────
-    // group('Health Check', function () {
-    //     const res = http.get(`${BASE_URL}/api/v1/health`, {
-    //         tags: { name: 'HealthCheck' },
-    //     });
-    //     check(res, {
-    //         'health: status 200': (r) => r.status === 200,
-    //     });
-    // });
+    group('Health Check', function () {
+        const res = http.get(`${BASE_URL}/api/v1/health`, {
+            tags: { name: 'HealthCheck' },
+        });
+        check(res, {
+            'health: status 200': (r) => r.status === 200,
+        });
+    });
 
-    // sleep(0.5);
+    sleep(0.5);
 
     // ── 2. Register ───────────────────────────────────────────────────────────
     let accessToken = null;
@@ -84,24 +80,105 @@ export default function () {
     sleep(0.5);
 
     // ── 3. Login (re-authenticate the just-registered user) ───────────────────
-    // group('Login', function () {
-    //     const res = http.post(
-    //         `${BASE_URL}/api/v1/auth/login`,
-    //         JSON.stringify({ email, password }),
-    //         { headers: JSON_HEADERS, tags: { name: 'Login' } },
-    //     );
+    group('Login', function () {
+        const res = http.post(
+            `${BASE_URL}/api/v1/auth/login`,
+            JSON.stringify({ email, password }),
+            { headers: JSON_HEADERS, tags: { name: 'Login' } },
+        );
 
-    //     check(res, {
-    //         'login: status 200': (r) => r.status === 200,
-    //         'login: has access_token': (r) => {
-    //             try { return !!JSON.parse(r.body).access_token; } catch (e) { return false; }
-    //         },
-    //     });
+        check(res, {
+            'login: status 200': (r) => r.status === 200,
+            'login: has access_token': (r) => {
+                try { return !!JSON.parse(r.body).access_token; } catch (e) { return false; }
+            },
+        });
 
-    //     if (!accessToken) {
-    //         try { accessToken = JSON.parse(res.body).access_token; } catch (e) { /* ignore */ }
-    //     }
-    // });
+        if (!accessToken) {
+            try { accessToken = JSON.parse(res.body).access_token; } catch (e) { /* ignore */ }
+        }
+    });
+
+    sleep(0.5);
+    
+    // Stop if we don't have a token
+    if (!accessToken) return;
+
+    const authHeaders = { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+    };
+
+    // ── 4. Create Todo ────────────────────────────────────────────────────────
+    let todoId = null;
+    group('Create Todo', function () {
+        const res = http.post(
+            `${BASE_URL}/api/v1/todos`,
+            JSON.stringify({ title: 'Load Test Todo', description: 'Created during k6 load test', status: 'pending' }),
+            { headers: authHeaders, tags: { name: 'CreateTodo' } },
+        );
+
+        const ok = check(res, {
+            'create todo: status 201': (r) => r.status === 201,
+            'create todo: has id': (r) => {
+                try { return !!JSON.parse(r.body).id; } catch (e) { return false; }
+            },
+        });
+
+        if (ok) {
+            todoId = JSON.parse(res.body).id;
+        }
+    });
+
+    sleep(0.5);
+    if (!todoId) return;
+
+    // ── 5. Get Todo ───────────────────────────────────────────────────────────
+    group('Get Todo', function () {
+        const res = http.get(
+            `${BASE_URL}/api/v1/todos/${todoId}`,
+            { headers: authHeaders, tags: { name: 'GetTodo' } },
+        );
+
+        check(res, {
+            'get todo: status 200': (r) => r.status === 200,
+            'get todo: id matches': (r) => {
+                try { return JSON.parse(r.body).id === todoId; } catch (e) { return false; }
+            },
+        });
+    });
+
+    sleep(0.5);
+
+    // ── 6. List Todos ─────────────────────────────────────────────────────────
+    group('List Todos', function () {
+        const res = http.get(
+            `${BASE_URL}/api/v1/todos?page=1&per_page=10`,
+            { headers: authHeaders, tags: { name: 'ListTodos' } },
+        );
+
+        check(res, {
+            'list todos: status 200': (r) => r.status === 200,
+            'list todos: is array': (r) => {
+                try { return Array.isArray(JSON.parse(r.body)); } catch (e) { return false; }
+            },
+        });
+    });
+
+    sleep(0.5);
+
+    // ── 7. Delete Todo ────────────────────────────────────────────────────────
+    group('Delete Todo', function () {
+        const res = http.del(
+            `${BASE_URL}/api/v1/todos/${todoId}`,
+            null,
+            { headers: authHeaders, tags: { name: 'DeleteTodo' } },
+        );
+
+        check(res, {
+            'delete todo: status 204': (r) => r.status === 204,
+        });
+    });
 
     sleep(1);
 }
