@@ -124,45 +124,6 @@ func (t *Todo) ApplyUpdate(in UpdateTodoInput) {
 	t.UpdatedAt = time.Now().UTC()
 }
 
-type CreateTodoInput struct {
-	UserID      uuid.UUID
-	Title       string  `json:"title" required:"true"`
-	Description string  `json:"description,omitempty"`
-	Cover       *string `json:"cover,omitempty"`
-}
-
-type UpdateTodoInput struct {
-	UserID      uuid.UUID
-	ID          uuid.UUID
-	Title       *string     `json:"title,omitempty"`
-	Description *string     `json:"description,omitempty"`
-	Cover       *string     `json:"cover,omitempty"`
-	Status      *TodoStatus `json:"status,omitempty"`
-	UpdateMask  []string
-}
-
-type ListTodosQuery struct {
-	UserID  uuid.UUID
-	Limit   int
-	Offset  int
-	Keyword string
-	SortBy  string
-	SortDir string
-	Status  *TodoStatus `query:"status"`
-}
-
-func (q *ListTodosQuery) Normalize() {
-	if q.Limit <= 0 || q.Limit > 100 {
-		q.Limit = 20
-	}
-	if q.SortBy == "" {
-		q.SortBy = "created_at"
-	}
-	if q.SortDir == "" {
-		q.SortDir = "desc"
-	}
-}
-
 type TodoRepository interface {
 	Create(ctx context.Context, todo *Todo) error
 	GetByID(ctx context.Context, userID, id uuid.UUID) (*Todo, error)
@@ -177,7 +138,7 @@ type TodoRepository interface {
 // with mocks via humatest without requiring a real database or cache.
 //
 // Update accepts a pre-loaded *Todo so the handler's ETag fetch is reused
-// and avoids a redundant GetByID call inside the usecase.
+// and avoids a redundant GetByID call inside the service.
 type TodoService interface {
 	List(ctx context.Context, q ListTodosQuery) ([]*Todo, int, error)
 	Create(ctx context.Context, input CreateTodoInput) (*Todo, error)

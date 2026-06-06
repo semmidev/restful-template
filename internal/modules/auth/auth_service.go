@@ -13,7 +13,7 @@ import (
 	"github.com/semmidev/restful-template/internal/shared/observability"
 )
 
-type Usecase struct {
+type Service struct {
 	users       UserRepository
 	tokens      TokenService
 	tokenRepo   TokenRepository
@@ -23,15 +23,31 @@ type Usecase struct {
 	distributor TaskDistributor
 }
 
-func NewAuth(users UserRepository, tokens TokenService, tokenRepo TokenRepository, todos TodoService, txManager database.TxManager, tracer observability.Tracer, distributor TaskDistributor) *Usecase {
-	return &Usecase{users: users, tokens: tokens, tokenRepo: tokenRepo, todos: todos, txManager: txManager, tracer: tracer, distributor: distributor}
+func NewAuthService(
+	users UserRepository,
+	tokens TokenService,
+	tokenRepo TokenRepository,
+	todos TodoService,
+	txManager database.TxManager,
+	tracer observability.Tracer,
+	distributor TaskDistributor,
+) *Service {
+	return &Service{
+		users:       users,
+		tokens:      tokens,
+		tokenRepo:   tokenRepo,
+		todos:       todos,
+		txManager:   txManager,
+		tracer:      tracer,
+		distributor: distributor,
+	}
 }
 
 // Register inserts the user directly and lets the repository translate a unique
 // constraint violation (pg code 23505) into ErrConflict.
 // A pre-check GetByEmail before INSERT would be a TOCTOU race: two concurrent
 // requests could both pass the check, then one fails with a raw 500.
-func (s *Usecase) Register(ctx context.Context, in RegisterInput) (TokenPair, error) {
+func (s *Service) Register(ctx context.Context, in RegisterInput) (TokenPair, error) {
 	if err := in.Validate(); err != nil {
 		return TokenPair{}, err
 	}
@@ -59,7 +75,7 @@ func (s *Usecase) Register(ctx context.Context, in RegisterInput) (TokenPair, er
 	return s.issuePair(ctx, u)
 }
 
-func (s *Usecase) Login(ctx context.Context, in LoginInput) (TokenPair, error) {
+func (s *Service) Login(ctx context.Context, in LoginInput) (TokenPair, error) {
 	u, err := s.users.GetByEmail(ctx, in.Email)
 	if err != nil {
 		return TokenPair{}, apperrors.NewUnauthorized("Invalid credentials", apperrors.ErrUnauthorized)
@@ -71,7 +87,7 @@ func (s *Usecase) Login(ctx context.Context, in LoginInput) (TokenPair, error) {
 	return s.issuePair(ctx, u)
 }
 
-func (s *Usecase) Refresh(ctx context.Context, refreshToken string) (TokenPair, error) {
+func (s *Service) Refresh(ctx context.Context, refreshToken string) (TokenPair, error) {
 	claims, err := s.tokens.ParseRefresh(ctx, refreshToken)
 	if err != nil {
 		return TokenPair{}, apperrors.NewUnauthorized("Invalid refresh token", apperrors.ErrUnauthorized)
@@ -89,7 +105,7 @@ func (s *Usecase) Refresh(ctx context.Context, refreshToken string) (TokenPair, 
 	return s.issuePair(ctx, u)
 }
 
-func (s *Usecase) issuePair(ctx context.Context, u *User) (TokenPair, error) {
+func (s *Service) issuePair(ctx context.Context, u *User) (TokenPair, error) {
 	access, refresh, exp, refreshExp, err := s.tokens.GeneratePair(ctx, u.ID, u.Email)
 	if err != nil {
 		return TokenPair{}, apperrors.NewInternal("Failed to generate tokens", err)
@@ -103,7 +119,7 @@ func (s *Usecase) issuePair(ctx context.Context, u *User) (TokenPair, error) {
 	return TokenPair{AccessToken: access, RefreshToken: refresh, ExpiresIn: exp}, nil
 }
 
-func (s *Usecase) DeleteAccount(ctx context.Context, userID uuid.UUID) error {
+func (s *Service) DeleteAccount(ctx context.Context, userID uuid.UUID) error {
 	return s.txManager.RunInTx(ctx, func(txCtx context.Context) error {
 		if err := s.todos.DeleteAllByUserID(txCtx, userID); err != nil {
 			return err

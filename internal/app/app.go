@@ -69,7 +69,7 @@ func Setup(ctx context.Context, cfg config.Config, logger *slog.Logger) (http.Ha
 	tracerAdapter := observability.NewOtelTracer("usecase")
 	txManager := database.NewPostgresTxManager(pool)
 
-	todoSvc := todos.NewTodo(todoRepo, cacheRepo, tracerAdapter)
+	todoSvc := todos.NewTodoService(todoRepo, cacheRepo, tracerAdapter)
 
 	redisOpt, err := asynq.ParseRedisURI(cfg.Redis.DSN)
 	if err != nil {
@@ -85,7 +85,7 @@ func Setup(ctx context.Context, cfg config.Config, logger *slog.Logger) (http.Ha
 	distributor := asynqtask.NewDistributor(clientOpt)
 	authDistributor := auth.NewTaskDistributor(distributor)
 
-	authSvc := auth.NewAuth(userRepo, tokenSvc, tokenRepo, todoSvc, txManager, tracerAdapter, authDistributor)
+	authSvc := auth.NewAuthService(userRepo, tokenSvc, tokenRepo, todoSvc, txManager, tracerAdapter, authDistributor)
 
 	healthCheckers := map[string]delivery.HealthChecker{
 		"postgres": func(hctx context.Context) error {

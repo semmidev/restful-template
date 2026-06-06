@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/semmidev/restful-template/internal/shared/cache"
@@ -12,19 +11,17 @@ import (
 	"github.com/semmidev/restful-template/internal/shared/observability"
 )
 
-const todoCacheTTL = 5 * time.Minute
-
-type Usecase struct {
+type Service struct {
 	repo   TodoRepository
 	cache  cache.CacheRepository
 	tracer observability.Tracer
 }
 
-func NewTodo(repo TodoRepository, cache cache.CacheRepository, tracer observability.Tracer) *Usecase {
-	return &Usecase{repo: repo, cache: cache, tracer: tracer}
+func NewTodoService(repo TodoRepository, cache cache.CacheRepository, tracer observability.Tracer) *Service {
+	return &Service{repo: repo, cache: cache, tracer: tracer}
 }
 
-func (s *Usecase) Create(ctx context.Context, in CreateTodoInput) (*Todo, error) {
+func (s *Service) Create(ctx context.Context, in CreateTodoInput) (*Todo, error) {
 	ctx, span := s.tracer.Start(ctx, "todo.Create")
 	defer span.End()
 
@@ -41,7 +38,7 @@ func (s *Usecase) Create(ctx context.Context, in CreateTodoInput) (*Todo, error)
 
 // Get retrieves a todo by ID using Redis as a read-through cache.
 // The cache key includes userID to scope ownership and prevent cross-user reads.
-func (s *Usecase) Get(ctx context.Context, userID, id uuid.UUID) (*Todo, error) {
+func (s *Service) Get(ctx context.Context, userID, id uuid.UUID) (*Todo, error) {
 	ctx, span := s.tracer.Start(ctx, "todo.Get")
 	defer span.End()
 
@@ -67,7 +64,7 @@ func (s *Usecase) Get(ctx context.Context, userID, id uuid.UUID) (*Todo, error) 
 	return t, nil
 }
 
-func (s *Usecase) List(ctx context.Context, q ListTodosQuery) ([]*Todo, int, error) {
+func (s *Service) List(ctx context.Context, q ListTodosQuery) ([]*Todo, int, error) {
 	ctx, span := s.tracer.Start(ctx, "todo.List")
 	defer span.End()
 
@@ -84,7 +81,7 @@ func (s *Usecase) List(ctx context.Context, q ListTodosQuery) ([]*Todo, int, err
 // Accepting a pre-loaded entity avoids a redundant repo.GetByID call: the
 // handler already fetches the entity for ETag validation, so passing it here
 // reduces a PATCH from 3 DB calls to 2.
-func (s *Usecase) Update(ctx context.Context, existing *Todo, in UpdateTodoInput) (*Todo, error) {
+func (s *Service) Update(ctx context.Context, existing *Todo, in UpdateTodoInput) (*Todo, error) {
 	ctx, span := s.tracer.Start(ctx, "todo.Update")
 	defer span.End()
 
@@ -106,7 +103,7 @@ func (s *Usecase) Update(ctx context.Context, existing *Todo, in UpdateTodoInput
 	return existing, nil
 }
 
-func (s *Usecase) Delete(ctx context.Context, userID, id uuid.UUID) error {
+func (s *Service) Delete(ctx context.Context, userID, id uuid.UUID) error {
 	ctx, span := s.tracer.Start(ctx, "todo.Delete")
 	defer span.End()
 
@@ -118,7 +115,7 @@ func (s *Usecase) Delete(ctx context.Context, userID, id uuid.UUID) error {
 	return nil
 }
 
-func (s *Usecase) DeleteAllByUserID(ctx context.Context, userID uuid.UUID) error {
+func (s *Service) DeleteAllByUserID(ctx context.Context, userID uuid.UUID) error {
 	ctx, span := s.tracer.Start(ctx, "todo.DeleteAllByUserID")
 	defer span.End()
 

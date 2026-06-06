@@ -44,9 +44,9 @@ internal/
 ├── config/          ← Viper config loaded from .env + env vars
 ├── delivery/http/   ← HTTP layer: server, routes, middleware (driven adapters)
 ├── modules/
-│   ├── auth/        ← auth domain, repository, usecase, HTTP handler, middleware
-│   └── todos/       ← todos domain, repository, usecase, HTTP handler
-├── worker/          ← asynq task processor + per-task handler implementations
+│   ├── auth/        ← auth domain, repository, service, HTTP handler, middleware
+│   └── todos/       ← todos domain, repository, service, HTTP handler
+
 └── shared/
     ├── asynqtask/   ← task type constants, payload structs, TaskDistributor (producer)
     ├── cache/       ← CacheRepository interface
@@ -65,7 +65,7 @@ internal/
 ### Dependency Rules (never violate these)
 
 1. **`internal/modules/*`** may only import from `internal/shared/*`. Modules are **never** imported by other modules directly — cross-module calls happen via **interfaces defined in the domain file**.
-2. **`internal/delivery/http`** depends on module interfaces (`AuthService`, `TodoService`), not on concrete `*Usecase` structs — except in `NewServer()` where wiring happens explicitly.
+2. **`internal/delivery/http`** depends on module interfaces (`AuthService`, `TodoService`), not on concrete `*Service` structs — except in `NewServer()` where wiring happens explicitly.
 3. **`internal/shared/*`** has **zero imports** from `internal/modules/*` or `internal/delivery/*`.
 4. **`internal/app/app.go`** is the **only place** where concrete types are wired together. All other packages consume interfaces.
 5. **`cmd/*`** only calls `app.Setup()` and manages the OS signal lifecycle.
@@ -78,23 +78,28 @@ internal/
 
 Each module in `internal/modules/<name>/` has exactly these files:
 
-| File                    | Responsibility                                                                  |
-|-------------------------|---------------------------------------------------------------------------------|
-| `<name>_domain.go`      | Domain entity, value objects, business methods, **repository interface**, **service interface** |
-| `<name>_repository.go`  | PostgreSQL-backed repository struct implementing the repository interface       |
-| `<name>_usecase.go`     | Business logic struct implementing the service interface                        |
-| `<name>_http.go`        | Huma handler registration, request/response types, HTTP-specific logic         |
-| `<name>_middleware.go`  | (optional) Module-specific middleware (e.g. auth middleware)                    |
-| `<name>_job.go`         | (optional) Scheduled job definitions for the scheduler binary                  |
+| File                         | Responsibility                                                                  |
+|------------------------------|---------------------------------------------------------------------------------|
+| `<name>_domain.go`           | Domain entity, value objects, domain constants, **repository interface**, **service interface** |
+| `<name>_repository.go`       | PostgreSQL-backed repository struct implementing the repository interface       |
+| `<name>_service.go`          | Business logic struct implementing the service interface                        |
+| `<name>_service_types.go`    | Input/Output structs for the service methods                                    |
+| `<name>_http_handlers.go`    | Huma handler implementations                                                    |
+| `<name>_http_routes.go`      | Route registration using Huma                                                   |
+| `<name>_http_types.go`       | Huma request/response structs, path/query params                                |
+| `<name>_http_middleware.go`  | (optional) Module-specific HTTP middleware (e.g. auth middleware)               |
+| `<name>_constant.go`         | (optional) Service/HTTP level constants                                         |
+| `<name>_distributor_types.go`| (optional) Asynq task scheduling types and payloads                             |
+| `<name>_job.go`              | (optional) Scheduled job definitions for the scheduler binary                   |
 
 > **Do not create subdirectories inside a module.** All module files live flat in the module directory.
 
 ### Naming Conventions
 
 - Interfaces: named after their role, **not** their implementation — `TodoRepository`, `TodoService`, `TokenService`, `TxManager`.
-- Usecase struct: always named `Usecase` within its package (`todos.Usecase`, `auth.Usecase`).
+- Service struct: always named `Service` within its package (`todos.Service`, `auth.Service`).
 - Repository struct: always unexported (`todoRepository`, `userRepository`) — consumers only hold the interface.
-- Constructor: `New<Name>(deps...) <Interface>` for repositories, `New<Name>(deps...) *Usecase` for usecases.
+- Constructor: `New<Name>(deps...) <Interface>` for repositories, `New<Name>Service(deps...) *Service` for services.
 - HTTP handler struct: unexported (`todoHandler`), only `Register<Name>Routes(api, service)` is exported.
 
 ---
@@ -145,17 +150,17 @@ return s.txManager.RunInTx(ctx, func(txCtx context.Context) error {
 ### Caching (Redis)
 
 - Cache key format: `<entity>:<ownerID>:<entityID>` (e.g. `todo:userUUID:todoUUID`).
-- TTL constant defined at the top of the usecase file: `const todoCacheTTL = 5 * time.Minute`.
+- TTL constant defined at the top of the service or constant file: `const todoCacheTTL = 5 * time.Minute`.
 - Pattern: **read-through** on Get, **write-through + invalidate-then-repopulate** on Update, **invalidate** on Delete.
 - Cache writes are **best-effort** — never fail the request if `cache.Set` fails (use `_ =`).
 - Do **not** SCAN Redis for bulk invalidation on collection deletes — let entries expire naturally.
 
 ### Observability
 
-Every usecase method **must** start with a span:
+Every service method **must** start with a span:
 
 ```go
-func (s *Usecase) Create(ctx context.Context, in CreateTodoInput) (*Todo, error) {
+func (s *Service) Create(ctx context.Context, in CreateTodoInput) (*Todo, error) {
     ctx, span := s.tracer.Start(ctx, "todo.Create")
     defer span.End()
     // ...
@@ -188,7 +193,7 @@ All configuration flows through `internal/config.Config` (loaded via Viper from 
 - All routes live under `/api/v1/`.
 - Use `huma.Register()` with explicit `OperationID`, `Tags`, `Security`, `Summary` — these populate the OpenAPI spec.
 - Protected routes declare `Security: []map[string][]string{{"bearerAuth": {}}}`.
-- ETag / optimistic locking: handlers fetch the entity, compute `ETag = updated_at` in RFC3339Nano, validate with `conditional.Params.PreconditionFailed()`, then pass the pre-fetched entity to the usecase. This eliminates a redundant DB round-trip.
+- ETag / optimistic locking: handlers fetch the entity, compute `ETag = updated_at` in RFC3339Nano, validate with `conditional.Params.PreconditionFailed()`, then pass the pre-fetched entity to the service. This eliminates a redundant DB round-trip.
 - Pagination: use `page`/`per_page` query params; return `X-Total-Count` header and RFC 8288 `Link` header.
 - Partial updates use `update_mask` query param following AIP-134.
 
@@ -222,12 +227,12 @@ make format
 
 Follow these steps in order:
 
-1. Create `internal/modules/<name>/` with the four standard files.
+1. Create `internal/modules/<name>/` with the standard files (`_domain.go`, `_repository.go`, `_service.go`, etc).
 2. Define the domain entity and business methods in `<name>_domain.go`. Define the **repository interface** and **service interface** in the same file.
 3. Implement the repository in `<name>_repository.go` using `database.QB` and `database.GetDB(ctx, r.db)`.
-4. Implement the usecase in `<name>_usecase.go`. Inject `cache.CacheRepository` and `observability.Tracer`. Add spans to every public method.
-5. Register HTTP routes in `<name>_http.go` using `huma.Register()`.
-6. Wire dependencies in `internal/app/app.go`: create the repository, then the usecase, then pass it to `delivery.NewServer()`.
+4. Define service input/output types in `<name>_service_types.go` and implement the service in `<name>_service.go`. Inject `cache.CacheRepository` and `observability.Tracer`. Add spans to every public method.
+5. Define HTTP request/response types in `<name>_http_types.go`, handlers in `<name>_http_handlers.go`, and register routes in `<name>_http_routes.go` using `huma.Register()`.
+6. Wire dependencies in `internal/app/app.go`: create the repository, then the service, then pass it to `delivery.NewServer()`.
 7. Add the route registration call to `internal/delivery/http/routes.go`.
 8. Create SQL migrations in `internal/shared/database/migrations/` using sequential numbering (`000004_...`).
 
@@ -283,11 +288,11 @@ Logs are structured JSON via `log/slog`, collected by Alloy and forwarded to Lok
 ## Key Design Decisions (rationale for agents)
 
 1. **Huma v2 over raw `net/http`**: Auto-generates OpenAPI 3.1 spec, handles input validation, and decodes request/response types — reducing handler boilerplate significantly.
-2. **`ETag` based on `updated_at`**: Avoids a dedicated version column while still providing optimistic concurrency control. The handler fetches the entity, validates the precondition, and passes the pre-loaded entity into the usecase — reducing PATCH from 3 DB calls to 2.
+2. **`ETag` based on `updated_at`**: Avoids a dedicated version column while still providing optimistic concurrency control. The handler fetches the entity, validates the precondition, and passes the pre-loaded entity into the service — reducing PATCH from 3 DB calls to 2.
 3. **SHA-256 hashed refresh tokens**: Token rotation on every refresh (old token deleted, new pair issued). Hash storage means a DB breach doesn't expose valid tokens.
 4. **`DATABASE_RUN_MIGRATIONS` flag**: Multi-replica deployments must set this to `false` and run migrations as an init-container. The default is `false` for safety.
 5. **Separate `cmd/scheduler` binary**: Background jobs run in a separate process to allow independent scaling, restarts, and resource isolation. The scheduler re-uses the same domain and repository code.
 6. **Wide events via `wideevent`**: A single structured log line per request carries all domain context (user ID, todo ID, counts) rather than multiple log statements scattered through the call stack. This makes Loki queries dramatically more useful.
 7. **`SafeError` with `Unwrap()`**: Allows `errors.Is(err, apperrors.ErrNotFound)` to work through the stack while keeping the public-facing message safe and the internal cause available for structured logging.
-8. **Service Interfaces over Concrete Structs**: Usecases (`AuthService`, `TodoService`) are exposed as interfaces to the HTTP layer and other modules. This enables isolated unit testing of HTTP handlers (mocking the service without DB setup), prevents strict cross-module coupling (circular dependencies), and enforces architectural boundaries.
-9. **Separate `cmd/worker` binary (asynq)**: Async task processing runs in its own isolated binary. The `TaskDistributor` interface (defined in the calling module's domain file) points to `internal/shared/asynqtask.Distributor` — this keeps the boundary clean. Modules never import `internal/worker` directly. The `ASYNQMON_USERNAME`/`ASYNQMON_PASSWORD` env vars guard the built-in Web UI at `/admin/asynq`.
+8. **Service Interfaces over Concrete Structs**: Services (`AuthService`, `TodoService`) are exposed as interfaces to the HTTP layer and other modules. This enables isolated unit testing of HTTP handlers (mocking the service without DB setup), prevents strict cross-module coupling (circular dependencies), and enforces architectural boundaries.
+9. **Separate `cmd/worker` binary (asynq)**: Async task processing runs in its own isolated binary. The `TaskDistributor` interface (defined in the calling module's domain file) points to `internal/shared/asynqtask.Distributor` — this keeps the boundary clean. Worker handlers are implemented directly inside their respective modules (e.g., `auth_worker.go`) and registered in `cmd/worker`. The `ASYNQMON_USERNAME`/`ASYNQMON_PASSWORD` env vars guard the built-in Web UI at `/admin/asynq`.

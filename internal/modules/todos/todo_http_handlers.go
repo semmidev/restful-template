@@ -10,142 +10,11 @@ import (
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/danielgtaylor/huma/v2/conditional"
-	"github.com/google/uuid"
 	"github.com/semmidev/restful-template/internal/shared/httpapi"
 	"github.com/semmidev/restful-template/internal/shared/wideevent"
 )
 
-// maxCoverSize is the upper bound for uploaded cover images.
-// previously io.ReadAll with no limit — an attacker could upload
-// an arbitrary-size payload to exhaust server memory.
-const maxCoverSize = 5 << 20 // 5 MB
-
-type CreateTodoForm struct {
-	Title       string        `form:"title" minLength:"1" maxLength:"200"`
-	Description string        `form:"description" maxLength:"2000" required:"false"`
-	Cover       huma.FormFile `form:"cover" contentType:"image/*" doc:"Image file to upload as cover (max 5 MB)" required:"false"`
-}
-
-type UpdateTodoForm struct {
-	Title       string        `form:"title" maxLength:"200" required:"false"`
-	Description string        `form:"description" maxLength:"2000" required:"false"`
-	Status      string        `form:"status" enum:"pending,in_progress,done" required:"false"`
-	Cover       huma.FormFile `form:"cover" contentType:"image/*" doc:"Image file to upload as cover (max 5 MB)" required:"false"`
-}
-
-type TodoResp struct {
-	ETag         string    `header:"ETag" doc:"Entity tag for optimistic locking"`
-	LastModified time.Time `header:"Last-Modified" doc:"Last modification time"`
-	Body         struct {
-		Data *Todo `json:"data"`
-	}
-}
-
-type ListData struct {
-	Items   []*Todo           `json:"items"`
-	Total   int               `json:"total"`
-	Page    int               `json:"page"`
-	PerPage int               `json:"per_page"`
-	Links   map[string]string `json:"_links,omitempty"`
-	Keyword string            `json:"keyword,omitempty" doc:"Active keyword filter (empty if none)"`
-	SortBy  string            `json:"sort_by" doc:"Column sorted by"`
-	SortDir string            `json:"sort_dir" doc:"Sort direction"`
-}
-
-type ListResp struct {
-	XTotalCount int    `header:"X-Total-Count" doc:"Total number of items matching the query"`
-	Link        string `header:"Link" doc:"RFC 8288 pagination links"`
-	Body        struct {
-		Data ListData `json:"data"`
-	}
-}
-
-type listTodosReq struct {
-	Page    int    `query:"page"      default:"1"  minimum:"1"`
-	PerPage int    `query:"per_page"  default:"20" minimum:"1" maximum:"100"`
-	Status  string `query:"status"  enum:"pending,in_progress,done," doc:"Filter by status (empty = all)"`
-	Keyword string `query:"q"       maxLength:"100"              doc:"Case-insensitive substring search on title and description"`
-	SortBy  string `query:"sort_by" default:"created_at" enum:"created_at,updated_at,title,status" doc:"Column to sort by"`
-	SortDir string `query:"sort_dir" default:"desc" enum:"asc,desc" doc:"Sort direction"`
-}
-
-type createTodoReq struct {
-	RawBody huma.MultipartFormFiles[CreateTodoForm]
-}
-
-type getTodoReq struct {
-	ID uuid.UUID `path:"id" doc:"Todo UUID"`
-	conditional.Params
-}
-
-type updateTodoReq struct {
-	ID         uuid.UUID `path:"id"`
-	UpdateMask string    `query:"update_mask" doc:"Comma-separated list of fields to update (AIP-134)"`
-	RawBody    huma.MultipartFormFiles[UpdateTodoForm]
-	conditional.Params
-}
-
-type deleteTodoReq struct {
-	ID uuid.UUID `path:"id"`
-}
-
-type todoHandler struct {
-	todos TodoService
-}
-
-func RegisterTodoRoutes(api huma.API, todos TodoService) {
-	h := &todoHandler{todos: todos}
-
-	huma.Register(api, huma.Operation{
-		OperationID: "list-todos",
-		Method:      http.MethodGet,
-		Path:        "/api/v1/todos",
-		Summary:     "List todos for the authenticated user",
-		Tags:        []string{"Todos"},
-		Security:    []map[string][]string{{"bearerAuth": {}}},
-	}, h.handleList)
-
-	huma.Register(api, huma.Operation{
-		OperationID:   "create-todo",
-		Method:        http.MethodPost,
-		Path:          "/api/v1/todos",
-		Summary:       "Create a new todo",
-		Tags:          []string{"Todos"},
-		Security:      []map[string][]string{{"bearerAuth": {}}},
-		DefaultStatus: http.StatusCreated,
-	}, h.handleCreate)
-
-	huma.Register(api, huma.Operation{
-		OperationID: "get-todo",
-		Method:      http.MethodGet,
-		Path:        "/api/v1/todos/{id}",
-		Summary:     "Get a single todo by ID",
-		Tags:        []string{"Todos"},
-		Security:    []map[string][]string{{"bearerAuth": {}}},
-	}, h.handleGet)
-
-	huma.Register(api, huma.Operation{
-		OperationID: "update-todo",
-		Method:      http.MethodPatch,
-		Path:        "/api/v1/todos/{id}",
-		Summary:     "Update a todo",
-		Tags:        []string{"Todos"},
-		Security:    []map[string][]string{{"bearerAuth": {}}},
-	}, h.handleUpdate)
-
-	huma.Register(api, huma.Operation{
-		OperationID:   "delete-todo",
-		Method:        http.MethodDelete,
-		Path:          "/api/v1/todos/{id}",
-		Summary:       "Delete a todo",
-		Tags:          []string{"Todos"},
-		Security:      []map[string][]string{{"bearerAuth": {}}},
-		DefaultStatus: http.StatusNoContent,
-	}, h.handleDelete)
-}
-
-func (h *todoHandler) handleList(ctx context.Context, in *listTodosReq) (*ListResp, error) {
+func (h *todoHandler) handleList(ctx context.Context, in *listTodosReq) (*listTodosRes, error) {
 	userID, err := httpapi.ExtractUserID(ctx)
 	if err != nil {
 		return nil, httpapi.ToHumaErr(ctx, err)
@@ -172,7 +41,8 @@ func (h *todoHandler) handleList(ctx context.Context, in *listTodosReq) (*ListRe
 	}
 	wideevent.Add(ctx, "todo_count", len(items))
 	wideevent.Add(ctx, "todo_total", total)
-	resp := &ListResp{}
+
+	resp := &listTodosRes{}
 	resp.XTotalCount = total
 	resp.Body.Data.Items = items
 	resp.Body.Data.Total = total
@@ -215,7 +85,7 @@ func (h *todoHandler) handleList(ctx context.Context, in *listTodosReq) (*ListRe
 	return resp, nil
 }
 
-func (h *todoHandler) handleCreate(ctx context.Context, in *createTodoReq) (*TodoResp, error) {
+func (h *todoHandler) handleCreate(ctx context.Context, in *createTodoReq) (*createTodoRes, error) {
 	data := in.RawBody.Data()
 	wideevent.Add(ctx, "todo_title", data.Title)
 
@@ -239,14 +109,14 @@ func (h *todoHandler) handleCreate(ctx context.Context, in *createTodoReq) (*Tod
 		return nil, httpapi.ToHumaErr(ctx, err)
 	}
 	wideevent.Add(ctx, "todo_id", t.ID.String())
-	resp := &TodoResp{}
+	resp := &createTodoRes{}
 	resp.ETag = fmt.Sprintf(`"%s"`, t.UpdatedAt.Format(time.RFC3339Nano))
 	resp.LastModified = t.UpdatedAt
 	resp.Body.Data = t
 	return resp, nil
 }
 
-func (h *todoHandler) handleGet(ctx context.Context, in *getTodoReq) (*TodoResp, error) {
+func (h *todoHandler) handleGet(ctx context.Context, in *getTodoReq) (*getTodoRes, error) {
 	wideevent.Add(ctx, "todo_id", in.ID.String())
 	userID, err := httpapi.ExtractUserID(ctx)
 	if err != nil {
@@ -262,7 +132,7 @@ func (h *todoHandler) handleGet(ctx context.Context, in *getTodoReq) (*TodoResp,
 		return nil, err
 	}
 
-	resp := &TodoResp{}
+	resp := &getTodoRes{}
 	resp.ETag = etag
 	resp.LastModified = t.UpdatedAt
 	resp.Body.Data = t
@@ -272,9 +142,9 @@ func (h *todoHandler) handleGet(ctx context.Context, in *getTodoReq) (*TodoResp,
 // handleUpdate applies a partial update to a todo.
 //
 // The entity is fetched once here for ETag validation and then passed
-// directly into the usecase, which no longer does an internal re-fetch.
+// directly into the service, which no longer does an internal re-fetch.
 // Total DB calls: GET (1) + UPDATE (1) = 2, down from 3.
-func (h *todoHandler) handleUpdate(ctx context.Context, in *updateTodoReq) (*TodoResp, error) {
+func (h *todoHandler) handleUpdate(ctx context.Context, in *updateTodoReq) (*updateTodoRes, error) {
 	wideevent.Add(ctx, "todo_id", in.ID.String())
 	userID, err := httpapi.ExtractUserID(ctx)
 	if err != nil {
@@ -329,7 +199,7 @@ func (h *todoHandler) handleUpdate(ctx context.Context, in *updateTodoReq) (*Tod
 		}
 	}
 
-	// Pass pre-fetched entity — usecase skips the re-fetch
+	// Pass pre-fetched entity — service skips the re-fetch
 	t, err := h.todos.Update(ctx, existing, UpdateTodoInput{
 		ID:          in.ID,
 		UserID:      userID,
@@ -344,14 +214,14 @@ func (h *todoHandler) handleUpdate(ctx context.Context, in *updateTodoReq) (*Tod
 	}
 	wideevent.Add(ctx, "todo_title", t.Title)
 	wideevent.Add(ctx, "todo_status", string(t.Status))
-	resp := &TodoResp{}
+	resp := &updateTodoRes{}
 	resp.ETag = fmt.Sprintf(`"%s"`, t.UpdatedAt.Format(time.RFC3339Nano))
 	resp.LastModified = t.UpdatedAt
 	resp.Body.Data = t
 	return resp, nil
 }
 
-func (h *todoHandler) handleDelete(ctx context.Context, in *deleteTodoReq) (*struct{}, error) {
+func (h *todoHandler) handleDelete(ctx context.Context, in *deleteTodoReq) (*deleteTodoRes, error) {
 	wideevent.Add(ctx, "todo_id", in.ID.String())
 	userID, err := httpapi.ExtractUserID(ctx)
 	if err != nil {
@@ -360,7 +230,7 @@ func (h *todoHandler) handleDelete(ctx context.Context, in *deleteTodoReq) (*str
 	if err := h.todos.Delete(ctx, userID, in.ID); err != nil {
 		return nil, httpapi.ToHumaErr(ctx, err)
 	}
-	return &struct{}{}, nil
+	return &deleteTodoRes{}, nil
 }
 
 // processCoverImage reads, size-checks, and MIME-validates an uploaded cover file.
