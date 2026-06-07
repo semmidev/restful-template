@@ -7,7 +7,7 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/semmidev/restful-template/ci.yml?label=CI&style=flat-square)](https://github.com/semmidev/restful-template/actions/workflows/ci.yml)
 [![CD](https://img.shields.io/github/actions/workflow/status/semmidev/restful-template/cd.yml?label=CD&style=flat-square)](https://github.com/semmidev/restful-template/actions/workflows/cd.yml)
 
-Aplikasi web fullstack ini mengusung arsitektur **Modular Monolith (Package by Feature)**, dengan frontend berupa Single Page Application (SPA) berbasis React, TypeScript, Zustand, Zod, dan Shadcn UI (bertema Soft Brutalist) yang tersemat (*embedded*) langsung di dalam binary Go. Backend berkinerja tinggi menggunakan Chi, *auto-generation* OpenAPI 3.1 dengan Huma v2, serta PostgreSQL 18 untuk men-generate UUID yang aman dan terurut berdasarkan waktu (*time-ordered*).
+Aplikasi web fullstack ini mengusung arsitektur **Modular Monolith (Package by Feature)**, dengan frontend berupa Single Page Application (SPA) berbasis React, TypeScript, Zustand, Zod, dan Shadcn UI yang tersemat (*embedded*) langsung di dalam binary Go. Backend berkinerja tinggi menggunakan Chi, *auto-generation* OpenAPI 3.1 dengan Huma v2, serta PostgreSQL 18 untuk men-generate UUID yang aman dan terurut berdasarkan waktu (*time-ordered*).
 
 ## Preview
 
@@ -20,7 +20,7 @@ Aplikasi web fullstack ini mengusung arsitektur **Modular Monolith (Package by F
 | Layer | Teknologi |
 | :--- | :--- |
 | **Frontend** | React 19 · TypeScript · Zustand 5 · Zod 4 · Vite 8 |
-| **Styling & UI** | TailwindCSS v3 · Shadcn UI (Soft Brutalist theme) · Lucide |
+| **Styling & UI** | TailwindCSS v3 · Shadcn UI · Lucide |
 | **Backend Language** | Go 1.26 |
 | **Router** | [Chi v5](https://github.com/go-chi/chi) |
 | **API Framework** | [Huma v2](https://github.com/danielgtaylor/huma) — OpenAPI 3.1 auto-generation |
@@ -414,7 +414,7 @@ Projek ini menerapkan **Secure Idiomatic Error Handling**:
 
 ### Linter & Isolasi Workspace
 
-Projek Go ini menggunakan `golangci-lint` untuk menjaga kualitas kode backend. 
+Projek Go ini menggunakan `golangci-lint` untuk menjaga kualitas kode backend.
 - **Isolasi Node Modules**: Untuk mencegah linter memindai direktori `frontend/node_modules/` secara rekursif (yang dapat menyebabkan kegagalan linter), sebuah file dummy `frontend/go.mod` diletakkan di dalam folder frontend. Hal ini secara efektif mengisolasi folder frontend dari modul utama Go saat linter menjalankan perintah `golangci-lint run ./...` dari root workspace.
 
 ### Migrasi Database

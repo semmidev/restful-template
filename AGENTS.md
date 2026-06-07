@@ -12,7 +12,7 @@ intentionally kept simple so the *infrastructure and engineering patterns* take 
 | Layer            | Technology                                            |
 |------------------|-------------------------------------------------------|
 | Frontend         | React 19 + TypeScript + Zustand 5 + Zod 4 + Vite 8     |
-| Styling          | TailwindCSS v3 + Shadcn UI (Soft Brutalist Theme)     |
+| Styling          | TailwindCSS v3 + Shadcn UI     |
 | HTTP framework   | `go-chi/chi v5` + `danielgtaylor/huma v2`            |
 | Database         | PostgreSQL 18 via `jackc/pgx v5`                     |
 | Query builder    | `Masterminds/squirrel`                                |
