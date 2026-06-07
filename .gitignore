@@ -48,4 +48,6 @@ scheduler
 server
 
 # ─── Frontend Embedded Dist ───────────────────────────────────────────────────
-internal/web/dist/
+internal/web/dist/*
+!internal/web/dist/.gitkeep
+

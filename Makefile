@@ -49,6 +49,7 @@ build-frontend:
 	@echo "📦 Copying frontend build to embed directory..."
 	@rm -rf internal/web/dist
 	@cp -r frontend/dist internal/web/dist
+	@touch internal/web/dist/.gitkeep
 	@echo "✅ Frontend built and ready for embedding"
 
 build: build-frontend
@@ -56,4 +57,5 @@ build: build-frontend
 
 clean:
 	rm -rf bin/ coverage.out internal/web/dist
-
+	mkdir -p internal/web/dist
+	touch internal/web/dist/.gitkeep
