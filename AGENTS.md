@@ -65,7 +65,7 @@ internal/
     ├── jwt/         ← JWTService (access + refresh, iss/aud claims)
     ├── middleware/   ← CORS, rate limiter, logger, Prometheus, security headers
     ├── observability/← OtelTracer adapter (interface-based)
-    ├── password/    ← bcrypt helpers
+    ├── password/    ← Argon2id helpers
     ├── redis/       ← Redis client + CacheRepository impl
     ├── uuidgen/     ← deterministic UUID generation (testable)
     └── wideevent/   ← canonical wide log event enrichment

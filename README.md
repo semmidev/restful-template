@@ -9,6 +9,8 @@
 
 Aplikasi web fullstack ini mengusung arsitektur **Modular Monolith (Package by Feature)**, dengan frontend berupa Single Page Application (SPA) berbasis React, TypeScript, Zustand, Zod, dan Shadcn UI yang tersemat (*embedded*) langsung di dalam binary Go. Backend berkinerja tinggi menggunakan Chi, *auto-generation* OpenAPI 3.1 dengan Huma v2, serta PostgreSQL 18 untuk men-generate UUID yang aman dan terurut berdasarkan waktu (*time-ordered*).
 
+Untuk panduan detail bagi AI Agent/Copilot dalam memahami standar engineering dan batasan arsitektur repositori ini, silakan merujuk ke [AGENTS.md](AGENTS.md).
+
 ## Preview
 
 ![API Documentation](assets/api-docs.png)
@@ -28,7 +30,7 @@ Aplikasi web fullstack ini mengusung arsitektur **Modular Monolith (Package by F
 | **Query Builder** | [Squirrel](https://github.com/Masterminds/squirrel) |
 | **Migrations** | [golang-migrate](https://github.com/golang-migrate/migrate) — embedded ke binary |
 | **Cache** | Redis via `go-redis/v9` |
-| **Auth** | JWT (Access + Refresh) · Argon2id password hashing |
+| **Auth** | JWT Cookie-Based Session (Access + Refresh) · Argon2id password hashing |
 | **Observability** | OpenTelemetry · Prometheus · Grafana LGTM Stack |
 | **Async Worker** | [asynq](https://github.com/hibiken/asynq) — Redis-backed task queue (separate binary) |
 | **Worker UI** | [asynqmon](https://github.com/hibiken/asynqmon) — Web UI mounted at `/admin/asynq` (Basic Auth) |
@@ -48,6 +50,7 @@ Aplikasi web fullstack ini mengusung arsitektur **Modular Monolith (Package by F
 - [Panduan Development](#panduan-development)
 - [Dokumentasi API](#dokumentasi-api)
 - [Konfigurasi Variabel (.env)](#konfigurasi-variabel-env)
+- [Panduan AI Agent (AGENTS.md)](AGENTS.md)
 - [Panduan Infrastruktur & Deployment](infra/README.md)
 - [Contributing](#contributing)
 - [License](#license)
@@ -120,7 +123,7 @@ make run
   - Pagination dan *advanced filtering* (*full-text substring keyword search*).
 
 - **Security & Authentication**
-  - JWT dengan Access + Refresh tokens (rotasi otomatis).
+  - JWT dengan Access + Refresh cookies (rotasi otomatis, HTTP-Only, secure).
   - *Password hashing* Argon2id (format PHC, verifikasi *constant-time*).
   - CORS siap pakai + Middleware *Secure HTTP Headers*.
 
@@ -167,10 +170,10 @@ Proyek ini melampaui sekadar kerangka kerja RESTful biasa dan menerapkan pola *E
    - **Alur Kerja**:
      1. React SPA meminta konfigurasi publik (Client ID & Redirect URI) dari Go backend.
      2. React SPA men-generate `state` (anti-CSRF), `code_verifier`, dan `code_challenge` (SHA-256), lalu mengarahkan user ke halaman Google Login.
-     3. Google mengautentikasi user dan mengarahkan kembali ke SPA callback (`/login/google/callback`) dengan membawa `code` dan `state`.
+     3. Google mengautentikasi user dan mengarahkan kembali ke SPA callback (`/login/google/callback`) dengan membawa `code` and `state`.
      4. SPA memverifikasi `state`, mengambil `code_verifier`, lalu mengirimkan `code` dan `code_verifier` ke Go backend.
      5. Go backend melakukan pertukaran kode (*token exchange*) secara aman ke Google Token API. Google memverifikasi `code_verifier` terhadap `code_challenge` awal.
-     6. Setelah divalidasi oleh Google, Go backend mengambil data profil user, mencocokkannya ke database (membuat user baru jika belum ada), dan menghasilkan JWT Session token (Access & Refresh) untuk dikembalikan ke React SPA.
+     6. Setelah divalidasi oleh Google, Go backend mengambil data profil user, mencocokkannya ke database (membuat user baru jika belum ada), dan menghasilkan JWT Session token (Access & Refresh) yang disimpan secara aman di dalam cookie HTTP-Only (Set-Cookie) untuk dikembalikan ke React SPA.
    
    ```mermaid
    sequenceDiagram
@@ -194,8 +197,8 @@ Proyek ini melampaui sekadar kerangka kerja RESTful biasa dan menerapkan pola *E
        Google->>Backend: Return Access Token Google
        Backend->>Google: GET /userinfo (dengan Access Token)
        Google->>Backend: Return Profil User (Email & Google ID)
-       Note over Backend: Transaksi DB: Create/Link User & Issue JWT Session
-       Backend->>SPA: Return JWT Access & Refresh Token
+       Note over Backend: Transaksi DB: Create/Link User & Issue JWT Session (Cookies)
+       Backend->>SPA: Return Cookie Set-Cookie (access_token & refresh_token)
        SPA->>User: Akses Workspace (Dashboard)
    ```
 
