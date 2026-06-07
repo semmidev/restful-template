@@ -22,4 +22,3 @@ func RegisterRoutes(
 	auth.RegisterAuthRoutes(api, authService, cfg)
 	todos.RegisterTodoRoutes(api, todosService)
 }
-

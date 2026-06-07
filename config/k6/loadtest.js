@@ -56,7 +56,7 @@ export default function () {
     sleep(0.5);
 
     // ── 2. Register ───────────────────────────────────────────────────────────
-    let accessToken = null;
+    let hasAuth = false;
 
     group('Register', function () {
         const res = http.post(
@@ -66,14 +66,12 @@ export default function () {
         );
 
         const ok = check(res, {
-            'register: status 201': (r) => r.status === 201,
-            'register: has access_token': (r) => {
-                try { return !!JSON.parse(r.body).access_token; } catch (e) { return false; }
-            },
+            'register: status 200': (r) => r.status === 200 || r.status === 201,
+            'register: has access_token cookie': (r) => !!r.cookies.access_token,
         });
 
         if (ok) {
-            accessToken = JSON.parse(res.body).access_token;
+            hasAuth = true;
         }
     });
 
@@ -87,27 +85,20 @@ export default function () {
             { headers: JSON_HEADERS, tags: { name: 'Login' } },
         );
 
-        check(res, {
+        const ok = check(res, {
             'login: status 200': (r) => r.status === 200,
-            'login: has access_token': (r) => {
-                try { return !!JSON.parse(r.body).access_token; } catch (e) { return false; }
-            },
+            'login: has access_token cookie': (r) => !!r.cookies.access_token,
         });
 
-        if (!accessToken) {
-            try { accessToken = JSON.parse(res.body).access_token; } catch (e) { /* ignore */ }
+        if (ok) {
+            hasAuth = true;
         }
     });
 
     sleep(0.5);
     
-    // Stop if we don't have a token
-    if (!accessToken) return;
-
-    const authHeaders = { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`
-    };
+    // Stop if we don't have authentication cookies
+    if (!hasAuth) return;
 
     // ── 4. Create Todo ────────────────────────────────────────────────────────
     let todoId = null;
@@ -115,7 +106,7 @@ export default function () {
         const res = http.post(
             `${BASE_URL}/api/v1/todos`,
             JSON.stringify({ title: 'Load Test Todo', description: 'Created during k6 load test', status: 'pending' }),
-            { headers: authHeaders, tags: { name: 'CreateTodo' } },
+            { headers: JSON_HEADERS, tags: { name: 'CreateTodo' } },
         );
 
         const ok = check(res, {
@@ -137,7 +128,7 @@ export default function () {
     group('Get Todo', function () {
         const res = http.get(
             `${BASE_URL}/api/v1/todos/${todoId}`,
-            { headers: authHeaders, tags: { name: 'GetTodo' } },
+            { headers: JSON_HEADERS, tags: { name: 'GetTodo' } },
         );
 
         check(res, {
@@ -154,7 +145,7 @@ export default function () {
     group('List Todos', function () {
         const res = http.get(
             `${BASE_URL}/api/v1/todos?page=1&per_page=10`,
-            { headers: authHeaders, tags: { name: 'ListTodos' } },
+            { headers: JSON_HEADERS, tags: { name: 'ListTodos' } },
         );
 
         check(res, {
@@ -172,7 +163,7 @@ export default function () {
         const res = http.del(
             `${BASE_URL}/api/v1/todos/${todoId}`,
             null,
-            { headers: authHeaders, tags: { name: 'DeleteTodo' } },
+            { headers: JSON_HEADERS, tags: { name: 'DeleteTodo' } },
         );
 
         check(res, {
