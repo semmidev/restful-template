@@ -127,13 +127,13 @@ func (h *todoHandler) handleGet(ctx context.Context, in *getTodoReq) (*getTodoRe
 		return nil, httpapi.ToHumaErr(ctx, err)
 	}
 
-	etag := fmt.Sprintf(`"%s"`, t.UpdatedAt.Format(time.RFC3339Nano))
-	if err := in.PreconditionFailed(etag, t.UpdatedAt); err != nil {
+	rawEtag := t.UpdatedAt.Format(time.RFC3339Nano)
+	if err := in.PreconditionFailed(rawEtag, t.UpdatedAt); err != nil {
 		return nil, err
 	}
 
 	resp := &getTodoRes{}
-	resp.ETag = etag
+	resp.ETag = fmt.Sprintf(`"%s"`, rawEtag)
 	resp.LastModified = t.UpdatedAt
 	resp.Body.Data = t
 	return resp, nil
@@ -156,8 +156,8 @@ func (h *todoHandler) handleUpdate(ctx context.Context, in *updateTodoReq) (*upd
 	if err != nil {
 		return nil, httpapi.ToHumaErr(ctx, err)
 	}
-	etag := fmt.Sprintf(`"%s"`, existing.UpdatedAt.Format(time.RFC3339Nano))
-	if err := in.PreconditionFailed(etag, existing.UpdatedAt); err != nil {
+	rawEtag := existing.UpdatedAt.Format(time.RFC3339Nano)
+	if err := in.PreconditionFailed(rawEtag, existing.UpdatedAt); err != nil {
 		return nil, err // Returns 412 Precondition Failed if If-Match doesn't match
 	}
 

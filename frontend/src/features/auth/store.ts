@@ -31,7 +31,7 @@ export const useAuthStore = create<AuthState>()(
         try {
           const res = await loginRequest(input);
           const { access_token, refresh_token, expires_in } = res.data.data;
-          
+
           localStorage.setItem('access_token', access_token);
           localStorage.setItem('refresh_token', refresh_token);
           localStorage.setItem('expires_in', expires_in.toString());
@@ -60,7 +60,7 @@ export const useAuthStore = create<AuthState>()(
             password: input.password,
           });
           const { access_token, refresh_token, expires_in } = res.data.data;
-          
+
           localStorage.setItem('access_token', access_token);
           localStorage.setItem('refresh_token', refresh_token);
           localStorage.setItem('expires_in', expires_in.toString());
@@ -95,7 +95,7 @@ export const useAuthStore = create<AuthState>()(
       clearError: () => set({ error: null }),
     }),
     {
-      name: 'starktodo-auth',
+      name: 'todoapp-auth',
       partialize: (state) => ({
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,

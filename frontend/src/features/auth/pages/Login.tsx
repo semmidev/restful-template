@@ -53,7 +53,7 @@ export default function Login() {
             Task Organizer v1.0
           </span>
           <h1 className="text-5xl font-black tracking-tight text-black mt-2">
-            STARK<span className="text-brutal-blue">TODO</span>
+            Todo<span className="text-brutal-blue">App</span>
           </h1>
         </div>
 

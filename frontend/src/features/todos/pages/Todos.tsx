@@ -61,13 +61,13 @@ export default function Todos() {
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
-  
+
   // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState('');
-  
+
   // Form validation errors
   const [validationErrors, setValidationErrors] = useState<{ title?: string; description?: string }>({});
 
@@ -204,10 +204,10 @@ export default function Todos() {
       <header className="max-w-6xl mx-auto mb-8 card-brutal bg-white flex flex-col sm:flex-row justify-between items-center gap-4 py-4 px-6">
         <div className="flex items-center gap-3">
           <span className="bg-brutal-yellow border-2 border-black p-2 rounded shadow-brutal-sm font-black rotate-[-3deg]">
-            ST
+            TA
           </span>
           <h1 className="text-3xl font-black tracking-tight">
-            STARK<span className="text-brutal-blue">TODO</span>
+            TODO<span className="text-brutal-blue">APP</span>
           </h1>
         </div>
         <div className="flex items-center gap-4">
@@ -323,7 +323,7 @@ export default function Todos() {
             {todos.map((todo) => (
               <Card
                 key={todo.id}
-                className="card-brutal bg-white flex flex-col justify-between hover:shadow-brutal-hover transition-all"
+                className="card-brutal bg-white flex flex-col justify-between hover:shadow-brutal-hover transition-all overflow-hidden"
               >
                 <div>
                   {/* Task Cover Image */}
@@ -331,7 +331,7 @@ export default function Todos() {
                     <img
                       src={todo.cover}
                       alt="Todo Cover"
-                      className="w-full h-40 object-cover border-b-3 border-black -mt-6 -mx-6 mb-4 rounded-t-lg max-w-[calc(100%+3rem)]"
+                      className="w-[calc(100%+3rem)] h-40 object-cover border-b-3 border-black -mt-6 -mx-6 mb-4"
                     />
                   )}
 

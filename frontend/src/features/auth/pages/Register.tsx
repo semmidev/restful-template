@@ -55,7 +55,7 @@ export default function Register() {
             Task Organizer v1.0
           </span>
           <h1 className="text-5xl font-black tracking-tight text-black mt-2">
-            STARK<span className="text-brutal-blue">TODO</span>
+            TODO<span className="text-brutal-blue">APP</span>
           </h1>
         </div>
 
