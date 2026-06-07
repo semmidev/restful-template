@@ -17,7 +17,9 @@ import {
   Upload,
   X,
   Sun,
-  Moon
+  Moon,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -309,7 +311,8 @@ export default function Todos() {
                   onClick={() => setFilters({ sortDir: sortDir === 'asc' ? 'desc' : 'asc' })}
                   className="h-8 text-xs font-semibold border-border/80 flex items-center gap-1 hover:bg-accent"
                 >
-                  Sort: {sortDir === 'asc' ? 'Ascending ⬆️' : 'Descending ⬇️'}
+                  Sort: {sortDir === 'asc' ? 'Ascending' : 'Descending'}
+                  {sortDir === 'asc' ? <ArrowUp className="size-3.5" /> : <ArrowDown className="size-3.5" />}
                 </Button>
               </div>
             </section>
