@@ -324,13 +324,13 @@ Mengikuti pola modular yang bersih, semua kode frontend berada di direktori `fro
   - `components/`: UI components lokal yang hanya digunakan di dalam modul fitur tersebut.
 
 ### 2. Autentikasi JWT & Queue Refresh Token Otomatis
-Autentikasi terintegrasi dengan backend secara aman melalui token rotasi otomatis di `frontend/src/lib/client.ts`:
-- **Request Interceptor**: Secara otomatis menyematkan header `Authorization: Bearer <access_token>` untuk setiap request keluar jika token tersedia di local storage.
+Autentikasi terintegrasi dengan backend secara aman melalui cookie HTTP-Only dan rotasi otomatis di `frontend/src/lib/client.ts`:
+- **Cookie-Based**: Browser secara otomatis mengelola cookie `access_token` dan `refresh_token` dengan flag `HttpOnly`, `Secure`, dan `SameSite=Lax` tanpa akses dari skrip client-side (mencegah serangan XSS).
 - **Queue Refresh Token (Penanganan Error 401)**:
-  - Jika request gagal dengan status `401 Unauthorized`, response interceptor akan mencoba memperbarui token melalui `/auth/refresh` menggunakan `refresh_token`.
+  - Jika request gagal dengan status `401 Unauthorized`, response interceptor akan mencoba memperbarui token secara otomatis melalui `/auth/refresh` (browser otomatis mengirimkan cookie `refresh_token` untuk path `/api/v1/auth`).
   - **Mekanisme Antrean (Queue)**: Untuk mencegah terjadinya beberapa request refresh token secara konkuren (yang bisa merusak rotasi token), flag `isRefreshing` digunakan. Request gagal berikutnya akan ditahan dalam Promise dan dimasukkan ke dalam `failedQueue`.
-  - Jika refresh berhasil, seluruh antrean request dijalankan ulang menggunakan access token yang baru.
-  - Jika refresh gagal, local storage akan dibersihkan (`localStorage.clear()`) dan user diarahkan kembali ke `/login`.
+  - Jika refresh berhasil, seluruh antrean request dijalankan ulang secara otomatis menggunakan session yang diperbarui.
+  - Jika refresh gagal, state auth lokal dibersihkan dan user diarahkan kembali ke `/login`.
 
 ### 3. Optimistic Locking & ETag di Frontend
 Untuk menghindari konflik penulisan konkuren data (*lost update*):

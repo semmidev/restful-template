@@ -238,7 +238,7 @@ The application router is configured in `frontend/src/App.tsx` using `react-rout
 - **Code Splitting**: All pages must be loaded dynamically using React's `lazy` function (e.g. `const Dashboard = lazy(() => import('./features/todos/pages/Dashboard'))`) inside a `<Suspense>` boundary to optimize bundle sizes.
 - **Route Guards**:
   - `PublicRoute`: Restricts authenticated users from visiting guest pages (like `/login` or `/register`), redirecting them to the dashboard `/`.
-  - `PrivateRoute`: Enforces authentication. If no `access_token` exists in local storage and the auth store's `isAuthenticated` is false, it redirects users to `/login`.
+  - `PrivateRoute`: Enforces authentication. If the auth store's `isAuthenticated` is false, it redirects users to `/login`.
 
 ### State Management (Zustand)
 - **Store Encapsulation**: State variables and asynchronous store actions must reside in their respective feature stores (`store.ts`).
@@ -256,14 +256,14 @@ The application router is configured in `frontend/src/App.tsx` using `react-rout
 
 ### JWT Authentication & Token Refresh Queue
 The token rotation flow is managed transparently inside `frontend/src/lib/client.ts`:
-- **Authorization Header**: A request interceptor automatically attaches the current `access_token` as a `Bearer` token to the `Authorization` header of outgoing requests.
+- **Cookie-Based Sessions**: The browser automatically handles cookies (`access_token` and `refresh_token`) via `withCredentials: true`, without storing secrets in JavaScript-accessible storage.
 - **Automatic Token Rotation**:
   - When an API request fails with a `401 Unauthorized` response, the response interceptor catches the error and checks if the failure was due to an expired token.
-  - It attempts to refresh the access token via a `POST /auth/refresh` request using the `refresh_token` stored in local storage.
+  - It attempts to refresh the access token via a `POST /auth/refresh` request (browser sends the `refresh_token` cookie automatically).
   - **Refresh Queue**: To prevent multiple concurrent requests from spawning multiple separate token refresh calls, a queuing mechanism is used:
     - While `isRefreshing` is `true`, incoming failed requests return a Promise that gets pushed to a `failedQueue` array.
-    - Once the token refresh succeeds, the queue is processed, resolving all queued requests with the new access token.
-    - If the token refresh fails, the queue is rejected, local storage is cleared (`localStorage.clear()`), and the user is redirected to the `/login` route.
+    - Once the token refresh succeeds, the queue is processed, resolving and retrying all queued requests.
+    - If the token refresh fails, the queue is rejected, the auth store states are cleared, and the user is redirected to the `/login` route.
 
 ### Optimistic Locking & Concurrency Control
 To support optimistic locking implemented in the Go API:
