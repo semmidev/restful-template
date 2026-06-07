@@ -62,7 +62,7 @@ export default class ErrorBoundary extends Component<Props, State> {
                 <div className="flex flex-col sm:flex-row gap-4 pt-2">
                   <Button
                     onClick={this.handleReload}
-                    className="btn-brutal bg-brutal-yellow w-full h-12 text-md justify-center font-black"
+                    className="btn-brutal bg-brutal-violet w-full h-12 text-md justify-center font-black"
                   >
                     Reload Page
                   </Button>

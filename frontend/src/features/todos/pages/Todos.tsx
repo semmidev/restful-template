@@ -203,7 +203,7 @@ export default function Todos() {
       {/* Navigation Header */}
       <header className="max-w-6xl mx-auto mb-8 card-brutal bg-white flex flex-col sm:flex-row justify-between items-center gap-4 py-4 px-6">
         <div className="flex items-center gap-3">
-          <span className="bg-brutal-yellow border-2 border-black p-2 rounded shadow-brutal-sm font-black rotate-[-3deg]">
+          <span className="bg-brutal-violet border-2 border-black p-2 rounded shadow-brutal-sm font-black rotate-[-3deg]">
             TA
           </span>
           <h1 className="text-3xl font-black tracking-tight">
@@ -213,7 +213,7 @@ export default function Todos() {
         <div className="flex items-center gap-4">
           <Button
             onClick={() => setIsCreateOpen(true)}
-            className="btn-brutal bg-brutal-yellow text-sm font-black flex items-center gap-2"
+            className="btn-brutal bg-brutal-violet text-sm font-black flex items-center gap-2"
           >
             <Plus size={18} /> New Task
           </Button>
@@ -288,7 +288,7 @@ export default function Todos() {
                   value={tab.value}
                   className={`px-4 py-2 border-3 border-black font-extrabold rounded-lg shadow-brutal-sm hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-brutal transition-all ${
                     status === tab.value
-                      ? 'bg-brutal-yellow text-black data-active:bg-brutal-yellow data-active:text-black'
+                      ? 'bg-brutal-violet text-black data-active:bg-brutal-violet data-active:text-black'
                       : 'bg-white text-black data-active:bg-white data-active:text-black'
                   }`}
                 >
@@ -340,10 +340,10 @@ export default function Todos() {
                     <Badge
                       className={`badge-brutal text-xs uppercase py-1 px-2.5 h-auto ${
                         todo.status === 'done'
-                          ? 'bg-brutal-green text-white'
+                          ? 'bg-brutal-green text-black'
                           : todo.status === 'in_progress'
-                          ? 'bg-brutal-blue text-white'
-                          : 'bg-brutal-yellow text-black'
+                          ? 'bg-brutal-blue text-black'
+                          : 'bg-brutal-violet text-black'
                       }`}
                     >
                       {todo.status === 'in_progress' ? 'in progress' : todo.status}
@@ -542,7 +542,7 @@ export default function Todos() {
               >
                 Cancel
               </Button>
-              <Button type="submit" className="btn-brutal bg-brutal-yellow h-auto">
+              <Button type="submit" className="btn-brutal bg-brutal-violet h-auto">
                 Create Task
               </Button>
             </div>
@@ -657,7 +657,7 @@ export default function Todos() {
               >
                 Cancel
               </Button>
-              <Button type="submit" className="btn-brutal bg-brutal-yellow h-auto">
+              <Button type="submit" className="btn-brutal bg-brutal-violet h-auto">
                 Save Changes
               </Button>
             </div>

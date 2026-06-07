@@ -51,12 +51,13 @@ export default {
           foreground: "hsl(var(--card-foreground))",
         },
         brutal: {
-          bg: '#FFFDEB',      // soft brutalist yellow background
+          bg: '#F5F3FF',      // soft violet/lavender background
+          violet: '#a388ee',  // premium neobrutal violet
           yellow: '#FFDE4D',  // high contrast brutalist yellow
-          blue: '#5B8AD9',    // neo-brutal blue
-          green: '#4E9F3D',   // neo-brutal green
-          pink: '#FF9EAA',    // neo-brutal pink
-          orange: '#FF8E3C',  // neo-brutal orange
+          blue: '#80B3FF',    // neo-brutal blue
+          green: '#34D399',   // neo-brutal mint green
+          pink: '#FDA4AF',    // neo-brutal pink
+          orange: '#FB923C',  // neo-brutal orange
           border: '#000000',
         }
       },

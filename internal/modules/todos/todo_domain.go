@@ -48,7 +48,7 @@ func (t *Todo) ChangeStatus(status TodoStatus) {
 }
 
 func NewTodoEntity(in CreateTodoInput) *Todo {
-	now := time.Now().UTC()
+	now := time.Now().UTC().Truncate(time.Microsecond)
 	return &Todo{
 		ID:          uuidgen.New(),
 		UserID:      in.UserID,
@@ -121,7 +121,7 @@ func (t *Todo) ApplyUpdate(in UpdateTodoInput) {
 		}
 	}
 	// Stamp UpdatedAt exactly once regardless of which branch ran.
-	t.UpdatedAt = time.Now().UTC()
+	t.UpdatedAt = time.Now().UTC().Truncate(time.Microsecond)
 }
 
 type TodoRepository interface {

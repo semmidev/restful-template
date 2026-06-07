@@ -5,8 +5,8 @@ export default function LoadingPage() {
     <div className="min-h-screen bg-brutal-bg flex flex-col justify-center items-center p-4">
       <div className="card-brutal bg-white p-8 max-w-sm w-full text-center flex flex-col items-center gap-6">
         {/* Soft Brutalist Loading Animation: A bouncing bold square */}
-        <div className="w-16 h-16 bg-brutal-yellow border-4 border-black shadow-[4px_4px_0px_#000] animate-bounce duration-1000 rotate-12 flex items-center justify-center font-black text-2xl select-none">
-          ST
+        <div className="w-16 h-16 bg-brutal-violet border-4 border-black shadow-[4px_4px_0px_#000] animate-bounce duration-1000 rotate-12 flex items-center justify-center font-black text-2xl select-none">
+          TA
         </div>
         <div className="space-y-2">
           <h2 className="text-2xl font-black uppercase tracking-tight text-black">

@@ -43,7 +43,7 @@
 
 @layer components {
   .btn-brutal {
-    @apply border-3 border-black bg-brutal-yellow text-black font-extrabold px-5 py-2.5 rounded-lg 
+    @apply border-3 border-black bg-brutal-violet text-black font-extrabold px-5 py-2.5 rounded-lg 
            shadow-brutal hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-brutal-hover
            active:translate-x-[0px] active:translate-y-[0px] active:shadow-brutal
            transition-all duration-100 ease-in-out cursor-pointer select-none inline-flex items-center justify-center gap-2;
@@ -58,7 +58,7 @@
   }
 
   .btn-brutal-success {
-    @apply btn-brutal bg-brutal-green text-white;
+    @apply btn-brutal bg-brutal-green text-black;
   }
 
   .card-brutal {
@@ -76,7 +76,7 @@
 }
 
 body {
-  background-color: #FFFDEB;
+  background-color: #F5F3FF;
   color: #000;
   font-family: 'Outfit', 'Inter', system-ui, sans-serif;
 }
