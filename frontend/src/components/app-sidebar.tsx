@@ -100,7 +100,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader className="border-b border-sidebar-border px-4 py-3">
+      <SidebarHeader className="border-b border-sidebar-border px-4 py-3 group-data-[state=collapsed]:hidden">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
@@ -141,9 +141,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   >
                     <Icon className={`size-4 ${item.color || ""}`} />
                     <span className="text-sm font-medium">{item.title}</span>
-                    <span className="ml-auto rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] px-2 py-0.5 font-bold tabular-nums text-slate-500 group-data-[collapsible=icon]:hidden">
-                      {item.count}
-                    </span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )
@@ -152,7 +149,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border p-2">
+      <SidebarFooter className="border-t border-sidebar-border p-2 group-data-[state=collapsed]:hidden">
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
