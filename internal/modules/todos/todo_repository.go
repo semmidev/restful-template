@@ -3,6 +3,7 @@ package todos
 import (
 	"context"
 	"errors"
+	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
@@ -176,4 +177,113 @@ func (r *todoRepository) DeleteAllByUserID(ctx context.Context, userID uuid.UUID
 
 	_, err = database.GetDB(ctx, r.db).Exec(ctx, sql, args...)
 	return err
+}
+
+func (r *todoRepository) GetStats(ctx context.Context, userID uuid.UUID) (*TodoStats, error) {
+	// 1. Get status counts
+	countSQL, countArgs, err := database.QB.Select(
+		"COUNT(*)",
+		"COUNT(*) FILTER (WHERE status = 'pending')",
+		"COUNT(*) FILTER (WHERE status = 'in_progress')",
+		"COUNT(*) FILTER (WHERE status = 'done')",
+	).From("todos").Where(sq.Eq{"user_id": userID}).ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	var stats TodoStats
+	row := database.GetDB(ctx, r.db).QueryRow(ctx, countSQL, countArgs...)
+	err = row.Scan(&stats.Total, &stats.Pending, &stats.InProgress, &stats.Completed)
+	if err != nil {
+		return nil, err
+	}
+
+	if stats.Total > 0 {
+		stats.CompletionRate = int(float64(stats.Completed) / float64(stats.Total) * 100)
+	} else {
+		stats.CompletionRate = 0
+	}
+
+	// 2. Daily stats for the last 7 days
+	now := time.Now().UTC()
+	startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC).AddDate(0, 0, -6)
+
+	stats.DailyStats = make([]DailyStat, 7)
+	dateMap := make(map[string]int)
+	for i := 0; i < 7; i++ {
+		d := startDate.AddDate(0, 0, i)
+		dateStr := d.Format("2006-01-02")
+		stats.DailyStats[i] = DailyStat{
+			Date: dateStr,
+		}
+		dateMap[dateStr] = i
+	}
+
+	createdSQL, createdArgs, err := database.QB.Select(
+		"DATE(created_at) AS date",
+		"COUNT(*)",
+	).From("todos").
+		Where(sq.Eq{"user_id": userID}).
+		Where(sq.GtOrEq{"created_at": startDate}).
+		GroupBy("DATE(created_at)").
+		ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	createdRows, err := database.GetDB(ctx, r.db).Query(ctx, createdSQL, createdArgs...)
+	if err != nil {
+		return nil, err
+	}
+	defer createdRows.Close()
+
+	for createdRows.Next() {
+		var dateVal time.Time
+		var count int
+		if err := createdRows.Scan(&dateVal, &count); err != nil {
+			return nil, err
+		}
+		dateStr := dateVal.Format("2006-01-02")
+		if idx, ok := dateMap[dateStr]; ok {
+			stats.DailyStats[idx].Created = count
+		}
+	}
+	if err := createdRows.Err(); err != nil {
+		return nil, err
+	}
+
+	completedSQL, completedArgs, err := database.QB.Select(
+		"DATE(updated_at) AS date",
+		"COUNT(*)",
+	).From("todos").
+		Where(sq.Eq{"user_id": userID, "status": TodoStatusDone}).
+		Where(sq.GtOrEq{"updated_at": startDate}).
+		GroupBy("DATE(updated_at)").
+		ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	completedRows, err := database.GetDB(ctx, r.db).Query(ctx, completedSQL, completedArgs...)
+	if err != nil {
+		return nil, err
+	}
+	defer completedRows.Close()
+
+	for completedRows.Next() {
+		var dateVal time.Time
+		var count int
+		if err := completedRows.Scan(&dateVal, &count); err != nil {
+			return nil, err
+		}
+		dateStr := dateVal.Format("2006-01-02")
+		if idx, ok := dateMap[dateStr]; ok {
+			stats.DailyStats[idx].Completed = count
+		}
+	}
+	if err := completedRows.Err(); err != nil {
+		return nil, err
+	}
+
+	return &stats, nil
 }

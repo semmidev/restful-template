@@ -1,5 +1,5 @@
 import * as React from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useLocation, Link } from "react-router-dom"
 import {
   LayoutDashboard,
   LogOut,
@@ -53,6 +53,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     navigate("/login")
   }
 
+  const location = useLocation()
+  const isDashboardActive = location.pathname === "/"
+  const isTasksActive = location.pathname === "/todos"
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader className="border-b border-sidebar-border px-4 py-3 group-data-[state=collapsed]:hidden">
@@ -82,15 +86,31 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarGroupLabel className="px-2 font-bold uppercase tracking-wider text-[10px]">
             Workspace
           </SidebarGroupLabel>
-          <SidebarMenu className="gap-0.5">
+          <SidebarMenu className="gap-1">
             <SidebarMenuItem>
               <SidebarMenuButton
-                isActive
-                className="h-9 font-medium transition-all group-data-[collapsible=icon]:p-2!"
-                tooltip="All Tasks"
+                isActive={isDashboardActive}
+                className="h-8.5 font-medium transition-all group-data-[collapsible=icon]:p-2! data-[active=true]:bg-accent/80 data-[active=true]:text-foreground rounded-lg"
+                tooltip="Dashboard"
+                asChild
               >
-                <LayoutDashboard className="size-4" />
-                <span className="text-sm font-medium">All Tasks</span>
+                <Link to="/" className="flex items-center gap-2.5 px-2">
+                  <LayoutDashboard className={`size-4 transition-colors ${isDashboardActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`} />
+                  <span className={`text-xs font-semibold ${isDashboardActive ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'}`}>Dashboard</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={isTasksActive}
+                className="h-8.5 font-medium transition-all group-data-[collapsible=icon]:p-2! data-[active=true]:bg-accent/80 data-[active=true]:text-foreground rounded-lg"
+                tooltip="All Tasks"
+                asChild
+              >
+                <Link to="/todos" className="flex items-center gap-2.5 px-2">
+                  <CheckSquare className={`size-4 transition-colors ${isTasksActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`} />
+                  <span className={`text-xs font-semibold ${isTasksActive ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'}`}>All Tasks</span>
+                </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

@@ -124,6 +124,21 @@ func (t *Todo) ApplyUpdate(in UpdateTodoInput) {
 	t.UpdatedAt = time.Now().UTC().Truncate(time.Microsecond)
 }
 
+type DailyStat struct {
+	Date      string `json:"date"`
+	Created   int    `json:"created"`
+	Completed int    `json:"completed"`
+}
+
+type TodoStats struct {
+	Total          int         `json:"total"`
+	Pending        int         `json:"pending"`
+	InProgress     int         `json:"in_progress"`
+	Completed      int         `json:"completed"`
+	CompletionRate int         `json:"completion_rate"`
+	DailyStats     []DailyStat `json:"daily_stats"`
+}
+
 type TodoRepository interface {
 	Create(ctx context.Context, todo *Todo) error
 	GetByID(ctx context.Context, userID, id uuid.UUID) (*Todo, error)
@@ -131,6 +146,7 @@ type TodoRepository interface {
 	Update(ctx context.Context, todo *Todo) error
 	Delete(ctx context.Context, userID, id uuid.UUID) error
 	DeleteAllByUserID(ctx context.Context, userID uuid.UUID) error
+	GetStats(ctx context.Context, userID uuid.UUID) (*TodoStats, error)
 }
 
 // TodoService is the interface consumed by the HTTP handler.
@@ -146,4 +162,5 @@ type TodoService interface {
 	Update(ctx context.Context, existing *Todo, input UpdateTodoInput) (*Todo, error)
 	Delete(ctx context.Context, userID, id uuid.UUID) error
 	DeleteAllByUserID(ctx context.Context, userID uuid.UUID) error
+	GetStats(ctx context.Context, userID uuid.UUID) (*TodoStats, error)
 }

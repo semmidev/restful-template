@@ -105,3 +105,13 @@ type deleteTodoReq struct {
 }
 
 type deleteTodoRes struct{}
+
+// Stats
+
+type getTodoStatsReq struct{}
+
+type getTodoStatsRes struct {
+	Body struct {
+		Data *TodoStats `json:"data"`
+	}
+}

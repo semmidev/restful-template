@@ -148,6 +148,17 @@ func (s *Service) DeleteAllByUserID(ctx context.Context, userID uuid.UUID) error
 	return nil
 }
 
+func (s *Service) GetStats(ctx context.Context, userID uuid.UUID) (*TodoStats, error) {
+	ctx, span := s.tracer.Start(ctx, "todo.GetStats")
+	defer span.End()
+
+	stats, err := s.repo.GetStats(ctx, userID)
+	if err != nil {
+		return nil, apperrors.NewInternal("Failed to get todo statistics", err)
+	}
+	return stats, nil
+}
+
 // todoCacheKey returns the Redis key for a single todo entity.
 func todoCacheKey(userID, todoID uuid.UUID) string {
 	return fmt.Sprintf("todo:%s:%s", userID, todoID)

@@ -9,6 +9,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 const Login = lazy(() => import('./features/auth/pages/Login'));
 const Register = lazy(() => import('./features/auth/pages/Register'));
 const Todos = lazy(() => import('./features/todos/pages/Todos'));
+const Dashboard = lazy(() => import('./features/todos/pages/Dashboard'));
 
 interface RouteProps {
   children: React.ReactNode;
@@ -51,6 +52,14 @@ function App() {
               />
               <Route
                 path="/"
+                element={
+                  <PrivateRoute>
+                    <Dashboard />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/todos"
                 element={
                   <PrivateRoute>
                     <Todos />

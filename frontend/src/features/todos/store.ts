@@ -3,8 +3,24 @@ import {
   fetchTodosRequest,
   createTodoRequest,
   updateTodoRequest,
-  deleteTodoRequest
+  deleteTodoRequest,
+  fetchTodoStatsRequest
 } from './api';
+
+export interface DailyStat {
+  date: string;
+  created: number;
+  completed: number;
+}
+
+export interface TodoStats {
+  total: number;
+  pending: number;
+  in_progress: number;
+  completed: number;
+  completion_rate: number;
+  daily_stats: DailyStat[];
+}
 
 export interface Todo {
   id: string;
@@ -29,6 +45,9 @@ interface TodoState {
   loading: boolean;
   error: string | null;
   editingTodo: Todo | null;
+  stats: TodoStats | null;
+  statsLoading: boolean;
+  statsError: string | null;
 
   fetchTodos: () => Promise<void>;
   createTodo: (title: string, description: string, coverFile: File | null) => Promise<boolean>;
@@ -39,6 +58,7 @@ interface TodoState {
   setPage: (page: number) => void;
   setEditingTodo: (todo: Todo | null) => void;
   setError: (error: string | null) => void;
+  fetchStats: () => Promise<void>;
 }
 
 export const useTodoStore = create<TodoState>((set, get) => ({
@@ -155,6 +175,24 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 
   setFilters: (filters) => {
     set((state) => ({ ...state, ...filters, page: 1 }));
+  },
+
+  stats: null,
+  statsLoading: false,
+  statsError: null,
+
+  fetchStats: async () => {
+    set({ statsLoading: true, statsError: null });
+    try {
+      const res = await fetchTodoStatsRequest();
+      set({
+        stats: res.data.data || null,
+        statsLoading: false,
+      });
+    } catch (err: any) {
+      console.error(err);
+      set({ statsError: 'Failed to fetch statistics.', statsLoading: false });
+    }
   },
 
   setPage: (page) => set({ page }),

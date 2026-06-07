@@ -41,3 +41,7 @@ export async function updateTodoRequest(
 export async function deleteTodoRequest(id: string) {
   return client.delete(`/todos/${id}`);
 }
+
+export async function fetchTodoStatsRequest() {
+  return client.get('/todos/stats');
+}

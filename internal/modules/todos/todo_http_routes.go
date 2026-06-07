@@ -59,4 +59,13 @@ func RegisterTodoRoutes(api huma.API, todos TodoService) {
 		Security:      []map[string][]string{{"bearerAuth": {}}},
 		DefaultStatus: http.StatusNoContent,
 	}, h.handleDelete)
+
+	huma.Register(api, huma.Operation{
+		OperationID: "get-todo-stats",
+		Method:      http.MethodGet,
+		Path:        "/api/v1/todos/stats",
+		Summary:     "Get todo statistics for the authenticated user",
+		Tags:        []string{"Todos"},
+		Security:    []map[string][]string{{"bearerAuth": {}}},
+	}, h.handleStats)
 }

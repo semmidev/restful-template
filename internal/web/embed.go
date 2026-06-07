@@ -57,7 +57,7 @@ func (h *SPAHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.serveIndex(w, r)
 		return
 	}
-	file.Close()
+	_ = file.Close()
 
 	// Check if it's a file (not a directory)
 	stat, err := fs.Stat(h.fs, filePath)
@@ -85,7 +85,9 @@ func (h *SPAHandler) serveIndex(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Index not found", http.StatusNotFound)
 		return
 	}
-	defer indexFile.Close()
+	defer func() {
+		_ = indexFile.Close()
+	}()
 
 	stat, err := indexFile.Stat()
 	if err != nil {

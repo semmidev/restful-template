@@ -273,3 +273,19 @@ func processCoverImage(f huma.FormFile) (*string, error) {
 	encoded := fmt.Sprintf("data:%s;base64,%s", contentType, base64.StdEncoding.EncodeToString(b))
 	return &encoded, nil
 }
+
+func (h *todoHandler) handleStats(ctx context.Context, in *getTodoStatsReq) (*getTodoStatsRes, error) {
+	userID, err := httpapi.ExtractUserID(ctx)
+	if err != nil {
+		return nil, httpapi.ToHumaErr(ctx, err)
+	}
+
+	stats, err := h.todos.GetStats(ctx, userID)
+	if err != nil {
+		return nil, httpapi.ToHumaErr(ctx, err)
+	}
+
+	resp := &getTodoStatsRes{}
+	resp.Body.Data = stats
+	return resp, nil
+}
