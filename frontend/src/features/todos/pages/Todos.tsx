@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useTheme } from 'next-themes';
 import {
   Search,
   Plus,
@@ -14,7 +15,9 @@ import {
   ChevronRight,
   Activity,
   Upload,
-  X
+  X,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -38,6 +41,7 @@ import TodoSkeleton from '../components/TodoSkeleton';
 export default function Todos() {
   const navigate = useNavigate();
   const logout = useAuthStore((state) => state.logout);
+  const { theme, setTheme } = useTheme();
 
   const {
     todos,
@@ -233,7 +237,7 @@ export default function Todos() {
             </div>
 
             {/* Quick Header Search & Actions */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <div className="relative w-40 sm:w-60 md:w-80">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground size-4" />
                 <Input
@@ -244,6 +248,15 @@ export default function Todos() {
                   onChange={(e) => setSearchKeyword(e.target.value)}
                 />
               </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all"
+                title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              >
+                {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+              </Button>
               <Button
                 onClick={() => setIsCreateOpen(true)}
                 className="h-8 px-3 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/95 transition-all shadow-sm rounded-md flex items-center gap-1"

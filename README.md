@@ -12,6 +12,7 @@ Aplikasi web fullstack ini mengusung arsitektur **Modular Monolith (Package by F
 ## Preview
 
 ![API Documentation](assets/api-docs.png)
+![Web UI](assets/web-ui.png)
 ![API Monitoring](assets/api-monitoring.png)
 
 ## Tech Stack

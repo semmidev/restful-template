@@ -2,12 +2,8 @@ import * as React from "react"
 import { useNavigate } from "react-router-dom"
 import {
   LayoutDashboard,
-  Clock,
-  Activity,
-  CheckCircle,
   LogOut,
   CheckSquare,
-  Sparkles
 } from "lucide-react"
 
 import {
@@ -30,12 +26,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import useTodoStore from "@/features/todos/store"
 import useAuthStore from "@/features/auth/store"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const navigate = useNavigate()
-  const { todos, status, setFilters } = useTodoStore()
   const logout = useAuthStore((state) => state.logout)
 
   // Extract email from access token
@@ -54,49 +48,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     return email.split("@")[0] || "User"
   }, [email])
 
-  // Count items for badges
-  const counts = React.useMemo(() => {
-    const total = todos.length
-    const pending = todos.filter((t) => t.status === "pending").length
-    const inProgress = todos.filter((t) => t.status === "in_progress").length
-    const done = todos.filter((t) => t.status === "done").length
-    return { total, pending, inProgress, done }
-  }, [todos])
-
   const handleLogout = () => {
     logout()
     navigate("/login")
   }
-
-  const navItems = [
-    {
-      title: "All Tasks",
-      value: "",
-      icon: LayoutDashboard,
-      count: counts.total,
-    },
-    {
-      title: "Pending",
-      value: "pending",
-      icon: Clock,
-      count: counts.pending,
-      color: "text-amber-500",
-    },
-    {
-      title: "In Progress",
-      value: "in_progress",
-      icon: Activity,
-      count: counts.inProgress,
-      color: "text-primary",
-    },
-    {
-      title: "Completed",
-      value: "done",
-      icon: CheckCircle,
-      count: counts.done,
-      color: "text-emerald-500",
-    },
-  ]
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -128,23 +83,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             Workspace
           </SidebarGroupLabel>
           <SidebarMenu className="gap-0.5">
-            {navItems.map((item) => {
-              const isActive = status === item.value
-              const Icon = item.icon
-              return (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    isActive={isActive}
-                    onClick={() => setFilters({ status: item.value })}
-                    className="h-9 font-medium transition-all group-data-[collapsible=icon]:p-2!"
-                    tooltip={item.title}
-                  >
-                    <Icon className={`size-4 ${item.color || ""}`} />
-                    <span className="text-sm font-medium">{item.title}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )
-            })}
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive
+                className="h-9 font-medium transition-all group-data-[collapsible=icon]:p-2!"
+                tooltip="All Tasks"
+              >
+                <LayoutDashboard className="size-4" />
+                <span className="text-sm font-medium">All Tasks</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
