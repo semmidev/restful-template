@@ -43,6 +43,7 @@ Aplikasi web fullstack ini mengusung arsitektur **Modular Monolith (Package by F
 - [Fitur Utama](#fitur-utama)
 - [Struktur Projek](#struktur-projek)
 - [Arsitektur Modular Monolith](#arsitektur-modular-monolith)
+- [Arsitektur Frontend (React SPA)](#arsitektur-frontend-react-spa)
 - [Arsitektur Observability](#arsitektur-observability)
 - [Panduan Development](#panduan-development)
 - [Dokumentasi API](#dokumentasi-api)
@@ -272,6 +273,47 @@ Semua *query* dalam blok tersebut dieksekusi secara **atomik** — sukses semua 
 
 ---
 
+## Arsitektur Frontend (React SPA)
+
+Frontend aplikasi dibangun sebagai Single Page Application (SPA) modern yang tangguh dengan performa tinggi dan desain pixel-perfect ala developer tools (Linear App).
+
+### 1. Struktur Folder & Scoping Fitur
+Mengikuti pola modular yang bersih, semua kode frontend berada di direktori `frontend/src/` dengan struktur sebagai berikut:
+- **`components/`**: Berisi UI components global dan reusable yang berbasis Radix UI melalui Shadcn UI (seperti button, input, dialog, sidebar).
+- **`lib/`**: Utilitas bersama yang digunakan lintas modul, termasuk Axios client (`client.ts`), skema Zod global (`schemas.ts`), dan utilitas styling Tailwind (`utils.ts`).
+- **`features/`**: Folder modular berbasis domain bisnis (misal: `auth`, `todos`). Setiap modul fitur memiliki struktur flat tanpa subdirektori:
+  - `api.ts`: Kumpulan fungsi pemanggilan HTTP request khusus untuk fitur tersebut.
+  - `store.ts`: Zustand store untuk mengelola state dan async action terkait fitur.
+  - `pages/`: Halaman (containers) utama yang didaftarkan pada router (misal: `Todos.tsx`, `Dashboard.tsx`).
+  - `components/`: UI components lokal yang hanya digunakan di dalam modul fitur tersebut.
+
+### 2. Autentikasi JWT & Queue Refresh Token Otomatis
+Autentikasi terintegrasi dengan backend secara aman melalui token rotasi otomatis di `frontend/src/lib/client.ts`:
+- **Request Interceptor**: Secara otomatis menyematkan header `Authorization: Bearer <access_token>` untuk setiap request keluar jika token tersedia di local storage.
+- **Queue Refresh Token (Penanganan Error 401)**:
+  - Jika request gagal dengan status `401 Unauthorized`, response interceptor akan mencoba memperbarui token melalui `/auth/refresh` menggunakan `refresh_token`.
+  - **Mekanisme Antrean (Queue)**: Untuk mencegah terjadinya beberapa request refresh token secara konkuren (yang bisa merusak rotasi token), flag `isRefreshing` digunakan. Request gagal berikutnya akan ditahan dalam Promise dan dimasukkan ke dalam `failedQueue`.
+  - Jika refresh berhasil, seluruh antrean request dijalankan ulang menggunakan access token yang baru.
+  - Jika refresh gagal, local storage akan dibersihkan (`localStorage.clear()`) dan user diarahkan kembali ke `/login`.
+
+### 3. Optimistic Locking & ETag di Frontend
+Untuk menghindari konflik penulisan konkuren data (*lost update*):
+- Setiap entri resource memiliki metadata `updated_at`.
+- Saat frontend mengirimkan request update (seperti `PATCH /todos/:id`), Axios client secara otomatis melampirkan nilai `updated_at` tersebut ke dalam header `If-Match` (misal: `If-Match: "2026-06-07T10:49:43Z"`).
+- Jika ada user lain yang telah mengedit todo tersebut terlebih dahulu di database, server akan merespons dengan `412 Precondition Failed`. Frontend menangkap error ini, menginfokan terjadinya konflik konkuren ke user, dan memicu re-fetch otomatis agar tampilan sinkron dengan server.
+
+### 4. Standar Desain Minimalis (Linear Style)
+Desain visual mengusung gaya minimalis, high-contrast, dan tajam:
+- **HSL Semantic Variables**: Pewarnaan elemen UI dilarang keras menggunakan warna statis (seperti `#ffffff` atau `bg-slate-100`). Seluruh komponen menggunakan variabel HSL (seperti `bg-background`, `border-border`, `text-primary`) untuk memastikan adaptasi tema light/dark berjalan mulus.
+- **Border & Shadow**: Penggunaan border dibuat sangat tipis (`border-border/80`) dengan sudut tumpul yang rapat (`rounded-md` atau `--radius: 0.375rem`) dan shadow minimalis (`shadow-none` atau `shadow-sm`) demi meniru estetika panel developer tools.
+- **Grafik Recharts**: Seluruh bagan dibungkus dalam `ResponsiveContainer` agar responsif. Kustomisasi tooltip diselaraskan dengan visual kartu dashboard (`bg-card/95 border-border/80`).
+
+### 5. Vite Dev Proxy & Code Splitting
+- **Proxy Lokal**: Vite dev server dikonfigurasi untuk meneruskan semua request dengan prefix `/api` dan `/todos` ke backend server di port `8080`, menghindari isu CORS di lingkungan lokal.
+- **Code Splitting (Lazy Loading)**: Semua halaman utama di-load menggunakan `React.lazy()` dan dibungkus di dalam `<Suspense>` di `App.tsx` untuk memastikan load awal yang sangat cepat dengan memisahkan bundle halaman.
+
+---
+
 ## Arsitektur Observability
 
 Template ini dilengkapi *observability stack* lengkap berbasis **Grafana LGTM** (Loki, Grafana, Tempo, Prometheus) yang mengimplementasikan tiga pilar observability modern — **Metrics**, **Traces**, dan **Logs** — dalam satu antarmuka terpusat: **Grafana UI** (`http://localhost:3000`).
@@ -369,6 +411,11 @@ Projek ini menerapkan **Secure Idiomatic Error Handling**:
 | `make test-integration` | Menjalankan E2E integration tests (membutuhkan Docker) |
 | `make coverage` | Menghasilkan laporan code coverage |
 | `make build` | Build binary produksi |
+
+### Linter & Isolasi Workspace
+
+Projek Go ini menggunakan `golangci-lint` untuk menjaga kualitas kode backend. 
+- **Isolasi Node Modules**: Untuk mencegah linter memindai direktori `frontend/node_modules/` secara rekursif (yang dapat menyebabkan kegagalan linter), sebuah file dummy `frontend/go.mod` diletakkan di dalam folder frontend. Hal ini secara efektif mengisolasi folder frontend dari modul utama Go saat linter menjalankan perintah `golangci-lint run ./...` dari root workspace.
 
 ### Migrasi Database
 

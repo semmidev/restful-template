@@ -219,6 +219,76 @@ All configuration flows through `internal/config.Config` (loaded via Viper from 
 
 ---
 
+## Frontend Engineering Standards
+
+This project maintains a highly organized React SPA. The following patterns are strict rules for frontend development.
+
+### Architecture & Folder Structure
+The frontend application lives under `frontend/` and follows a feature-oriented module design:
+- `frontend/src/components/`: Core UI components (like buttons, dialogs, inputs, forms) that are reusable and independent of domain features. Includes the customized Radix-based UI building blocks from Shadcn.
+- `frontend/src/features/`: Scoped business logic. Each feature represents a domain module (e.g. `auth`, `todos`) and must be structured flat:
+  - `api.ts`: Centralized Axios requests scoped to this feature.
+  - `store.ts`: Zustand store for state management.
+  - `pages/`: Page containers mapped directly to application routes.
+  - `components/`: Custom, internal visual components scoped to this domain.
+- `frontend/src/lib/`: Shared utilities like the core Axios client (`client.ts`), Zod schemas (`schemas.ts`), and Tailwind helpers (`utils.ts`).
+
+### Routing & Route Protection
+The application router is configured in `frontend/src/App.tsx` using `react-router-dom`:
+- **Code Splitting**: All pages must be loaded dynamically using React's `lazy` function (e.g. `const Dashboard = lazy(() => import('./features/todos/pages/Dashboard'))`) inside a `<Suspense>` boundary to optimize bundle sizes.
+- **Route Guards**:
+  - `PublicRoute`: Restricts authenticated users from visiting guest pages (like `/login` or `/register`), redirecting them to the dashboard `/`.
+  - `PrivateRoute`: Enforces authentication. If no `access_token` exists in local storage and the auth store's `isAuthenticated` is false, it redirects users to `/login`.
+
+### State Management (Zustand)
+- **Store Encapsulation**: State variables and asynchronous store actions must reside in their respective feature stores (`store.ts`).
+- **No Direct Logic in Components**: Components should never trigger Axios directly or mutate the state. They must invoke actions from the Zustand store.
+- **Selectors**: Always access store variables using Zustand's selector pattern to prevent redundant component re-renders when unrelated states change:
+  ```typescript
+  const todos = useTodoStore((state) => state.todos);
+  const loading = useTodoStore((state) => state.loading);
+  ```
+
+### Form & Input Validation (Zod)
+- **Schema Validation**: All user inputs (login, registration, todo creation, and editing) must be parsed through a Zod schema client-side before dispatching store actions.
+- **Centralized Schema Definition**: Share schemas in `frontend/src/lib/schemas.ts` for consistency. Scoped schemas can remain within the feature folder if they are not shared.
+- **Error UI**: Display schema validation errors directly underneath form input fields using a uniform style (e.g., helper text with color `text-destructive`).
+
+### JWT Authentication & Token Refresh Queue
+The token rotation flow is managed transparently inside `frontend/src/lib/client.ts`:
+- **Authorization Header**: A request interceptor automatically attaches the current `access_token` as a `Bearer` token to the `Authorization` header of outgoing requests.
+- **Automatic Token Rotation**:
+  - When an API request fails with a `401 Unauthorized` response, the response interceptor catches the error and checks if the failure was due to an expired token.
+  - It attempts to refresh the access token via a `POST /auth/refresh` request using the `refresh_token` stored in local storage.
+  - **Refresh Queue**: To prevent multiple concurrent requests from spawning multiple separate token refresh calls, a queuing mechanism is used:
+    - While `isRefreshing` is `true`, incoming failed requests return a Promise that gets pushed to a `failedQueue` array.
+    - Once the token refresh succeeds, the queue is processed, resolving all queued requests with the new access token.
+    - If the token refresh fails, the queue is rejected, local storage is cleared (`localStorage.clear()`), and the user is redirected to the `/login` route.
+
+### Optimistic Locking & Concurrency Control
+To support optimistic locking implemented in the Go API:
+- When fetching a resource, the API sends its `updated_at` timestamp.
+- On update requests (e.g., PATCH/PUT), the frontend must read this timestamp and pass it in the `If-Match` header enclosed in quotes (e.g. `If-Match: "2026-06-07T10:49:43Z"`).
+- In the event of a `412 Precondition Failed` error, the user must be notified that the entity was modified by another session, and the frontend should refresh the visual collection to reflect the latest server state.
+
+### UI Design & Theme System (Linear Style)
+- **HSL CSS Variables**: Hardcoded colors (such as hex values `#3b82f6` or Tailwind utilities like `bg-zinc-900`) are strictly prohibited in components. Always use theme variables (e.g. `bg-background`, `border-border`, `text-muted-foreground`, `text-primary`) to support light/dark adaptability.
+- **Sleek Aesthetic**: Keep the user interface minimal, sharp, and structured.
+  - **Borders & Gridlines**: Prefer thin borders (`border border-border/80`) and flat layouts over heavy, saturated box shadows or colorful backgrounds.
+  - **Border Radius**: Set a unified, tight corner radius (`rounded-md` or `--radius: 0.375rem`) to maintain the developer-tool design.
+  - **Sidebar Active Highlight**: Sidebar items must calculate their active status dynamically by matching `useLocation().pathname`. Active links are styled using standard Tailwind data attribute selectors: `data-[active=true]:` and `peer-data-[active=true]/menu-button:`.
+
+### Recharts Visual Standards
+- Wrap all charts in a `ResponsiveContainer` to let them scale dynamically in grid dashboards.
+- Tooltips must use a uniform glassmorphic style: `bg-card/95 border border-border/80 px-3 py-2 rounded-lg shadow-md` with theme text variables (`text-foreground`).
+- Chart colors must align with the global aesthetic: deep violet/indigo for primary data trails, emerald green for completions, and amber for pending/warnings.
+
+### Development Dev Server & Proxy
+- The local Vite development server runs on `http://localhost:5173`.
+- A proxy configured in `vite.config.ts` intercepts `/api` and `/todos` path prefixes and redirects them to the backend server running on `http://localhost:8080`, bypassing CORS issues in development.
+
+---
+
 ## Development Workflow
 
 ### Quick Start
@@ -242,6 +312,13 @@ make lint
 # Format code
 make format
 ```
+
+#### Running the Frontend Separately
+If you want to run the React application locally with Hot Module Replacement (HMR) during development:
+1. Navigate to the frontend directory: `cd frontend`
+2. Install all node modules: `npm install`
+3. Launch the Vite development server: `npm run dev`
+4. Access the web app at `http://localhost:5173` (Vite will proxy API calls automatically).
 
 ### Adding a New Module
 
@@ -284,6 +361,13 @@ The following patterns are **explicitly prohibited** in this codebase:
 | Returning `nil` error when a non-nil was checked  | Caught by `nilerr` linter — always propagate or wrap errors   |
 | Direct Axios imports/calls inside components      | Always encapsulate queries in feature `api.ts` & trigger in stores|
 | Bypassing Zod validations in forms                | Always parse inputs through Zod schemas before API requests    |
+| Hardcoded CSS colors in JSX/TSX elements          | Breaks theme toggles; use HSL semantic classes (e.g. `bg-background`) |
+| Direct state mutations in components              | Leads to untrackable UI side-effects; invoke Zustand actions  |
+| Triggering navigation via `window.location`       | Hard reloads the SPA; use `useNavigate` from `react-router-dom` |
+| Omitting `If-Match` headers on resource updates   | Causes lost updates and silent database overwrites            |
+| Not wrapping async store actions in `try/catch`   | Leads to unhandled promise rejections and silent UI failures  |
+| Placing node_modules in Go workspace imports      | Add a dummy `go.mod` in the frontend root to isolate linter   |
+
 
 ---
 
