@@ -18,14 +18,12 @@ interface RouteProps {
 
 const PrivateRoute: React.FC<RouteProps> = ({ children }) => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const token = localStorage.getItem('access_token');
-  return (isAuthenticated || token) ? <>{children}</> : <Navigate to="/login" replace />;
+  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
 };
 
 const PublicRoute: React.FC<RouteProps> = ({ children }) => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const token = localStorage.getItem('access_token');
-  return (isAuthenticated || token) ? <Navigate to="/" replace /> : <>{children}</>;
+  return isAuthenticated ? <Navigate to="/" replace /> : <>{children}</>;
 };
 
 function App() {

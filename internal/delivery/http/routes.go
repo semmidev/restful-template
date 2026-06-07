@@ -2,6 +2,7 @@ package delivery
 
 import (
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/semmidev/restful-template/internal/config"
 	"github.com/semmidev/restful-template/internal/modules/auth"
 	"github.com/semmidev/restful-template/internal/modules/todos"
 )
@@ -12,11 +13,13 @@ import (
 // individual route registration functions must not receive a logger.
 func RegisterRoutes(
 	api huma.API,
+	cfg config.Config,
 	healthCheckers map[string]HealthChecker,
 	authService auth.AuthService,
 	todosService todos.TodoService,
 ) {
 	RegisterHealthRoutes(api, healthCheckers)
-	auth.RegisterAuthRoutes(api, authService)
+	auth.RegisterAuthRoutes(api, authService, cfg)
 	todos.RegisterTodoRoutes(api, todosService)
 }
+

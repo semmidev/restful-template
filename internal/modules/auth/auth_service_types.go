@@ -1,15 +1,18 @@
 package auth
 
 import (
+	"github.com/google/uuid"
 	"github.com/semmidev/restful-template/internal/shared/errors"
 	"github.com/semmidev/restful-template/internal/shared/password"
 	"github.com/semmidev/restful-template/internal/shared/uuidgen"
 )
 
 type TokenPair struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	ExpiresIn    int64  `json:"expires_in"`
+	AccessToken  string    `json:"access_token"`
+	RefreshToken string    `json:"refresh_token"`
+	ExpiresIn    int64     `json:"expires_in"`
+	UserID       uuid.UUID `json:"user_id"`
+	UserEmail    string    `json:"user_email"`
 }
 
 type RegisterInput struct {

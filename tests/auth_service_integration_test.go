@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/google/uuid"
@@ -33,21 +34,21 @@ func TestAuthHTTP_Integration(t *testing.T) {
 			})
 			w := doRequest(api, http.MethodPost, "/api/v1/auth/register", "", body, "application/json")
 
-			Convey("Then it succeeds and returns tokens", func() {
+			Convey("Then it succeeds and returns tokens in cookies", func() {
 				So(w.Code, ShouldEqual, http.StatusOK)
 
-				var resp struct {
-					Data struct {
-						AccessToken  string `json:"access_token"`
-						RefreshToken string `json:"refresh_token"`
-						ExpiresIn    int64  `json:"expires_in"`
-					} `json:"data"`
+				respHttp := &http.Response{Header: w.Header()}
+				cookies := respHttp.Cookies()
+				var hasAccess, hasRefresh bool
+				for _, cookie := range cookies {
+					if cookie.Name == "access_token" {
+						hasAccess = true
+					} else if cookie.Name == "refresh_token" {
+						hasRefresh = true
+					}
 				}
-				err = json.Unmarshal(w.Body.Bytes(), &resp)
-				So(err, ShouldBeNil)
-				So(resp.Data.AccessToken, ShouldNotBeEmpty)
-				So(resp.Data.RefreshToken, ShouldNotBeEmpty)
-				So(resp.Data.ExpiresIn, ShouldBeGreaterThan, 0)
+				So(hasAccess, ShouldBeTrue)
+				So(hasRefresh, ShouldBeTrue)
 			})
 
 			Convey("Then registering the exact same email again fails with 409", func() {
@@ -105,24 +106,40 @@ func TestAuthHTTP_Integration(t *testing.T) {
 				})
 				w := doRequest(api, http.MethodPost, "/api/v1/auth/login", "", loginBody, "application/json")
 
-				Convey("Then it succeeds and returns tokens", func() {
+				Convey("Then it succeeds and returns tokens in cookies", func() {
 					So(w.Code, ShouldEqual, http.StatusOK)
-					var resp struct {
-						Data struct {
-							AccessToken  string `json:"access_token"`
-							RefreshToken string `json:"refresh_token"`
-						} `json:"data"`
+					respHttp := &http.Response{Header: w.Header()}
+					cookies := respHttp.Cookies()
+					var accessTokenVal, refreshTokenVal string
+					for _, cookie := range cookies {
+						if cookie.Name == "access_token" {
+							accessTokenVal = cookie.Value
+						} else if cookie.Name == "refresh_token" {
+							refreshTokenVal = cookie.Value
+						}
 					}
-					err = json.Unmarshal(w.Body.Bytes(), &resp)
-					So(err, ShouldBeNil)
-					So(resp.Data.AccessToken, ShouldNotBeEmpty)
+					So(accessTokenVal, ShouldNotBeEmpty)
+					So(refreshTokenVal, ShouldNotBeEmpty)
 
 					Convey("And the refresh token can be used to get new tokens", func() {
-						refreshBody, _ := json.Marshal(map[string]string{
-							"refresh_token": resp.Data.RefreshToken,
-						})
-						wRefresh := doRequest(api, http.MethodPost, "/api/v1/auth/refresh", "", refreshBody, "application/json")
+						reqRefresh := httptest.NewRequest(http.MethodPost, "/api/v1/auth/refresh", nil)
+						reqRefresh.AddCookie(&http.Cookie{Name: "refresh_token", Value: refreshTokenVal})
+						wRefresh := httptest.NewRecorder()
+						api.ServeHTTP(wRefresh, reqRefresh)
 						So(wRefresh.Code, ShouldEqual, http.StatusOK)
+
+						respRefresh := &http.Response{Header: wRefresh.Header()}
+						cookiesRefresh := respRefresh.Cookies()
+						var hasNewAccess, hasNewRefresh bool
+						for _, c := range cookiesRefresh {
+							if c.Name == "access_token" {
+								hasNewAccess = true
+							} else if c.Name == "refresh_token" {
+								hasNewRefresh = true
+							}
+						}
+						So(hasNewAccess, ShouldBeTrue)
+						So(hasNewRefresh, ShouldBeTrue)
 					})
 				})
 			})
@@ -149,16 +166,15 @@ func TestAuthHTTP_Integration(t *testing.T) {
 
 				So(wLogin.Code, ShouldEqual, http.StatusOK)
 
-				var resp struct {
-					Data struct {
-						AccessToken string `json:"access_token"`
-					} `json:"data"`
+				respHttp := &http.Response{Header: wLogin.Header()}
+				cookies := respHttp.Cookies()
+				var token string
+				for _, cookie := range cookies {
+					if cookie.Name == "access_token" {
+						token = cookie.Value
+					}
 				}
-				err := json.Unmarshal(wLogin.Body.Bytes(), &resp)
-				So(err, ShouldBeNil)
-				So(resp.Data.AccessToken, ShouldNotBeEmpty)
-
-				token := resp.Data.AccessToken
+				So(token, ShouldNotBeEmpty)
 
 				// Delete the account
 				wDel := doRequest(api, http.MethodDelete, "/api/v1/auth/account", token, nil, "")
@@ -178,10 +194,10 @@ func TestAuthHTTP_Integration(t *testing.T) {
 		})
 
 		Convey("When refreshing with an invalid token", func() {
-			refreshBody, _ := json.Marshal(map[string]string{
-				"refresh_token": "this-is-not-a-valid-token",
-			})
-			wRefresh := doRequest(api, http.MethodPost, "/api/v1/auth/refresh", "", refreshBody, "application/json")
+			reqRefresh := httptest.NewRequest(http.MethodPost, "/api/v1/auth/refresh", nil)
+			reqRefresh.AddCookie(&http.Cookie{Name: "refresh_token", Value: "this-is-not-a-valid-token"})
+			wRefresh := httptest.NewRecorder()
+			api.ServeHTTP(wRefresh, reqRefresh)
 
 			Convey("Then it returns 401 Unauthorized", func() {
 				So(wRefresh.Code, ShouldEqual, http.StatusUnauthorized)

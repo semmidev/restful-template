@@ -91,7 +91,7 @@ func newTestAPI(ctx context.Context, pgDSN string, redisDSN string) (http.Handle
 	return app.Setup(ctx, cfg, logger)
 }
 
-// registerAndLogin calls the register endpoint and returns the access token.
+// registerAndLogin calls the register endpoint and returns the access token from cookies.
 func registerAndLogin(api http.Handler, email, password string) (string, error) {
 	body := map[string]string{"email": email, "password": password}
 	b, _ := json.Marshal(body)
@@ -106,15 +106,14 @@ func registerAndLogin(api http.Handler, email, password string) (string, error) 
 		return "", fmt.Errorf("register failed: %s", w.Body.String())
 	}
 
-	var resp struct {
-		Data struct {
-			AccessToken string `json:"access_token"`
-		} `json:"data"`
+	resp := &http.Response{Header: w.Header()}
+	cookies := resp.Cookies()
+	for _, cookie := range cookies {
+		if cookie.Name == "access_token" {
+			return cookie.Value, nil
+		}
 	}
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		return "", err
-	}
-	return resp.Data.AccessToken, nil
+	return "", fmt.Errorf("access_token cookie not found in response")
 }
 
 func doRequest(api http.Handler, method, path, token string, body []byte, contentType string) *httptest.ResponseRecorder {
@@ -124,7 +123,10 @@ func doRequest(api http.Handler, method, path, token string, body []byte, conten
 		req.Header.Set("Content-Type", contentType)
 	}
 	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
+		req.AddCookie(&http.Cookie{
+			Name:  "access_token",
+			Value: token,
+		})
 	}
 	w := httptest.NewRecorder()
 	api.ServeHTTP(w, req)

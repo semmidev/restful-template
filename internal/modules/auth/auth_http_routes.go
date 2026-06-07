@@ -4,17 +4,20 @@ import (
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/semmidev/restful-template/internal/config"
 )
 
 type authHandler struct {
 	auth AuthService
+	cfg  config.Config
 }
 
-func RegisterAuthRoutes(api huma.API, auth AuthService) {
-	h := &authHandler{auth: auth}
+func RegisterAuthRoutes(api huma.API, auth AuthService, cfg config.Config) {
+	h := &authHandler{auth: auth, cfg: cfg}
 
 	RegisterPublicPath("/api/v1/auth/google")
 	RegisterPublicPath("/api/v1/auth/google/config")
+	RegisterPublicPath("/api/v1/auth/logout")
 
 	huma.Register(api, huma.Operation{
 		OperationID: "auth-register",
@@ -39,6 +42,14 @@ func RegisterAuthRoutes(api huma.API, auth AuthService) {
 		Summary:     "Refresh access token using a refresh token",
 		Tags:        []string{"Auth"},
 	}, h.handleRefresh)
+
+	huma.Register(api, huma.Operation{
+		OperationID: "auth-logout",
+		Method:      http.MethodPost,
+		Path:        "/api/v1/auth/logout",
+		Summary:     "Logout and clear session cookies",
+		Tags:        []string{"Auth"},
+	}, h.handleLogout)
 
 	huma.Register(api, huma.Operation{
 		OperationID:   "auth-delete-account",

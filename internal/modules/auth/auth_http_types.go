@@ -1,10 +1,8 @@
 package auth
 
-// Token data shared by all token-issuing responses.
-type tokenData struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	ExpiresIn    int64  `json:"expires_in" doc:"Unix timestamp when the access token expires"`
+type authUserResponse struct {
+	ID    string `json:"id"`
+	Email string `json:"email"`
 }
 
 // Register
@@ -16,12 +14,11 @@ type authRegisterReq struct {
 	}
 }
 
-type authRegisterBody struct {
-	Data tokenData `json:"data"`
-}
-
 type authRegisterRes struct {
-	Body authRegisterBody
+	SetCookie []string `header:"Set-Cookie"`
+	Body      struct {
+		User authUserResponse `json:"user"`
+	}
 }
 
 // Login
@@ -33,28 +30,34 @@ type authLoginReq struct {
 	}
 }
 
-type authLoginBody struct {
-	Data tokenData `json:"data"`
-}
-
 type authLoginRes struct {
-	Body authLoginBody
+	SetCookie []string `header:"Set-Cookie"`
+	Body      struct {
+		User authUserResponse `json:"user"`
+	}
 }
 
 // Refresh
 
 type authRefreshReq struct {
-	Body struct {
-		RefreshToken string `json:"refresh_token" minLength:"1"`
-	}
-}
-
-type authRefreshBody struct {
-	Data tokenData `json:"data"`
+	Cookie string `header:"Cookie"`
 }
 
 type authRefreshRes struct {
-	Body authRefreshBody
+	SetCookie []string `header:"Set-Cookie"`
+	Body      struct {
+		User authUserResponse `json:"user"`
+	}
+}
+
+// Logout
+
+type authLogoutReq struct {
+	Cookie string `header:"Cookie"`
+}
+
+type authLogoutRes struct {
+	SetCookie []string `header:"Set-Cookie"`
 }
 
 // Delete account
@@ -72,12 +75,11 @@ type authGoogleLoginReq struct {
 	}
 }
 
-type authGoogleLoginBody struct {
-	Data tokenData `json:"data"`
-}
-
 type authGoogleLoginRes struct {
-	Body authGoogleLoginBody
+	SetCookie []string `header:"Set-Cookie"`
+	Body      struct {
+		User authUserResponse `json:"user"`
+	}
 }
 
 // Google Config

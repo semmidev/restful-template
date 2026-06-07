@@ -2,10 +2,34 @@ package auth
 
 import (
 	"context"
+	"net/http"
 
+	apperrors "github.com/semmidev/restful-template/internal/shared/errors"
 	"github.com/semmidev/restful-template/internal/shared/httpapi"
 	"github.com/semmidev/restful-template/internal/shared/wideevent"
 )
+
+func (h *authHandler) makeCookie(name, value, path string, maxAge int) string {
+	cookie := &http.Cookie{
+		Name:     name,
+		Value:    value,
+		Path:     path,
+		MaxAge:   maxAge,
+		HttpOnly: true,
+		Secure:   h.cfg.App.Env != "development",
+		SameSite: http.SameSiteLaxMode,
+	}
+	return cookie.String()
+}
+
+func (h *authHandler) parseCookie(cookieHeader, name string) string {
+	req := &http.Request{Header: http.Header{"Cookie": {cookieHeader}}}
+	cookie, err := req.Cookie(name)
+	if err != nil {
+		return ""
+	}
+	return cookie.Value
+}
 
 func (h *authHandler) handleRegister(ctx context.Context, in *authRegisterReq) (*authRegisterRes, error) {
 	wideevent.Add(ctx, "user_email", in.Body.Email)
@@ -13,10 +37,14 @@ func (h *authHandler) handleRegister(ctx context.Context, in *authRegisterReq) (
 	if err != nil {
 		return nil, httpapi.ToHumaErr(ctx, err)
 	}
-	res := &authRegisterRes{}
-	res.Body.Data.AccessToken = pair.AccessToken
-	res.Body.Data.RefreshToken = pair.RefreshToken
-	res.Body.Data.ExpiresIn = pair.ExpiresIn
+	res := &authRegisterRes{
+		SetCookie: []string{
+			h.makeCookie("access_token", pair.AccessToken, "/", int(h.cfg.JWT.AccessTTL.Seconds())),
+			h.makeCookie("refresh_token", pair.RefreshToken, "/api/v1/auth", int(h.cfg.JWT.RefreshTTL.Seconds())),
+		},
+	}
+	res.Body.User.ID = pair.UserID.String()
+	res.Body.User.Email = pair.UserEmail
 	return res, nil
 }
 
@@ -26,22 +54,53 @@ func (h *authHandler) handleLogin(ctx context.Context, in *authLoginReq) (*authL
 	if err != nil {
 		return nil, httpapi.ToHumaErr(ctx, err)
 	}
-	res := &authLoginRes{}
-	res.Body.Data.AccessToken = pair.AccessToken
-	res.Body.Data.RefreshToken = pair.RefreshToken
-	res.Body.Data.ExpiresIn = pair.ExpiresIn
+	res := &authLoginRes{
+		SetCookie: []string{
+			h.makeCookie("access_token", pair.AccessToken, "/", int(h.cfg.JWT.AccessTTL.Seconds())),
+			h.makeCookie("refresh_token", pair.RefreshToken, "/api/v1/auth", int(h.cfg.JWT.RefreshTTL.Seconds())),
+		},
+	}
+	res.Body.User.ID = pair.UserID.String()
+	res.Body.User.Email = pair.UserEmail
 	return res, nil
 }
 
 func (h *authHandler) handleRefresh(ctx context.Context, in *authRefreshReq) (*authRefreshRes, error) {
-	pair, err := h.auth.Refresh(ctx, in.Body.RefreshToken)
+	refreshToken := h.parseCookie(in.Cookie, "refresh_token")
+	if refreshToken == "" {
+		return nil, httpapi.ToHumaErr(ctx, apperrors.NewUnauthorized("Missing refresh token", apperrors.ErrUnauthorized))
+	}
+
+	pair, err := h.auth.Refresh(ctx, refreshToken)
 	if err != nil {
 		return nil, httpapi.ToHumaErr(ctx, err)
 	}
-	res := &authRefreshRes{}
-	res.Body.Data.AccessToken = pair.AccessToken
-	res.Body.Data.RefreshToken = pair.RefreshToken
-	res.Body.Data.ExpiresIn = pair.ExpiresIn
+	res := &authRefreshRes{
+		SetCookie: []string{
+			h.makeCookie("access_token", pair.AccessToken, "/", int(h.cfg.JWT.AccessTTL.Seconds())),
+			h.makeCookie("refresh_token", pair.RefreshToken, "/api/v1/auth", int(h.cfg.JWT.RefreshTTL.Seconds())),
+		},
+	}
+	res.Body.User.ID = pair.UserID.String()
+	res.Body.User.Email = pair.UserEmail
+	return res, nil
+}
+
+func (h *authHandler) handleLogout(ctx context.Context, in *authLogoutReq) (*authLogoutRes, error) {
+	refreshToken := h.parseCookie(in.Cookie, "refresh_token")
+
+	// Execute logout to invalidate session in DB/cache.
+	// Best-effort: we ignore error or log it, but always clear cookies.
+	if refreshToken != "" {
+		_ = h.auth.Logout(ctx, refreshToken)
+	}
+
+	res := &authLogoutRes{
+		SetCookie: []string{
+			h.makeCookie("access_token", "", "/", -1),
+			h.makeCookie("refresh_token", "", "/api/v1/auth", -1),
+		},
+	}
 	return res, nil
 }
 
@@ -63,10 +122,14 @@ func (h *authHandler) handleGoogleLogin(ctx context.Context, in *authGoogleLogin
 	if err != nil {
 		return nil, httpapi.ToHumaErr(ctx, err)
 	}
-	res := &authGoogleLoginRes{}
-	res.Body.Data.AccessToken = pair.AccessToken
-	res.Body.Data.RefreshToken = pair.RefreshToken
-	res.Body.Data.ExpiresIn = pair.ExpiresIn
+	res := &authGoogleLoginRes{
+		SetCookie: []string{
+			h.makeCookie("access_token", pair.AccessToken, "/", int(h.cfg.JWT.AccessTTL.Seconds())),
+			h.makeCookie("refresh_token", pair.RefreshToken, "/api/v1/auth", int(h.cfg.JWT.RefreshTTL.Seconds())),
+		},
+	}
+	res.Body.User.ID = pair.UserID.String()
+	res.Body.User.Email = pair.UserEmail
 	return res, nil
 }
 

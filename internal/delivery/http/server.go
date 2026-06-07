@@ -110,7 +110,7 @@ func NewServer(
 		api := humachi.New(r, humaConfig)
 		api.UseMiddleware(auth.AuthMiddleware(api, tokens))
 
-		RegisterRoutes(api, healthCheckers, authService, todosService)
+		RegisterRoutes(api, cfg, healthCheckers, authService, todosService)
 	})
 
 	mountSPAHandler(r)

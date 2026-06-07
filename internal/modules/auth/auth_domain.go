@@ -70,5 +70,6 @@ type AuthService interface {
 	Refresh(ctx context.Context, refreshToken string) (TokenPair, error)
 	GoogleLogin(ctx context.Context, code string, codeVerifier string) (TokenPair, error)
 	GoogleConfig() (clientID, redirectURI string)
+	Logout(ctx context.Context, refreshToken string) error
 	DeleteAccount(ctx context.Context, userID uuid.UUID) error
 }

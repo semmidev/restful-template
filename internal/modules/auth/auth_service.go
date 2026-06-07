@@ -128,7 +128,13 @@ func (s *Service) issuePair(ctx context.Context, u *User) (TokenPair, error) {
 		return TokenPair{}, apperrors.NewInternal("Failed to store session", err)
 	}
 
-	return TokenPair{AccessToken: access, RefreshToken: refresh, ExpiresIn: exp}, nil
+	return TokenPair{
+		AccessToken:  access,
+		RefreshToken: refresh,
+		ExpiresIn:    exp,
+		UserID:       u.ID,
+		UserEmail:    u.Email,
+	}, nil
 }
 
 func (s *Service) DeleteAccount(ctx context.Context, userID uuid.UUID) error {
@@ -141,6 +147,24 @@ func (s *Service) DeleteAccount(ctx context.Context, userID uuid.UUID) error {
 		}
 		return nil
 	})
+}
+
+func (s *Service) Logout(ctx context.Context, refreshToken string) error {
+	ctx, span := s.tracer.Start(ctx, "auth.Logout")
+	defer span.End()
+
+	if refreshToken == "" {
+		return nil
+	}
+
+	hash := hashToken(refreshToken)
+	if err := s.tokenRepo.DeleteRefreshToken(ctx, hash); err != nil {
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return nil
+		}
+		return apperrors.NewInternal("Failed to invalidate session", err)
+	}
+	return nil
 }
 
 type googleTokenResponse struct {

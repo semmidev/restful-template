@@ -162,6 +162,42 @@ Proyek ini melampaui sekadar kerangka kerja RESTful biasa dan menerapkan pola *E
    - **Distributor** (`internal/shared/asynqtask`) memiliki peran sebagai *Producer* — modul memanggil `distributor.DistributeTask...()` via interface (`TaskDistributor`), lalu task diserialisasi dan dikirim ke Redis queue tanpa blocking request HTTP.
    - **Processor**: Handler task diimplementasikan langsung di dalam modul masing-masing (misalnya `auth_worker.go`) — `cmd/worker` binary mendengarkan Redis queue dan mengeksekusi handler task secara konkuren.
    - **Asynqmon Web UI** (`/admin/asynq`) built-in untuk memantau queue, retry, dan dead-letter tasks secara real-time.
+8. **Google Login dengan OAuth 2.0 + PKCE (Proof Key for Code Exchange)**
+   - Menggunakan alur otorisasi modern dan aman untuk aplikasi Single Page Application (SPA).
+   - **Alur Kerja**:
+     1. React SPA meminta konfigurasi publik (Client ID & Redirect URI) dari Go backend.
+     2. React SPA men-generate `state` (anti-CSRF), `code_verifier`, dan `code_challenge` (SHA-256), lalu mengarahkan user ke halaman Google Login.
+     3. Google mengautentikasi user dan mengarahkan kembali ke SPA callback (`/login/google/callback`) dengan membawa `code` dan `state`.
+     4. SPA memverifikasi `state`, mengambil `code_verifier`, lalu mengirimkan `code` dan `code_verifier` ke Go backend.
+     5. Go backend melakukan pertukaran kode (*token exchange*) secara aman ke Google Token API. Google memverifikasi `code_verifier` terhadap `code_challenge` awal.
+     6. Setelah divalidasi oleh Google, Go backend mengambil data profil user, mencocokkannya ke database (membuat user baru jika belum ada), dan menghasilkan JWT Session token (Access & Refresh) untuk dikembalikan ke React SPA.
+   
+   ```mermaid
+   sequenceDiagram
+       autonumber
+       actor User
+       participant SPA as React SPA
+       participant Backend as Go Backend
+       participant Google as Google Auth Server
+
+       User->>SPA: Klik "Continue with Google"
+       SPA->>Backend: GET /api/v1/auth/google/config
+       Backend->>SPA: Return Client ID & Redirect URI
+       Note over SPA: Generate state, code_verifier & code_challenge (S256)
+       SPA->>Google: Redirect dengan Client ID, Redirect URI & code_challenge
+       Google->>User: Form login & consent Google
+       User->>Google: Setujui otorisasi
+       Google->>SPA: Redirect ke /login/google/callback?code=CODE&state=STATE
+       Note over SPA: Validasi state (anti-CSRF)
+       SPA->>Backend: POST /api/v1/auth/google (code & code_verifier)
+       Backend->>Google: Post /token (exchange code & code_verifier)
+       Google->>Backend: Return Access Token Google
+       Backend->>Google: GET /userinfo (dengan Access Token)
+       Google->>Backend: Return Profil User (Email & Google ID)
+       Note over Backend: Transaksi DB: Create/Link User & Issue JWT Session
+       Backend->>SPA: Return JWT Access & Refresh Token
+       SPA->>User: Akses Workspace (Dashboard)
+   ```
 
 ---
 

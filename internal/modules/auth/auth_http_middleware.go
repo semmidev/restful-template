@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"net/http"
 	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -55,13 +56,15 @@ func AuthMiddleware(api huma.API, tokens TokenService) func(ctx huma.Context, ne
 			}
 		}
 
-		authHeader := ctx.Header("Authorization")
-		if !strings.HasPrefix(authHeader, "Bearer ") {
-			httpapi.WriteHumaErr(api, ctx, httpapi.ToHumaErrUnauthorized("missing or malformed authorization header"))
+		rawCookie := ctx.Header("Cookie")
+		req := &http.Request{Header: http.Header{"Cookie": {rawCookie}}}
+		cookie, err := req.Cookie("access_token")
+		if err != nil {
+			httpapi.WriteHumaErr(api, ctx, httpapi.ToHumaErrUnauthorized("missing or malformed authorization cookie"))
 			return
 		}
 
-		token := strings.TrimPrefix(authHeader, "Bearer ")
+		token := cookie.Value
 		claims, err := tokens.ParseAccess(ctx.Context(), token)
 		if err != nil {
 			httpapi.WriteHumaErr(api, ctx, httpapi.ToHumaErrUnauthorized("invalid or expired token"))

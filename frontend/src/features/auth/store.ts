@@ -1,28 +1,24 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { loginRequest, registerRequest, googleLoginRequest } from './api';
+import { loginRequest, registerRequest, googleLoginRequest, logoutRequest } from './api';
 import { LoginInput, RegisterInput } from '../../lib/schemas';
 
 interface AuthState {
-  accessToken: string | null;
-  refreshToken: string | null;
-  expiresIn: number | null;
+  userEmail: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
   login: (input: LoginInput) => Promise<{ success: boolean; error?: string }>;
   register: (input: RegisterInput) => Promise<{ success: boolean; error?: string }>;
   loginWithGoogle: (code: string, codeVerifier: string) => Promise<{ success: boolean; error?: string }>;
-  logout: () => void;
+  logout: () => Promise<void>;
   clearError: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
-      accessToken: null,
-      refreshToken: null,
-      expiresIn: null,
+      userEmail: null,
       isAuthenticated: false,
       isLoading: false,
       error: null,
@@ -31,16 +27,10 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null });
         try {
           const res = await loginRequest(input);
-          const { access_token, refresh_token, expires_in } = res.data.data;
-
-          localStorage.setItem('access_token', access_token);
-          localStorage.setItem('refresh_token', refresh_token);
-          localStorage.setItem('expires_in', expires_in.toString());
+          const { user } = res.data;
 
           set({
-            accessToken: access_token,
-            refreshToken: refresh_token,
-            expiresIn: expires_in,
+            userEmail: user.email,
             isAuthenticated: true,
             isLoading: false,
             error: null,
@@ -60,16 +50,10 @@ export const useAuthStore = create<AuthState>()(
             email: input.email,
             password: input.password,
           });
-          const { access_token, refresh_token, expires_in } = res.data.data;
-
-          localStorage.setItem('access_token', access_token);
-          localStorage.setItem('refresh_token', refresh_token);
-          localStorage.setItem('expires_in', expires_in.toString());
+          const { user } = res.data;
 
           set({
-            accessToken: access_token,
-            refreshToken: refresh_token,
-            expiresIn: expires_in,
+            userEmail: user.email,
             isAuthenticated: true,
             isLoading: false,
             error: null,
@@ -86,16 +70,10 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null });
         try {
           const res = await googleLoginRequest(code, codeVerifier);
-          const { access_token, refresh_token, expires_in } = res.data.data;
-
-          localStorage.setItem('access_token', access_token);
-          localStorage.setItem('refresh_token', refresh_token);
-          localStorage.setItem('expires_in', expires_in.toString());
+          const { user } = res.data;
 
           set({
-            accessToken: access_token,
-            refreshToken: refresh_token,
-            expiresIn: expires_in,
+            userEmail: user.email,
             isAuthenticated: true,
             isLoading: false,
             error: null,
@@ -108,12 +86,14 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      logout: () => {
-        localStorage.clear();
+      logout: async () => {
+        try {
+          await logoutRequest();
+        } catch (err) {
+          // ignore or log
+        }
         set({
-          accessToken: null,
-          refreshToken: null,
-          expiresIn: null,
+          userEmail: null,
           isAuthenticated: false,
           error: null,
         });
@@ -124,12 +104,11 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'todoapp-auth',
       partialize: (state) => ({
-        accessToken: state.accessToken,
-        refreshToken: state.refreshToken,
-        expiresIn: state.expiresIn,
+        userEmail: state.userEmail,
         isAuthenticated: state.isAuthenticated,
       }),
     }
   )
 );
+
 export default useAuthStore;

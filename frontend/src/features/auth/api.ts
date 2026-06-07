@@ -17,3 +17,7 @@ export async function getGoogleConfig() {
   return client.get('/auth/google/config');
 }
 
+export async function logoutRequest() {
+  return client.post('/auth/logout');
+}
+

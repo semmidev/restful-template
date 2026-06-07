@@ -32,17 +32,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const navigate = useNavigate()
   const logout = useAuthStore((state) => state.logout)
 
-  // Extract email from access token
-  const email = React.useMemo(() => {
-    try {
-      const token = localStorage.getItem("access_token")
-      if (!token) return "user@example.com"
-      const payload = JSON.parse(atob(token.split(".")[1]))
-      return payload.email || "user@example.com"
-    } catch {
-      return "user@example.com"
-    }
-  }, [])
+  const userEmail = useAuthStore((state) => state.userEmail)
+  const email = userEmail || "user@example.com"
 
   const username = React.useMemo(() => {
     return email.split("@")[0] || "User"
