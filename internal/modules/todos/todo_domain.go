@@ -24,6 +24,8 @@ type Todo struct {
 	Description string     `json:"description"`
 	Cover       *string    `json:"cover"`
 	Status      TodoStatus `json:"status"`
+	Importance  bool       `json:"importance"`
+	Urgency     bool       `json:"urgency"`
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
 }
@@ -56,6 +58,8 @@ func NewTodoEntity(in CreateTodoInput) *Todo {
 		Description: in.Description,
 		Cover:       in.Cover,
 		Status:      TodoStatusPending,
+		Importance:  in.Importance,
+		Urgency:     in.Urgency,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
@@ -100,6 +104,18 @@ func (t *Todo) ApplyUpdate(in UpdateTodoInput) {
 				} else {
 					t.ChangeStatus(TodoStatusPending)
 				}
+			case "importance":
+				if in.Importance != nil {
+					t.Importance = *in.Importance
+				} else {
+					t.Importance = false
+				}
+			case "urgency":
+				if in.Urgency != nil {
+					t.Urgency = *in.Urgency
+				} else {
+					t.Urgency = false
+				}
 			}
 		}
 	} else {
@@ -118,6 +134,12 @@ func (t *Todo) ApplyUpdate(in UpdateTodoInput) {
 		}
 		if in.Status != nil {
 			t.ChangeStatus(*in.Status)
+		}
+		if in.Importance != nil {
+			t.Importance = *in.Importance
+		}
+		if in.Urgency != nil {
+			t.Urgency = *in.Urgency
 		}
 	}
 	// Stamp UpdatedAt exactly once regardless of which branch ran.

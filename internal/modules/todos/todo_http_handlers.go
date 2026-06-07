@@ -99,11 +99,16 @@ func (h *todoHandler) handleCreate(ctx context.Context, in *createTodoReq) (*cre
 		return nil, err
 	}
 
+	importance := data.Importance
+	urgency := data.Urgency
+
 	t, err := h.todos.Create(ctx, CreateTodoInput{
 		UserID:      userID,
 		Title:       data.Title,
 		Description: data.Description,
 		Cover:       coverBase64,
+		Importance:  importance,
+		Urgency:     urgency,
 	})
 	if err != nil {
 		return nil, httpapi.ToHumaErr(ctx, err)
@@ -179,6 +184,18 @@ func (h *todoHandler) handleUpdate(ctx context.Context, in *updateTodoReq) (*upd
 		status = &st
 	}
 
+	var importance *bool
+	if _, ok := in.RawBody.Form.Value["importance"]; ok {
+		v := data.Importance
+		importance = &v
+	}
+
+	var urgency *bool
+	if _, ok := in.RawBody.Form.Value["urgency"]; ok {
+		v := data.Urgency
+		urgency = &v
+	}
+
 	coverBase64, err := processCoverImage(data.Cover)
 	if err != nil {
 		return nil, err
@@ -207,6 +224,8 @@ func (h *todoHandler) handleUpdate(ctx context.Context, in *updateTodoReq) (*upd
 		Description: desc,
 		Cover:       coverBase64,
 		Status:      status,
+		Importance:  importance,
+		Urgency:     urgency,
 		UpdateMask:  updateMask,
 	})
 	if err != nil {

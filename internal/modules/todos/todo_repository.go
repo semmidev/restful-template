@@ -28,8 +28,8 @@ func NewTodoRepository(db *pgxpool.Pool) TodoRepository { return &todoRepository
 
 func (r *todoRepository) Create(ctx context.Context, t *Todo) error {
 	sql, args, err := database.QB.Insert("todos").
-		Columns("id", "user_id", "title", "description", "cover", "status", "created_at", "updated_at").
-		Values(t.ID, t.UserID, t.Title, t.Description, t.Cover, t.Status, t.CreatedAt, t.UpdatedAt).
+		Columns("id", "user_id", "title", "description", "cover", "status", "importance", "urgency", "created_at", "updated_at").
+		Values(t.ID, t.UserID, t.Title, t.Description, t.Cover, t.Status, t.Importance, t.Urgency, t.CreatedAt, t.UpdatedAt).
 		ToSql()
 	if err != nil {
 		return err
@@ -40,7 +40,7 @@ func (r *todoRepository) Create(ctx context.Context, t *Todo) error {
 }
 
 func (r *todoRepository) GetByID(ctx context.Context, userID, id uuid.UUID) (*Todo, error) {
-	sql, args, err := database.QB.Select("id", "user_id", "title", "description", "cover", "status", "created_at", "updated_at").
+	sql, args, err := database.QB.Select("id", "user_id", "title", "description", "cover", "status", "importance", "urgency", "created_at", "updated_at").
 		From("todos").
 		Where(sq.Eq{"id": id, "user_id": userID}).
 		ToSql()
@@ -50,7 +50,7 @@ func (r *todoRepository) GetByID(ctx context.Context, userID, id uuid.UUID) (*To
 
 	row := database.GetDB(ctx, r.db).QueryRow(ctx, sql, args...)
 	var t Todo
-	if err := row.Scan(&t.ID, &t.UserID, &t.Title, &t.Description, &t.Cover, &t.Status, &t.CreatedAt, &t.UpdatedAt); err != nil {
+	if err := row.Scan(&t.ID, &t.UserID, &t.Title, &t.Description, &t.Cover, &t.Status, &t.Importance, &t.Urgency, &t.CreatedAt, &t.UpdatedAt); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, apperrors.ErrNotFound
 		}
@@ -90,7 +90,7 @@ func (r *todoRepository) ListByUser(ctx context.Context, q ListTodosQuery) ([]*T
 	dataQuery := base.
 		Columns(
 			"id", "user_id", "title", "description", "cover",
-			"status", "created_at", "updated_at",
+			"status", "importance", "urgency", "created_at", "updated_at",
 			"COUNT(*) OVER() AS total_count",
 		).
 		OrderBy(sortBy + " " + sortDir).
@@ -114,7 +114,7 @@ func (r *todoRepository) ListByUser(ctx context.Context, q ListTodosQuery) ([]*T
 		var t Todo
 		if err := rows.Scan(
 			&t.ID, &t.UserID, &t.Title, &t.Description, &t.Cover,
-			&t.Status, &t.CreatedAt, &t.UpdatedAt,
+			&t.Status, &t.Importance, &t.Urgency, &t.CreatedAt, &t.UpdatedAt,
 			&total,
 		); err != nil {
 			return nil, 0, err
@@ -138,6 +138,8 @@ func (r *todoRepository) Update(ctx context.Context, t *Todo) error {
 		Set("description", t.Description).
 		Set("cover", t.Cover).
 		Set("status", t.Status).
+		Set("importance", t.Importance).
+		Set("urgency", t.Urgency).
 		Set("updated_at", t.UpdatedAt).
 		Where(sq.Eq{"id": t.ID, "user_id": t.UserID}).
 		ToSql()

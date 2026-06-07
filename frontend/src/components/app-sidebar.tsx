@@ -2,6 +2,7 @@ import * as React from "react"
 import { useNavigate, useLocation, Link } from "react-router-dom"
 import {
   LayoutDashboard,
+  LayoutGrid,
   LogOut,
   CheckSquare,
 } from "lucide-react"
@@ -47,6 +48,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const location = useLocation()
   const isDashboardActive = location.pathname === "/"
   const isTasksActive = location.pathname === "/todos"
+  const isMatrixActive = location.pathname === "/matrix"
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -101,6 +103,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <Link to="/todos" className="flex items-center gap-2.5 px-2">
                   <CheckSquare className={`size-4 transition-colors ${isTasksActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`} />
                   <span className={`text-xs font-semibold ${isTasksActive ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'}`}>All Tasks</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={isMatrixActive}
+                className="h-8.5 font-medium transition-all group-data-[collapsible=icon]:p-2! data-[active=true]:bg-accent/80 data-[active=true]:text-foreground rounded-lg"
+                tooltip="Eisenhower Matrix"
+                asChild
+              >
+                <Link to="/matrix" className="flex items-center gap-2.5 px-2">
+                  <LayoutGrid className={`size-4 transition-colors ${isMatrixActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`} />
+                  <span className={`text-xs font-semibold ${isMatrixActive ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'}`}>Eisenhower Matrix</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

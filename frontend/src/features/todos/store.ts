@@ -29,6 +29,8 @@ export interface Todo {
   description: string;
   cover: string | null;
   status: 'pending' | 'in_progress' | 'done';
+  importance: boolean;
+  urgency: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -50,8 +52,9 @@ interface TodoState {
   statsError: string | null;
 
   fetchTodos: () => Promise<void>;
-  createTodo: (title: string, description: string, coverFile: File | null) => Promise<boolean>;
-  updateTodo: (id: string, title: string, description: string, coverFile: File | null, coverPreview: string, currentStatus: 'pending' | 'in_progress' | 'done', originalUpdatedAt: string) => Promise<boolean>;
+  createTodo: (title: string, description: string, coverFile: File | null, importance?: boolean, urgency?: boolean) => Promise<boolean>;
+  updateTodo: (id: string, title: string, description: string, coverFile: File | null, coverPreview: string, currentStatus: 'pending' | 'in_progress' | 'done', originalUpdatedAt: string, importance?: boolean, urgency?: boolean) => Promise<boolean>;
+  updateTodoPriority: (todo: Todo, importance: boolean, urgency: boolean) => Promise<void>;
   toggleTodoStatus: (todo: Todo, nextStatus: 'pending' | 'in_progress' | 'done') => Promise<void>;
   deleteTodo: (id: string) => Promise<void>;
   setFilters: (filters: Partial<Pick<TodoState, 'status' | 'keyword' | 'sortBy' | 'sortDir'>>) => void;
@@ -97,11 +100,13 @@ export const useTodoStore = create<TodoState>((set, get) => ({
     }
   },
 
-  createTodo: async (title, description, coverFile) => {
+  createTodo: async (title, description, coverFile, importance = false, urgency = false) => {
     set({ error: null });
     const formData = new FormData();
     formData.append('title', title);
     formData.append('description', description);
+    formData.append('importance', String(importance));
+    formData.append('urgency', String(urgency));
     if (coverFile) {
       formData.append('cover', coverFile);
     }
@@ -118,14 +123,24 @@ export const useTodoStore = create<TodoState>((set, get) => ({
     }
   },
 
-  updateTodo: async (id, title, description, coverFile, coverPreview, currentStatus, originalUpdatedAt) => {
+  updateTodo: async (id, title, description, coverFile, coverPreview, currentStatus, originalUpdatedAt, importance, urgency) => {
     set({ error: null });
     const formData = new FormData();
     formData.append('title', title);
     formData.append('description', description);
     formData.append('status', currentStatus);
-    
+
     const maskFields = ['title', 'description', 'status'];
+
+    if (importance !== undefined) {
+      formData.append('importance', String(importance));
+      maskFields.push('importance');
+    }
+    if (urgency !== undefined) {
+      formData.append('urgency', String(urgency));
+      maskFields.push('urgency');
+    }
+
     if (coverFile) {
       formData.append('cover', coverFile);
       maskFields.push('cover');
@@ -143,6 +158,28 @@ export const useTodoStore = create<TodoState>((set, get) => ({
       console.error(err);
       set({ error: err.response?.data?.detail || 'Failed to update todo. It might have been modified elsewhere.' });
       return false;
+    }
+  },
+
+  updateTodoPriority: async (todo, importance, urgency) => {
+    set({ error: null });
+    const formData = new FormData();
+    formData.append('importance', String(importance));
+    formData.append('urgency', String(urgency));
+
+    try {
+      const etag = `"${todo.updated_at}"`;
+      await updateTodoRequest(todo.id, formData, 'importance,urgency', etag);
+      // Optimistically update local state for snappy UX
+      set((state) => ({
+        todos: state.todos.map((t) =>
+          t.id === todo.id ? { ...t, importance, urgency } : t
+        ),
+      }));
+    } catch (err: any) {
+      console.error(err);
+      set({ error: 'Concurrency conflict. Refreshing...' });
+      await get().fetchTodos();
     }
   },
 

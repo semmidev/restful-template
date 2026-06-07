@@ -7,6 +7,8 @@ type CreateTodoInput struct {
 	Title       string  `json:"title" required:"true"`
 	Description string  `json:"description,omitempty"`
 	Cover       *string `json:"cover,omitempty"`
+	Importance  bool    `json:"importance"`
+	Urgency     bool    `json:"urgency"`
 }
 
 type UpdateTodoInput struct {
@@ -16,6 +18,8 @@ type UpdateTodoInput struct {
 	Description *string     `json:"description,omitempty"`
 	Cover       *string     `json:"cover,omitempty"`
 	Status      *TodoStatus `json:"status,omitempty"`
+	Importance  *bool       `json:"importance,omitempty"`
+	Urgency     *bool       `json:"urgency,omitempty"`
 	UpdateMask  []string
 }
 

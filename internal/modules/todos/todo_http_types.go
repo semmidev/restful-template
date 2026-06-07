@@ -51,6 +51,8 @@ type CreateTodoForm struct {
 	Title       string        `form:"title" minLength:"1" maxLength:"200"`
 	Description string        `form:"description" maxLength:"2000" required:"false"`
 	Cover       huma.FormFile `form:"cover" contentType:"image/*" doc:"Image file to upload as cover (max 5 MB)" required:"false"`
+	Importance  bool          `form:"importance" required:"false"`
+	Urgency     bool          `form:"urgency" required:"false"`
 }
 
 type createTodoReq struct {
@@ -83,6 +85,8 @@ type UpdateTodoForm struct {
 	Description string        `form:"description" maxLength:"2000" required:"false"`
 	Status      string        `form:"status" enum:"pending,in_progress,done" required:"false"`
 	Cover       huma.FormFile `form:"cover" contentType:"image/*" doc:"Image file to upload as cover (max 5 MB)" required:"false"`
+	Importance  bool          `form:"importance" required:"false"`
+	Urgency     bool          `form:"urgency" required:"false"`
 }
 
 type updateTodoReq struct {
