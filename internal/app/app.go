@@ -119,13 +119,10 @@ func SetupWorker(cfg config.Config, logger *slog.Logger) (asynqtask.Processor, e
 
 	processor := asynqtask.NewProcessor(clientOpt, logger)
 
-	// ── email sender ─────────────────────────────────────────────────────────
 	emailSender, err := smtp.NewSender(cfg.SMTP)
 	if err != nil {
 		return nil, fmt.Errorf("failed to init smtp sender: %w", err)
 	}
-
-	// ── auth module tasks ────────────────────────────────────────────────────
 	authWorker := auth.NewAuthWorker(logger, emailSender)
 	processor.AddTask(auth.TaskSendWelcomeEmail, authWorker.HandleSendWelcomeEmail())
 

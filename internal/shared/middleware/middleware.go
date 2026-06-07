@@ -143,11 +143,32 @@ func CORS(allowedOrigins []string) func(http.Handler) http.Handler {
 func SecurityHeaders() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("X-Content-Type-Options", "nosniff")                                         // Mencegah browser mencoba "menebak" tipe file (MIME type).
+			w.Header().Set("X-Frame-Options", "DENY")                                                   // Mencegah clickjacking. Mencegah halaman web dimuat di dalam frame/iframe.
+			w.Header().Set("Referrer-Policy", "no-referrer")                                            // Mengontrol berapa banyak informasi referrer yang dikirim ke server tujuan.
+			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload") // Memaksa browser hanya berkomunikasi via HTTPS.
+			w.Header().Set("Content-Security-Policy", "default-src 'none'")                             // Mengontrol sumber daya yang boleh dimuat oleh halaman.
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// AsynqmonSecurityHeaders sets permissive HTTP security headers for the
+// asynqmon admin UI, allowing it to load inline scripts, stylesheets, and fonts.
+func AsynqmonSecurityHeaders() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("X-Content-Type-Options", "nosniff")
-			w.Header().Set("X-Frame-Options", "DENY")
 			w.Header().Set("Referrer-Policy", "no-referrer")
-			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
-			w.Header().Set("Content-Security-Policy", "default-src 'none'")
+			w.Header().Set("X-Frame-Options", "SAMEORIGIN")
+			w.Header().Set("Content-Security-Policy",
+				"default-src 'self'; "+
+					"script-src 'self' 'unsafe-inline'; "+
+					"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "+
+					"font-src 'self' https://fonts.gstatic.com; "+
+					"img-src 'self' data:; "+
+					"connect-src 'self'; "+
+					"manifest-src 'self'")
 			next.ServeHTTP(w, r)
 		})
 	}

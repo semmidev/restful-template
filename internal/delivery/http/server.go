@@ -22,12 +22,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// rateLimitSkipPaths is the set of exact paths that bypass rate limiting.
-// Health checks are exempt so Kubernetes readiness probes are never throttled.
-var rateLimitSkipPaths = map[string]struct{}{
-	"/api/v1/health": {},
-}
-
 type Server struct {
 	router *chi.Mux
 	api    huma.API
@@ -62,11 +56,9 @@ func NewServer(
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(otelchi.Middleware(cfg.App.Name, otelchi.WithChiRoutes(r)))
-
 	if promMiddleware != nil {
 		r.Use(promMiddleware.Handler())
 	}
-
 	r.Use(TraceIDMiddleware)
 	r.Use(sharedmw.Logger(log))
 	r.Use(middleware.Recoverer)
@@ -89,22 +81,7 @@ func NewServer(
 		r.Use(middleware.BasicAuth("Asynqmon", map[string]string{
 			cfg.Asynqmon.Username: cfg.Asynqmon.Password,
 		}))
-		r.Use(func(next http.Handler) http.Handler {
-			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("X-Content-Type-Options", "nosniff")
-				w.Header().Set("Referrer-Policy", "no-referrer")
-				w.Header().Set("X-Frame-Options", "SAMEORIGIN")
-				w.Header().Set("Content-Security-Policy",
-					"default-src 'self'; "+
-						"script-src 'self' 'unsafe-inline'; "+
-						"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "+
-						"font-src 'self' https://fonts.gstatic.com; "+
-						"img-src 'self' data:; "+
-						"connect-src 'self'; "+
-						"manifest-src 'self'")
-				next.ServeHTTP(w, r)
-			})
-		})
+		r.Use(sharedmw.AsynqmonSecurityHeaders())
 		// chi Mount strips the prefix which breaks asynqmon's internal
 		// ServeMux; Handle preserves the full path.
 		rootPath := asynqmonUI.RootPath()
@@ -115,7 +92,7 @@ func NewServer(
 	// API + docs group: strict security headers and rate limiting.
 	r.Group(func(r chi.Router) {
 		r.Use(sharedmw.SecurityHeaders())
-		r.Use(sharedmw.RateLimiter(limiter, rateLimitSkipPaths))
+		// r.Use(sharedmw.RateLimiter(limiter, rateLimitSkipPaths))
 
 		humaConfig := huma.DefaultConfig(cfg.App.Name, cfg.App.Version)
 		humaConfig.Info.Description = cfg.App.Description
