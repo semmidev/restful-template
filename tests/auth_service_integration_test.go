@@ -41,9 +41,10 @@ func TestAuthHTTP_Integration(t *testing.T) {
 				cookies := respHttp.Cookies()
 				var hasAccess, hasRefresh bool
 				for _, cookie := range cookies {
-					if cookie.Name == "access_token" {
+					switch cookie.Name {
+					case "access_token":
 						hasAccess = true
-					} else if cookie.Name == "refresh_token" {
+					case "refresh_token":
 						hasRefresh = true
 					}
 				}
@@ -112,9 +113,10 @@ func TestAuthHTTP_Integration(t *testing.T) {
 					cookies := respHttp.Cookies()
 					var accessTokenVal, refreshTokenVal string
 					for _, cookie := range cookies {
-						if cookie.Name == "access_token" {
+						switch cookie.Name {
+						case "access_token":
 							accessTokenVal = cookie.Value
-						} else if cookie.Name == "refresh_token" {
+						case "refresh_token":
 							refreshTokenVal = cookie.Value
 						}
 					}
@@ -132,9 +134,10 @@ func TestAuthHTTP_Integration(t *testing.T) {
 						cookiesRefresh := respRefresh.Cookies()
 						var hasNewAccess, hasNewRefresh bool
 						for _, c := range cookiesRefresh {
-							if c.Name == "access_token" {
+							switch c.Name {
+							case "access_token":
 								hasNewAccess = true
-							} else if c.Name == "refresh_token" {
+							case "refresh_token":
 								hasNewRefresh = true
 							}
 						}
