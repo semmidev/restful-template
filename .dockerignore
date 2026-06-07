@@ -53,3 +53,9 @@ tests/
 
 # Other Dockerfiles
 Dockerfile.*
+
+# Frontend build & dependencies
+frontend/node_modules/
+frontend/dist/
+internal/web/dist/
+

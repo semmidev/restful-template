@@ -19,6 +19,7 @@ import (
 	"github.com/semmidev/restful-template/internal/modules/auth"
 	"github.com/semmidev/restful-template/internal/modules/todos"
 	sharedmw "github.com/semmidev/restful-template/internal/shared/middleware"
+	"github.com/semmidev/restful-template/internal/web"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -112,6 +113,8 @@ func NewServer(
 		RegisterRoutes(api, healthCheckers, authService, todosService)
 	})
 
+	mountSPAHandler(r)
+
 	return &Server{router: r, api: nil}
 }
 
@@ -127,4 +130,26 @@ func TraceIDMiddleware(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// mountSPAHandler serves the embedded React frontend for SPA routing.
+func mountSPAHandler(r chi.Router) {
+	if !web.IsFrontendBundled() {
+		return
+	}
+
+	spaHandler, err := web.NewSPAHandler()
+	if err != nil {
+		return
+	}
+
+	// Static assets and other standard files
+	r.Handle("/assets/*", spaHandler)
+	r.Handle("/manifest.json", spaHandler)
+	r.Handle("/robots.txt", spaHandler)
+	r.Handle("/favicon.ico", spaHandler)
+	r.Handle("/logo.jpg", spaHandler)
+
+	// Catch-all for SPA routing (must be last)
+	r.NotFound(spaHandler.ServeHTTP)
 }

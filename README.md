@@ -18,7 +18,9 @@ Template ini mengusung arsitektur **Modular Monolith (Package by Feature)**, *ro
 
 | Layer | Teknologi |
 | :--- | :--- |
-| **Language** | Go 1.26 |
+| **Frontend** | React 19 · TypeScript · Zustand 5 · Zod 4 · Vite 8 |
+| **Styling & UI** | TailwindCSS v3 · Shadcn UI (Soft Brutalist theme) · Lucide |
+| **Backend Language** | Go 1.26 |
 | **Router** | [Chi v5](https://github.com/go-chi/chi) |
 | **API Framework** | [Huma v2](https://github.com/danielgtaylor/huma) — OpenAPI 3.1 auto-generation |
 | **Database** | PostgreSQL 18 via `pgxpool`, UUID v7 native |
@@ -52,7 +54,7 @@ Template ini mengusung arsitektur **Modular Monolith (Package by Feature)**, *ro
 
 ## Quick Start
 
-> **Prasyarat**: Go 1.26+, Docker & Docker Compose, Make
+> **Prasyarat**: Go 1.26+, Node.js 20+, Docker & Docker Compose, Make
 
 ```bash
 # 1. Clone & masuk ke direktori
@@ -66,8 +68,22 @@ cp .env.example .env
 make docker-up
 ```
 
-API akan aktif di **`http://localhost:8080`**.
+API dan SPA Frontend yang tersemat (*embedded*) akan aktif di **`http://localhost:8080`**.
 Dokumentasi interaktif tersedia di **`http://localhost:8080/docs`**.
+
+### Panduan Development Frontend (Lokal)
+
+Jika kamu ingin menjalankan server frontend secara terpisah untuk memantau perubahan secara langsung (*Hot Module Replacement*):
+
+```bash
+# Masuk ke folder frontend dan install dependensi
+cd frontend
+npm install
+
+# Jalankan Vite dev server
+npm run dev
+```
+Dev server frontend akan aktif di **`http://localhost:5173`** dan melakukan proxy otomatis ke backend di port `8080`.
 
 ### Alternatif: Jalankan Go Secara Nativ
 
@@ -173,6 +189,10 @@ Template ini tidak sekadar menggunakan Huma sebagai generator OpenAPI, melainkan
 
 ```text
 .
+├── frontend/         # React SPA (Vite + TypeScript + Zustand + Zod)
+│   ├── src/
+│   │   ├── components/  # Global UI components
+│   │   └── features/    # Domain modules (auth, todos)
 ├── cmd/
 │   ├── server/       # Entrypoint utama API
 │   ├── scheduler/    # Entrypoint terpisah untuk background cron jobs (gocron/v2)
@@ -185,6 +205,7 @@ Template ini tidak sekadar menggunakan Huma sebagai generator OpenAPI, melainkan
 │   ├── modules/      # Seluruh fitur bisnis
 │   │   ├── auth/         # Auth: login, register, user management
 │   │   └── todos/        # Todo: operasi CRUD
+│   ├── web/          # Embedded SPA server handler (go:embed)
 
 │   └── shared/       # Cross-cutting utilities
 │       ├── asynqtask/    # Task type definitions & Distributor (asynq producer)

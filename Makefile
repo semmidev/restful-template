@@ -43,8 +43,17 @@ docker-logs:
 	docker compose logs -f api
 
 # ── Build ─────────────────────────────────────────────────────────────────────
-build:
+build-frontend:
+	@echo "🎨 Building frontend..."
+	@cd frontend && npm install && npm run build
+	@echo "📦 Copying frontend build to embed directory..."
+	@rm -rf internal/web/dist
+	@cp -r frontend/dist internal/web/dist
+	@echo "✅ Frontend built and ready for embedding"
+
+build: build-frontend
 	CGO_ENABLED=0 go build -ldflags="-s -w" -trimpath -o bin/server ./cmd/server
 
 clean:
-	rm -rf bin/ coverage.out
+	rm -rf bin/ coverage.out internal/web/dist
+

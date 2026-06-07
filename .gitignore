@@ -46,3 +46,6 @@ tmp/
 /references
 scheduler
 server
+
+# ─── Frontend Embedded Dist ───────────────────────────────────────────────────
+internal/web/dist/

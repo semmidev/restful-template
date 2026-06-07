@@ -11,6 +11,8 @@ intentionally kept simple so the *infrastructure and engineering patterns* take 
 
 | Layer            | Technology                                            |
 |------------------|-------------------------------------------------------|
+| Frontend         | React 19 + TypeScript + Zustand 5 + Zod 4 + Vite 8     |
+| Styling          | TailwindCSS v3 + Shadcn UI (Soft Brutalist Theme)     |
 | HTTP framework   | `go-chi/chi v5` + `danielgtaylor/huma v2`            |
 | Database         | PostgreSQL 18 via `jackc/pgx v5`                     |
 | Query builder    | `Masterminds/squirrel`                                |
@@ -34,6 +36,13 @@ intentionally kept simple so the *infrastructure and engineering patterns* take 
 This project follows **Clean / Hexagonal Architecture** with strict dependency direction:
 
 ```
+frontend/            ← React SPA (Vite + TypeScript + Zustand + Zod)
+├── src/
+│   ├── components/  ← Global UI components (Shadcn)
+│   ├── features/    ← Domain features (auth, todos)
+│   └── lib/         ← Shared utilities & Axios client
+└── index.html
+
 cmd/
 └── server/          ← entry point — wires config, logger, calls app.Setup()
 └── scheduler/       ← separate binary for background cron jobs
@@ -46,7 +55,7 @@ internal/
 ├── modules/
 │   ├── auth/        ← auth domain, repository, service, HTTP handler, middleware
 │   └── todos/       ← todos domain, repository, service, HTTP handler
-
+├── web/             ← embedded static SPA web server handler (go:embed)
 └── shared/
     ├── asynqtask/   ← task type constants, payload structs, TaskDistributor (producer)
     ├── cache/       ← CacheRepository interface
@@ -93,6 +102,17 @@ Each module in `internal/modules/<name>/` has exactly these files:
 | `<name>_job.go`              | (optional) Scheduled job definitions for the scheduler binary                   |
 
 > **Do not create subdirectories inside a module.** All module files live flat in the module directory.
+
+### Frontend Module Layout (grouping by feature)
+
+Each frontend feature lives in `frontend/src/features/<name>/`:
+
+| File/Folder      | Responsibility                                                                  |
+|------------------|---------------------------------------------------------------------------------|
+| `api.ts`         | Encapsulated Axios HTTP requests for this feature                               |
+| `store.ts`       | Zustand state management store for this feature                                 |
+| `pages/`         | Views/page components representing the routed layout (e.g. `Login.tsx`)         |
+| `components/`    | Internal modular visual components scoped to this domain (e.g. `TodoSkeleton.tsx`)|
 
 ### Naming Conventions
 
@@ -262,6 +282,8 @@ The following patterns are **explicitly prohibited** in this codebase:
 | Failing requests on cache write errors            | Cache is best-effort; don't degrade availability               |
 | SCAN Redis for bulk cache invalidation            | O(n) Redis operation; let entries expire via TTL instead       |
 | Returning `nil` error when a non-nil was checked  | Caught by `nilerr` linter — always propagate or wrap errors   |
+| Direct Axios imports/calls inside components      | Always encapsulate queries in feature `api.ts` & trigger in stores|
+| Bypassing Zod validations in forms                | Always parse inputs through Zod schemas before API requests    |
 
 ---
 
