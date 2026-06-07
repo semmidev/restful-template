@@ -62,3 +62,31 @@ type authRefreshRes struct {
 type authDeleteAccountReq struct{}
 
 type authDeleteAccountRes struct{}
+
+// Google Login
+
+type authGoogleLoginReq struct {
+	Body struct {
+		Code         string `json:"code" minLength:"1" doc:"Google authorization code"`
+		CodeVerifier string `json:"code_verifier" minLength:"1" doc:"PKCE code verifier"`
+	}
+}
+
+type authGoogleLoginBody struct {
+	Data tokenData `json:"data"`
+}
+
+type authGoogleLoginRes struct {
+	Body authGoogleLoginBody
+}
+
+// Google Config
+
+type authGoogleConfigReq struct{}
+
+type authGoogleConfigRes struct {
+	Body struct {
+		ClientID    string `json:"client_id"`
+		RedirectURI string `json:"redirect_uri"`
+	}
+}

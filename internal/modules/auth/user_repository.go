@@ -18,8 +18,8 @@ func NewUserRepository(db *pgxpool.Pool) UserRepository { return &userRepository
 
 func (r *userRepository) Create(ctx context.Context, u *User) error {
 	sql, args, err := database.QB.Insert("users").
-		Columns("id", "email", "password_hash", "created_at", "updated_at").
-		Values(u.ID, u.Email, u.PasswordHash, u.CreatedAt, u.UpdatedAt).
+		Columns("id", "email", "password_hash", "google_id", "created_at", "updated_at").
+		Values(u.ID, u.Email, u.PasswordHash, u.GoogleID, u.CreatedAt, u.UpdatedAt).
 		ToSql()
 	if err != nil {
 		return err
@@ -39,7 +39,7 @@ func (r *userRepository) Create(ctx context.Context, u *User) error {
 }
 
 func (r *userRepository) GetByEmail(ctx context.Context, email string) (*User, error) {
-	sql, args, err := database.QB.Select("id", "email", "password_hash", "created_at", "updated_at").
+	sql, args, err := database.QB.Select("id", "email", "password_hash", "google_id", "created_at", "updated_at").
 		From("users").
 		Where("email = ?", email).
 		ToSql()
@@ -49,7 +49,7 @@ func (r *userRepository) GetByEmail(ctx context.Context, email string) (*User, e
 
 	row := database.GetDB(ctx, r.db).QueryRow(ctx, sql, args...)
 	var u User
-	if err := row.Scan(&u.ID, &u.Email, &u.PasswordHash, &u.CreatedAt, &u.UpdatedAt); err != nil {
+	if err := row.Scan(&u.ID, &u.Email, &u.PasswordHash, &u.GoogleID, &u.CreatedAt, &u.UpdatedAt); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, apperrors.ErrNotFound
 		}
@@ -59,7 +59,7 @@ func (r *userRepository) GetByEmail(ctx context.Context, email string) (*User, e
 }
 
 func (r *userRepository) GetByID(ctx context.Context, id uuid.UUID) (*User, error) {
-	sql, args, err := database.QB.Select("id", "email", "password_hash", "created_at", "updated_at").
+	sql, args, err := database.QB.Select("id", "email", "password_hash", "google_id", "created_at", "updated_at").
 		From("users").
 		Where("id = ?", id).
 		ToSql()
@@ -69,13 +69,55 @@ func (r *userRepository) GetByID(ctx context.Context, id uuid.UUID) (*User, erro
 
 	row := database.GetDB(ctx, r.db).QueryRow(ctx, sql, args...)
 	var u User
-	if err := row.Scan(&u.ID, &u.Email, &u.PasswordHash, &u.CreatedAt, &u.UpdatedAt); err != nil {
+	if err := row.Scan(&u.ID, &u.Email, &u.PasswordHash, &u.GoogleID, &u.CreatedAt, &u.UpdatedAt); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, apperrors.ErrNotFound
 		}
 		return nil, err
 	}
 	return &u, nil
+}
+
+func (r *userRepository) GetByGoogleID(ctx context.Context, googleID string) (*User, error) {
+	sql, args, err := database.QB.Select("id", "email", "password_hash", "google_id", "created_at", "updated_at").
+		From("users").
+		Where("google_id = ?", googleID).
+		ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	row := database.GetDB(ctx, r.db).QueryRow(ctx, sql, args...)
+	var u User
+	if err := row.Scan(&u.ID, &u.Email, &u.PasswordHash, &u.GoogleID, &u.CreatedAt, &u.UpdatedAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, apperrors.ErrNotFound
+		}
+		return nil, err
+	}
+	return &u, nil
+}
+
+func (r *userRepository) Update(ctx context.Context, u *User) error {
+	sql, args, err := database.QB.Update("users").
+		Set("email", u.Email).
+		Set("password_hash", u.PasswordHash).
+		Set("google_id", u.GoogleID).
+		Set("updated_at", u.UpdatedAt).
+		Where("id = ?", u.ID).
+		ToSql()
+	if err != nil {
+		return err
+	}
+
+	res, err := database.GetDB(ctx, r.db).Exec(ctx, sql, args...)
+	if err != nil {
+		return err
+	}
+	if res.RowsAffected() == 0 {
+		return apperrors.ErrNotFound
+	}
+	return nil
 }
 
 func (r *userRepository) Delete(ctx context.Context, id uuid.UUID) error {

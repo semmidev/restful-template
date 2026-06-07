@@ -8,3 +8,12 @@ export async function loginRequest(input: LoginInput) {
 export async function registerRequest(input: Omit<RegisterInput, 'confirmPassword'>) {
   return client.post('/auth/register', input);
 }
+
+export async function googleLoginRequest(code: string, codeVerifier: string) {
+  return client.post('/auth/google', { code, code_verifier: codeVerifier });
+}
+
+export async function getGoogleConfig() {
+  return client.get('/auth/google/config');
+}
+

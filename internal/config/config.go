@@ -30,6 +30,13 @@ type Config struct {
 	CORS      CORS
 	SMTP      SMTP
 	Asynqmon  Asynqmon
+	Google    Google
+}
+
+type Google struct {
+	ClientID     string
+	ClientSecret string
+	RedirectURI  string
 }
 
 type Asynqmon struct {
@@ -150,6 +157,10 @@ func Load() Config {
 	v.SetDefault("ASYNQMON_USERNAME", "admin")
 	v.SetDefault("ASYNQMON_PASSWORD", "admin")
 
+	v.SetDefault("GOOGLE_CLIENT_ID", "")
+	v.SetDefault("GOOGLE_CLIENT_SECRET", "")
+	v.SetDefault("GOOGLE_REDIRECT_URI", "")
+
 	rawOrigins := v.GetString("CORS_ALLOWED_ORIGINS")
 	var allowedOrigins []string
 	for _, o := range strings.Split(rawOrigins, ",") {
@@ -210,6 +221,11 @@ func Load() Config {
 		Asynqmon: Asynqmon{
 			Username: v.GetString("ASYNQMON_USERNAME"),
 			Password: v.GetString("ASYNQMON_PASSWORD"),
+		},
+		Google: Google{
+			ClientID:     v.GetString("GOOGLE_CLIENT_ID"),
+			ClientSecret: v.GetString("GOOGLE_CLIENT_SECRET"),
+			RedirectURI:  v.GetString("GOOGLE_REDIRECT_URI"),
 		},
 	}
 }

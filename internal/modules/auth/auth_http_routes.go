@@ -13,6 +13,9 @@ type authHandler struct {
 func RegisterAuthRoutes(api huma.API, auth AuthService) {
 	h := &authHandler{auth: auth}
 
+	RegisterPublicPath("/api/v1/auth/google")
+	RegisterPublicPath("/api/v1/auth/google/config")
+
 	huma.Register(api, huma.Operation{
 		OperationID: "auth-register",
 		Method:      http.MethodPost,
@@ -46,4 +49,20 @@ func RegisterAuthRoutes(api huma.API, auth AuthService) {
 		Security:      []map[string][]string{{"bearerAuth": {}}},
 		DefaultStatus: http.StatusNoContent,
 	}, h.handleDeleteAccount)
+
+	huma.Register(api, huma.Operation{
+		OperationID: "auth-google-login",
+		Method:      http.MethodPost,
+		Path:        "/api/v1/auth/google",
+		Summary:     "Login with Google",
+		Tags:        []string{"Auth"},
+	}, h.handleGoogleLogin)
+
+	huma.Register(api, huma.Operation{
+		OperationID: "auth-google-config",
+		Method:      http.MethodGet,
+		Path:        "/api/v1/auth/google/config",
+		Summary:     "Get Google OAuth Configuration",
+		Tags:        []string{"Auth"},
+	}, h.handleGoogleConfig)
 }

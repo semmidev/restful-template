@@ -56,6 +56,20 @@ func TestAuthHTTP_Integration(t *testing.T) {
 			})
 		})
 
+		Convey("When retrieving Google configuration", func() {
+			w := doRequest(api, http.MethodGet, "/api/v1/auth/google/config", "", nil, "")
+
+			Convey("Then it succeeds and returns configuration values", func() {
+				So(w.Code, ShouldEqual, http.StatusOK)
+				var resp struct {
+					ClientID    string `json:"client_id"`
+					RedirectURI string `json:"redirect_uri"`
+				}
+				err = json.Unmarshal(w.Body.Bytes(), &resp)
+				So(err, ShouldBeNil)
+			})
+		})
+
 		Convey("When registering with invalid data", func() {
 			Convey("Then short password returns 422", func() {
 				body, _ := json.Marshal(map[string]string{

@@ -57,3 +57,23 @@ func (h *authHandler) handleDeleteAccount(ctx context.Context, in *authDeleteAcc
 	}
 	return &authDeleteAccountRes{}, nil
 }
+
+func (h *authHandler) handleGoogleLogin(ctx context.Context, in *authGoogleLoginReq) (*authGoogleLoginRes, error) {
+	pair, err := h.auth.GoogleLogin(ctx, in.Body.Code, in.Body.CodeVerifier)
+	if err != nil {
+		return nil, httpapi.ToHumaErr(ctx, err)
+	}
+	res := &authGoogleLoginRes{}
+	res.Body.Data.AccessToken = pair.AccessToken
+	res.Body.Data.RefreshToken = pair.RefreshToken
+	res.Body.Data.ExpiresIn = pair.ExpiresIn
+	return res, nil
+}
+
+func (h *authHandler) handleGoogleConfig(ctx context.Context, in *authGoogleConfigReq) (*authGoogleConfigRes, error) {
+	clientID, redirectURI := h.auth.GoogleConfig()
+	res := &authGoogleConfigRes{}
+	res.Body.ClientID = clientID
+	res.Body.RedirectURI = redirectURI
+	return res, nil
+}

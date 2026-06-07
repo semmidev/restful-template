@@ -32,7 +32,7 @@ func (in *RegisterInput) ToUser() (*User, error) {
 	return &User{
 		ID:           uuidgen.New(),
 		Email:        in.Email,
-		PasswordHash: hash,
+		PasswordHash: &hash,
 	}, nil
 }
 

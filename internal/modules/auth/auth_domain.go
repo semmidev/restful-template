@@ -11,13 +11,17 @@ import (
 type User struct {
 	ID           uuid.UUID `json:"id"`
 	Email        string    `json:"email"`
-	PasswordHash string    `json:"password_hash"`
+	PasswordHash *string   `json:"password_hash,omitempty"`
+	GoogleID     *string   `json:"google_id,omitempty"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 func (u *User) CheckPassword(plain string) bool {
-	ok, err := password.Verify(plain, u.PasswordHash)
+	if u.PasswordHash == nil {
+		return false
+	}
+	ok, err := password.Verify(plain, *u.PasswordHash)
 	return err == nil && ok
 }
 
@@ -46,6 +50,8 @@ type UserRepository interface {
 	Create(ctx context.Context, u *User) error
 	GetByID(ctx context.Context, id uuid.UUID) (*User, error)
 	GetByEmail(ctx context.Context, email string) (*User, error)
+	GetByGoogleID(ctx context.Context, googleID string) (*User, error)
+	Update(ctx context.Context, u *User) error
 	Delete(ctx context.Context, id uuid.UUID) error
 }
 
@@ -62,5 +68,7 @@ type AuthService interface {
 	Register(ctx context.Context, in RegisterInput) (TokenPair, error)
 	Login(ctx context.Context, in LoginInput) (TokenPair, error)
 	Refresh(ctx context.Context, refreshToken string) (TokenPair, error)
+	GoogleLogin(ctx context.Context, code string, codeVerifier string) (TokenPair, error)
+	GoogleConfig() (clientID, redirectURI string)
 	DeleteAccount(ctx context.Context, userID uuid.UUID) error
 }

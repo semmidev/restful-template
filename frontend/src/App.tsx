@@ -8,6 +8,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 // Lazy load page bundles for code-splitting
 const Login = lazy(() => import('./features/auth/pages/Login'));
 const Register = lazy(() => import('./features/auth/pages/Register'));
+const GoogleCallback = lazy(() => import('./features/auth/pages/GoogleCallback'));
 const Todos = lazy(() => import('./features/todos/pages/Todos'));
 const Dashboard = lazy(() => import('./features/todos/pages/Dashboard'));
 
@@ -39,6 +40,14 @@ function App() {
                 element={
                   <PublicRoute>
                     <Login />
+                  </PublicRoute>
+                }
+              />
+              <Route
+                path="/login/google/callback"
+                element={
+                  <PublicRoute>
+                    <GoogleCallback />
                   </PublicRoute>
                 }
               />

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { loginRequest, registerRequest } from './api';
+import { loginRequest, registerRequest, googleLoginRequest } from './api';
 import { LoginInput, RegisterInput } from '../../lib/schemas';
 
 interface AuthState {
@@ -12,6 +12,7 @@ interface AuthState {
   error: string | null;
   login: (input: LoginInput) => Promise<{ success: boolean; error?: string }>;
   register: (input: RegisterInput) => Promise<{ success: boolean; error?: string }>;
+  loginWithGoogle: (code: string, codeVerifier: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   clearError: () => void;
 }
@@ -76,6 +77,32 @@ export const useAuthStore = create<AuthState>()(
           return { success: true };
         } catch (err: any) {
           const errMsg = err.response?.data?.detail || 'Registration failed. Password must be 8-72 chars.';
+          set({ error: errMsg, isLoading: false });
+          return { success: false, error: errMsg };
+        }
+      },
+
+      loginWithGoogle: async (code, codeVerifier) => {
+        set({ isLoading: true, error: null });
+        try {
+          const res = await googleLoginRequest(code, codeVerifier);
+          const { access_token, refresh_token, expires_in } = res.data.data;
+
+          localStorage.setItem('access_token', access_token);
+          localStorage.setItem('refresh_token', refresh_token);
+          localStorage.setItem('expires_in', expires_in.toString());
+
+          set({
+            accessToken: access_token,
+            refreshToken: refresh_token,
+            expiresIn: expires_in,
+            isAuthenticated: true,
+            isLoading: false,
+            error: null,
+          });
+          return { success: true };
+        } catch (err: any) {
+          const errMsg = err.response?.data?.detail || 'Google login failed';
           set({ error: errMsg, isLoading: false });
           return { success: false, error: errMsg };
         }
