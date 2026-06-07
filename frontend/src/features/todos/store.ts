@@ -105,15 +105,18 @@ export const useTodoStore = create<TodoState>((set, get) => ({
     formData.append('description', description);
     formData.append('status', currentStatus);
     
+    const maskFields = ['title', 'description', 'status'];
     if (coverFile) {
       formData.append('cover', coverFile);
+      maskFields.push('cover');
     } else if (coverPreview === '' && get().editingTodo?.cover) {
       formData.append('cover', '');
+      maskFields.push('cover');
     }
 
     try {
       const etag = `"${originalUpdatedAt}"`;
-      await updateTodoRequest(id, formData, 'title,description,status,cover', etag);
+      await updateTodoRequest(id, formData, maskFields.join(','), etag);
       await get().fetchTodos();
       return true;
     } catch (err: any) {

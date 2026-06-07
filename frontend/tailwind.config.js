@@ -50,30 +50,21 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        brutal: {
-          bg: '#F5F3FF',      // soft violet/lavender background
-          violet: '#a388ee',  // premium neobrutal violet
-          yellow: '#FFDE4D',  // high contrast brutalist yellow
-          blue: '#80B3FF',    // neo-brutal blue
-          green: '#34D399',   // neo-brutal mint green
-          pink: '#FDA4AF',    // neo-brutal pink
-          orange: '#FB923C',  // neo-brutal orange
-          border: '#000000',
-        }
+        sidebar: {
+          DEFAULT: "hsl(var(--sidebar))",
+          foreground: "hsl(var(--sidebar-foreground))",
+          primary: "hsl(var(--sidebar-primary))",
+          "primary-foreground": "hsl(var(--sidebar-primary-foreground))",
+          accent: "hsl(var(--sidebar-accent))",
+          "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
+          border: "hsl(var(--sidebar-border))",
+          ring: "hsl(var(--sidebar-ring))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
-      },
-      boxShadow: {
-        'brutal': '4px 4px 0px 0px #000000',
-        'brutal-hover': '6px 6px 0px 0px #000000',
-        'brutal-sm': '2px 2px 0px 0px #000000',
-        'brutal-lg': '8px 8px 0px 0px #000000',
-      },
-      borderWidth: {
-        '3': '3px',
       },
       keyframes: {
         "accordion-down": {

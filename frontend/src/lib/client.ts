@@ -43,9 +43,20 @@ client.interceptors.response.use(
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry) {
-      if (originalRequest.url === '/auth/refresh') {
-        localStorage.clear();
-        window.location.href = '/login';
+      const url = originalRequest.url || '';
+      const isAuthRequest =
+        url.endsWith('/auth/login') ||
+        url.endsWith('/auth/register') ||
+        url.endsWith('/auth/refresh') ||
+        url.includes('auth/login') ||
+        url.includes('auth/register') ||
+        url.includes('auth/refresh');
+
+      if (isAuthRequest) {
+        if (url.includes('auth/refresh')) {
+          localStorage.clear();
+          window.location.href = '/login';
+        }
         return Promise.reject(error);
       }
 

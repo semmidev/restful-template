@@ -1,31 +1,35 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
-  LogOut,
-  Plus,
   Search,
-  Trash2,
+  Plus,
   Edit2,
-  CheckCircle,
+  Trash2,
+  Calendar,
   Clock,
   Play,
+  CheckCircle,
+  FileText,
   ChevronLeft,
   ChevronRight,
+  Activity,
   Upload,
-  X,
-  FileText
+  X
 } from 'lucide-react';
-import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+  SidebarProvider,
+  SidebarTrigger,
+  SidebarInset,
+} from '@/components/ui/sidebar';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { AppSidebar } from '@/components/app-sidebar';
 import useAuthStore from '../../auth/store';
 import useTodoStore, { Todo } from '../store';
 import { todoSchema } from '../../../lib/schemas';
@@ -61,6 +65,7 @@ export default function Todos() {
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [todoToDelete, setTodoToDelete] = useState<Todo | null>(null);
 
   // Form state
   const [title, setTitle] = useState('');
@@ -182,9 +187,15 @@ export default function Todos() {
     await toggleTodoStatus(todo, nextStatus);
   };
 
-  const handleDeleteTodo = async (id: string) => {
-    if (!window.confirm('Delete this todo?')) return;
-    await deleteTodo(id);
+  const handleDeleteClick = (todo: Todo) => {
+    setTodoToDelete(todo);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (todoToDelete) {
+      await deleteTodo(todoToDelete.id);
+      setTodoToDelete(null);
+    }
   };
 
   const resetForm = () => {
@@ -198,269 +209,351 @@ export default function Todos() {
 
   const totalPages = Math.max(1, Math.ceil(total / perPage));
 
+  // Compute metrics from todos in local context/store
+  const pendingCount = todos.filter(t => t.status === 'pending').length;
+  const inProgressCount = todos.filter(t => t.status === 'in_progress').length;
+  const completedCount = todos.filter(t => t.status === 'done').length;
+  const completionRate = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+
   return (
-    <div className="min-h-screen bg-brutal-bg p-6 pb-24 text-black">
-      {/* Navigation Header */}
-      <header className="max-w-6xl mx-auto mb-8 card-brutal bg-white flex flex-col sm:flex-row justify-between items-center gap-4 py-4 px-6">
-        <div className="flex items-center gap-3">
-          <span className="bg-brutal-violet border-2 border-black p-2 rounded shadow-brutal-sm font-black rotate-[-3deg]">
-            TA
-          </span>
-          <h1 className="text-3xl font-black tracking-tight">
-            TODO<span className="text-brutal-blue">APP</span>
-          </h1>
-        </div>
-        <div className="flex items-center gap-4">
-          <Button
-            onClick={() => setIsCreateOpen(true)}
-            className="btn-brutal bg-brutal-violet text-sm font-black flex items-center gap-2"
-          >
-            <Plus size={18} /> New Task
-          </Button>
-          <Button
-            onClick={handleLogout}
-            className="btn-brutal-secondary text-sm font-black flex items-center gap-2"
-          >
-            <LogOut size={16} /> Logout
-          </Button>
-        </div>
-      </header>
+    <TooltipProvider>
+      <SidebarProvider>
+        <AppSidebar />
+        <SidebarInset>
+          {/* Site Header scaffolded after dashboard-01 */}
+          <header className="flex h-16 shrink-0 items-center gap-2 border-b bg-background/95 backdrop-blur px-4 lg:px-6">
+            <SidebarTrigger className="-ml-1" />
+            <Separator orientation="vertical" className="mr-2 h-4" />
+            
+            {/* Breadcrumb section */}
+            <div className="flex-1 flex items-center gap-1 text-sm text-muted-foreground">
+              <span className="font-semibold text-slate-800 dark:text-slate-200">Workspace</span>
+              <span>/</span>
+              <span className="font-medium">Tasks</span>
+            </div>
 
-      {/* Error Banner */}
-      {error && (
-        <div className="max-w-6xl mx-auto mb-6 bg-brutal-pink border-3 border-black p-4 rounded-xl font-bold shadow-brutal flex justify-between items-center">
-          <span>⚠️ {error}</span>
-          <Button onClick={() => setError(null)} className="font-black hover:scale-110 p-0 h-auto bg-transparent text-black border-none shadow-none">
-            <X size={20} />
-          </Button>
-        </div>
-      )}
-
-      {/* Main Board Content */}
-      <main className="max-w-6xl mx-auto">
-        {/* Filters and Controls */}
-        <section className="card-brutal bg-white mb-8 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-          {/* Search */}
-          <div className="relative md:col-span-2">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 z-10" size={18} />
-            <Input
-              type="text"
-              placeholder="Search tasks..."
-              className="input-brutal w-full pl-10"
-              value={searchKeyword}
-              onChange={(e) => setSearchKeyword(e.target.value)}
-            />
-          </div>
-
-          {/* Sort Column */}
-          <select
-            className="input-brutal w-full"
-            value={sortBy}
-            onChange={(e) => setFilters({ sortBy: e.target.value })}
-          >
-            <option value="created_at">Created Time</option>
-            <option value="updated_at">Updated Time</option>
-            <option value="title">Title Alphabetical</option>
-            <option value="status">Status Priority</option>
-          </select>
-
-          {/* Sort Direction */}
-          <Button
-            onClick={() => setFilters({ sortDir: sortDir === 'asc' ? 'desc' : 'asc' })}
-            className="btn-brutal-secondary w-full text-center font-bold"
-          >
-            Sort: {sortDir === 'asc' ? '⬆️ Ascending' : '⬇️ Descending'}
-          </Button>
-        </section>
-
-        {/* Status Tabs (using Shadcn Tabs) */}
-        <section className="mb-8">
-          <Tabs value={status} onValueChange={(val) => { setFilters({ status: val }); }}>
-            <TabsList className="bg-transparent border-none gap-2 flex flex-wrap h-auto p-0">
-              {[
-                { label: 'All Tasks', value: '' },
-                { label: 'Pending', value: 'pending' },
-                { label: 'In Progress', value: 'in_progress' },
-                { label: 'Completed', value: 'done' },
-              ].map((tab) => (
-                <TabsTrigger
-                  key={tab.value}
-                  value={tab.value}
-                  className={`px-4 py-2 border-3 border-black font-extrabold rounded-lg shadow-brutal-sm hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-brutal transition-all ${
-                    status === tab.value
-                      ? 'bg-brutal-violet text-black data-active:bg-brutal-violet data-active:text-black'
-                      : 'bg-white text-black data-active:bg-white data-active:text-black'
-                  }`}
-                >
-                  {tab.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        </section>
-
-        {/* Todo Cards Grid */}
-        {loading && todos.length === 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <TodoSkeleton key={index} />
-            ))}
-          </div>
-        ) : todos.length === 0 ? (
-          <Card className="card-brutal bg-white text-center py-16">
-            <FileText size={48} className="mx-auto mb-4 text-neutral-400" />
-            <h3 className="text-2xl font-black mb-2">No Tasks Found</h3>
-            <p className="text-neutral-600 font-bold mb-6">Create a new task to get started!</p>
-            <Button
-              onClick={() => setIsCreateOpen(true)}
-              className="btn-brutal text-md"
-            >
-              <Plus size={18} /> New Task
-            </Button>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {todos.map((todo) => (
-              <Card
-                key={todo.id}
-                className="card-brutal bg-white flex flex-col justify-between hover:shadow-brutal-hover transition-all overflow-hidden"
+            {/* Quick Header Search & Actions */}
+            <div className="flex items-center gap-3">
+              <div className="relative w-40 sm:w-60 md:w-80">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground size-4" />
+                <Input
+                  type="text"
+                  placeholder="Search tasks..."
+                  className="w-full pl-8 h-8 rounded-md bg-muted/40 border border-input focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 text-xs"
+                  value={searchKeyword}
+                  onChange={(e) => setSearchKeyword(e.target.value)}
+                />
+              </div>
+              <Button
+                onClick={() => setIsCreateOpen(true)}
+                className="h-8 px-3 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/95 transition-all shadow-sm rounded-md flex items-center gap-1"
               >
-                <div>
-                  {/* Task Cover Image */}
-                  {todo.cover && (
-                    <img
-                      src={todo.cover}
-                      alt="Todo Cover"
-                      className="w-[calc(100%+3rem)] h-40 object-cover border-b-3 border-black -mt-6 -mx-6 mb-4"
-                    />
-                  )}
+                <Plus size={14} /> New Task
+              </Button>
+            </div>
+          </header>
 
-                  {/* Task Info */}
-                  <div className="flex justify-between items-start gap-2 mb-3">
-                    <Badge
-                      className={`badge-brutal text-xs uppercase py-1 px-2.5 h-auto ${
-                        todo.status === 'done'
-                          ? 'bg-brutal-green text-black'
-                          : todo.status === 'in_progress'
-                          ? 'bg-brutal-blue text-black'
-                          : 'bg-brutal-violet text-black'
-                      }`}
-                    >
-                      {todo.status === 'in_progress' ? 'in progress' : todo.status}
-                    </Badge>
-                    <div className="flex gap-1.5">
-                      <Button
-                        onClick={() => handleEditClick(todo)}
-                        className="p-1.5 h-auto w-auto border-2 border-black rounded bg-white hover:bg-neutral-100 shadow-brutal-sm hover:translate-x-[-1px] hover:translate-y-[-1px] text-black"
-                      >
-                        <Edit2 size={14} />
-                      </Button>
-                      <Button
-                        onClick={() => handleDeleteTodo(todo.id)}
-                        className="p-1.5 h-auto w-auto border-2 border-black rounded bg-brutal-pink hover:bg-red-400 shadow-brutal-sm hover:translate-x-[-1px] hover:translate-y-[-1px] text-black"
-                      >
-                        <Trash2 size={14} />
-                      </Button>
-                    </div>
-                  </div>
+          {/* Main content grid */}
+          <main className="flex flex-col gap-6 p-6 lg:p-8">
+            {/* Error Banner */}
+            {error && (
+              <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm font-semibold p-4 rounded-xl flex justify-between items-center shadow-sm">
+                <span>⚠️ {error}</span>
+                <Button variant="ghost" onClick={() => setError(null)} className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10">
+                  <X size={16} />
+                </Button>
+              </div>
+            )}
 
-                  <h3 className="text-xl font-black mb-2 text-black line-clamp-1">
-                    {todo.title}
-                  </h3>
-                  <p className="text-neutral-700 font-medium text-sm mb-6 line-clamp-3">
-                    {todo.description || 'No description provided.'}
-                  </p>
-                </div>
-
-                {/* Footer Controls */}
-                <div className="border-t-2 border-black pt-4 mt-auto">
-                  <div className="flex flex-wrap justify-between items-center gap-2">
-                    <div className="flex gap-1.5">
-                      {todo.status !== 'pending' && (
-                        <Button
-                          onClick={() => handleToggleStatus(todo, 'pending')}
-                          className="btn-brutal-secondary py-1 px-2.5 h-auto text-xs font-black flex items-center gap-1 shadow-brutal-sm text-black"
-                        >
-                          <Clock size={12} /> Reopen
-                        </Button>
-                      )}
-                      {todo.status !== 'in_progress' && todo.status !== 'done' && (
-                        <Button
-                          onClick={() => handleToggleStatus(todo, 'in_progress')}
-                          className="btn-brutal bg-brutal-blue text-white py-1 px-2.5 h-auto text-xs font-black flex items-center gap-1 shadow-brutal-sm hover:bg-blue-600"
-                        >
-                          <Play size={12} /> Start
-                        </Button>
-                      )}
-                      {todo.status !== 'done' && (
-                        <Button
-                          onClick={() => handleToggleStatus(todo, 'done')}
-                          className="btn-brutal bg-brutal-green text-white py-1 px-2.5 h-auto text-xs font-black flex items-center gap-1 shadow-brutal-sm hover:bg-green-600"
-                        >
-                          <CheckCircle size={12} /> Finish
-                        </Button>
-                      )}
-                    </div>
-                    <span className="text-[10px] text-neutral-500 font-bold uppercase">
-                      updated {new Date(todo.updated_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
+            {/* Dashboard Metrics (dashboard-01 style blocks) */}
+            <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="border border-border bg-card shadow-sm rounded-xl">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Total Tasks</CardTitle>
+                  <FileText size={18} className="text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-extrabold">{total}</div>
+                  <p className="text-[10px] text-muted-foreground mt-1">Overall database records</p>
+                </CardContent>
               </Card>
-            ))}
-          </div>
-        )}
 
-        {/* Pagination Controls */}
-        {totalPages > 1 && (
-          <section className="flex justify-center items-center gap-4 mt-12">
-            <Button
-              onClick={() => setPage(Math.max(1, page - 1))}
-              disabled={page === 1}
-              className="btn-brutal-secondary flex items-center justify-center p-2.5 h-10 w-10 disabled:opacity-50 text-black"
-            >
-              <ChevronLeft size={20} />
-            </Button>
-            <span className="font-black text-lg bg-white px-4 py-2 border-3 border-black rounded-lg shadow-brutal-sm">
-              Page {page} of {totalPages}
-            </span>
-            <Button
-              onClick={() => setPage(Math.min(totalPages, page + 1))}
-              disabled={page === totalPages}
-              className="btn-brutal-secondary flex items-center justify-center p-2.5 h-10 w-10 disabled:opacity-50 text-black"
-            >
-              <ChevronRight size={20} />
-            </Button>
-          </section>
-        )}
-      </main>
+              <Card className="border border-border bg-card shadow-sm rounded-xl">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Pending</CardTitle>
+                  <Clock size={18} className="text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-extrabold text-amber-600">{pendingCount}</div>
+                  <p className="text-[10px] text-muted-foreground mt-1">Awaiting workspace start</p>
+                </CardContent>
+              </Card>
+
+              <Card className="border border-border bg-card shadow-sm rounded-xl">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">In Progress</CardTitle>
+                  <Activity size={18} className="text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-extrabold text-primary">{inProgressCount}</div>
+                  <p className="text-[10px] text-muted-foreground mt-1">Currently being processed</p>
+                </CardContent>
+              </Card>
+
+              <Card className="border border-border bg-card shadow-sm rounded-xl">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Completion Rate</CardTitle>
+                  <CheckCircle size={18} className="text-muted-foreground" />
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <div className="text-2xl font-extrabold text-emerald-600">{completionRate}%</div>
+                  <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                    <div 
+                      className="bg-emerald-500 h-full rounded-full transition-all duration-500" 
+                      style={{ width: `${completionRate}%` }}
+                    ></div>
+                  </div>
+                </CardContent>
+              </Card>
+            </section>
+
+            {/* Filters and Controls */}
+            <section className="flex flex-col md:flex-row gap-4 justify-between items-stretch md:items-center bg-card border border-border p-4 rounded-xl shadow-sm">
+              {/* Tabs for fast status switching on mobile/tablet */}
+              <Tabs value={status} onValueChange={(val) => { setFilters({ status: val }); }}>
+                <TabsList className="bg-muted p-1 rounded-lg gap-1">
+                  {[
+                    { label: 'All Tasks', value: '' },
+                    { label: 'Pending', value: 'pending' },
+                    { label: 'In Progress', value: 'in_progress' },
+                    { label: 'Completed', value: 'done' },
+                  ].map((tab) => (
+                    <TabsTrigger
+                      key={tab.value}
+                      value={tab.value}
+                      className="px-4 py-1.5 text-xs font-semibold rounded-md transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                    >
+                      {tab.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Sort Column */}
+                <select
+                  className="h-9 px-3 rounded-md border border-input bg-background text-sm font-medium focus:outline-none focus:ring-1 focus:ring-primary"
+                  value={sortBy}
+                  onChange={(e) => setFilters({ sortBy: e.target.value })}
+                >
+                  <option value="created_at">Created Time</option>
+                  <option value="updated_at">Updated Time</option>
+                  <option value="title">Title Alphabetical</option>
+                  <option value="status">Status Priority</option>
+                </select>
+
+                {/* Sort Direction */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFilters({ sortDir: sortDir === 'asc' ? 'desc' : 'asc' })}
+                  className="h-9 font-semibold text-xs flex items-center gap-1"
+                >
+                  Sort: {sortDir === 'asc' ? 'Ascending ⬆️' : 'Descending ⬇️'}
+                </Button>
+              </div>
+            </section>
+
+            {/* Todo Cards Grid */}
+            {loading && todos.length === 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <TodoSkeleton key={index} />
+                ))}
+              </div>
+            ) : todos.length === 0 ? (
+              <Card className="border border-border border-dashed bg-card text-center py-16 rounded-xl shadow-sm">
+                <CardContent className="flex flex-col items-center justify-center p-0">
+                  <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mb-4">
+                    <FileText size={24} />
+                  </div>
+                  <h3 className="text-xl font-bold mb-1">No Tasks Found</h3>
+                  <p className="text-muted-foreground text-sm max-w-xs mb-6">Create a new task and specify details to start tracking milestones.</p>
+                  <Button
+                    onClick={() => setIsCreateOpen(true)}
+                    className="h-9 font-semibold text-xs"
+                  >
+                    <Plus size={14} className="mr-1" /> New Task
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {todos.map((todo) => (
+                  <Card
+                    key={todo.id}
+                    className="border border-border bg-card shadow-sm rounded-xl overflow-hidden flex flex-col justify-between hover:shadow-md transition-all duration-200 p-0 gap-0"
+                  >
+                    <div>
+                      {/* Task Cover Image */}
+                      {todo.cover ? (
+                        <div className="w-full h-40 overflow-hidden border-b border-border bg-slate-50 flex items-center justify-center">
+                          <img
+                            src={todo.cover}
+                            alt="Todo Cover"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-full h-2 bg-primary"></div>
+                      )}
+
+                      {/* Task Header & Badge */}
+                      <CardHeader className="pb-2 space-y-1.5 pt-5 px-6">
+                        <div className="flex justify-between items-start gap-2">
+                          <Badge
+                            variant="secondary"
+                            className={`text-[10px] uppercase font-bold py-0.5 px-2 rounded-full border shadow-none ${
+                              todo.status === 'done'
+                                ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/20'
+                                : todo.status === 'in_progress'
+                                ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-950/20'
+                                : 'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-950/20'
+                            }`}
+                          >
+                            {todo.status === 'in_progress' ? 'in progress' : todo.status}
+                          </Badge>
+                          <div className="flex gap-1.5">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEditClick(todo)}
+                              className="h-7 w-7 rounded-md border text-muted-foreground hover:text-foreground"
+                            >
+                              <Edit2 size={12} />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteClick(todo)}
+                              className="h-7 w-7 rounded-md border text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 size={12} />
+                            </Button>
+                          </div>
+                        </div>
+                        <CardTitle className="text-lg font-bold text-slate-900 line-clamp-1">
+                          {todo.title}
+                        </CardTitle>
+                      </CardHeader>
+
+                      <CardContent className="pb-6 px-6">
+                        <p className="text-slate-600 text-sm leading-relaxed line-clamp-3">
+                          {todo.description || 'No description provided.'}
+                        </p>
+                      </CardContent>
+                    </div>
+
+                    {/* Footer Controls */}
+                    <CardFooter className="border-t border-border pt-4 pb-4 px-6 flex items-center justify-between gap-4 mt-auto">
+                      <div className="flex gap-1.5">
+                        {todo.status !== 'pending' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleToggleStatus(todo, 'pending')}
+                            className="h-7 text-[10px] font-bold px-2 rounded-md flex items-center gap-1 text-slate-700"
+                          >
+                            <Clock size={10} /> Reopen
+                          </Button>
+                        )}
+                        {todo.status !== 'in_progress' && todo.status !== 'done' && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => handleToggleStatus(todo, 'in_progress')}
+                            className="h-7 text-[10px] font-bold px-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/95 flex items-center gap-1 shadow-none"
+                          >
+                            <Play size={10} /> Start
+                          </Button>
+                        )}
+                        {todo.status !== 'done' && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => handleToggleStatus(todo, 'done')}
+                            className="h-7 text-[10px] font-bold px-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 flex items-center gap-1 shadow-none"
+                          >
+                            <CheckCircle size={10} /> Finish
+                          </Button>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-semibold">
+                        <Calendar size={10} />
+                        <span>{new Date(todo.updated_at).toLocaleDateString()}</span>
+                      </div>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <section className="flex justify-center items-center gap-3 mt-12">
+                <Button
+                  variant="outline"
+                  onClick={() => setPage(Math.max(1, page - 1))}
+                  disabled={page === 1}
+                  className="h-9 w-9 p-0 flex items-center justify-center rounded-lg"
+                >
+                  <ChevronLeft size={16} />
+                </Button>
+                <span className="text-sm font-semibold bg-background border border-border px-4 py-1.5 rounded-lg shadow-sm">
+                  Page {page} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  onClick={() => setPage(Math.min(totalPages, page + 1))}
+                  disabled={page === totalPages}
+                  className="h-9 w-9 p-0 flex items-center justify-center rounded-lg"
+                >
+                  <ChevronRight size={16} />
+                </Button>
+              </section>
+            )}
+          </main>
+        </SidebarInset>
+      </SidebarProvider>
 
       {/* Creation Dialog (using Shadcn Dialog) */}
       <Dialog open={isCreateOpen} onOpenChange={(open) => { if (!open) { setIsCreateOpen(false); resetForm(); } }}>
-        <DialogContent className="card-brutal bg-white w-full max-w-lg shadow-[8px_8px_0_0_#000] p-6 max-h-[90vh] overflow-y-auto" showCloseButton={false}>
-          <DialogHeader className="border-b-3 border-black pb-3 mb-6 flex flex-row justify-between items-center gap-2">
-            <DialogTitle className="text-2xl font-black flex items-center gap-2">
-              <Plus size={24} /> Create Task
+        <DialogContent className="bg-card w-full max-w-lg border border-border p-6 rounded-xl shadow-lg overflow-y-auto max-h-[90vh]" showCloseButton={false}>
+          <DialogHeader className="border-b border-border pb-3 mb-5 flex flex-row justify-between items-center gap-2">
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <Plus size={20} className="text-primary" /> Create Task
             </DialogTitle>
             <Button
+              variant="ghost"
+              size="icon"
               onClick={() => {
                 setIsCreateOpen(false);
                 resetForm();
               }}
-              className="p-1 h-auto w-auto border-2 border-black rounded hover:bg-brutal-pink transition shadow-brutal-sm bg-white text-black hover:translate-x-0 hover:translate-y-0"
+              className="h-8 w-8 rounded-md hover:bg-slate-100"
             >
-              <X size={18} />
+              <X size={16} />
             </Button>
           </DialogHeader>
 
-          <form onSubmit={handleCreateTodo} className="space-y-5">
-            <div className="flex flex-col">
-              <label className="text-sm font-black mb-1.5 uppercase">Title</label>
+          <form onSubmit={handleCreateTodo} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Title</label>
               <Input
                 type="text"
                 required
                 placeholder="What needs to be done?"
-                className="input-brutal w-full"
+                className="w-full h-10 rounded-md border border-input focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 bg-transparent text-sm"
                 value={title}
                 onChange={(e) => {
                   setTitle(e.target.value);
@@ -470,18 +563,18 @@ export default function Todos() {
                 }}
               />
               {validationErrors.title && (
-                <p className="text-red-600 text-xs font-black mt-1 uppercase tracking-wide">
+                <p className="text-destructive text-xs font-semibold mt-1">
                   ⚠️ {validationErrors.title}
                 </p>
               )}
             </div>
 
-            <div className="flex flex-col">
-              <label className="text-sm font-black mb-1.5 uppercase">Description</label>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Description</label>
               <textarea
                 rows={3}
                 placeholder="Task details..."
-                className="input-brutal w-full"
+                className="w-full p-3 rounded-md border border-input focus:outline-none focus:ring-1 focus:ring-primary bg-transparent text-sm"
                 value={description}
                 onChange={(e) => {
                   setDescription(e.target.value);
@@ -491,17 +584,17 @@ export default function Todos() {
                 }}
               ></textarea>
               {validationErrors.description && (
-                <p className="text-red-600 text-xs font-black mt-1 uppercase tracking-wide">
+                <p className="text-destructive text-xs font-semibold mt-1">
                   ⚠️ {validationErrors.description}
                 </p>
               )}
             </div>
 
-            <div className="flex flex-col">
-              <label className="text-sm font-black mb-1.5 uppercase">Cover Image</label>
-              <div className="flex items-center gap-4">
-                <label className="btn-brutal-secondary py-2 px-4 text-sm font-black cursor-pointer flex items-center gap-2">
-                  <Upload size={16} /> Choose File
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Cover Image</label>
+              <div className="flex items-center gap-3">
+                <label className="h-9 px-4 text-xs font-semibold border border-input rounded-md hover:bg-slate-50 cursor-pointer flex items-center gap-1.5 select-none">
+                  <Upload size={14} /> Choose File
                   <input
                     type="file"
                     accept="image/*"
@@ -512,37 +605,41 @@ export default function Todos() {
                 {coverPreview && (
                   <Button
                     type="button"
+                    variant="destructive"
                     onClick={() => {
                       setCoverFile(null);
                       setCoverPreview('');
                     }}
-                    className="btn-brutal-danger py-2 px-3 h-auto text-sm font-black flex items-center gap-1 hover:translate-x-0 hover:translate-y-0"
+                    className="h-9 px-3 text-xs font-semibold"
                   >
                     Remove
                   </Button>
                 )}
               </div>
               {coverPreview && (
-                <img
-                  src={coverPreview}
-                  alt="Cover preview"
-                  className="w-full h-32 object-cover border-3 border-black rounded-lg mt-4 shadow-brutal-sm"
-                />
+                <div className="w-full h-32 overflow-hidden border border-border rounded-lg mt-3">
+                  <img
+                    src={coverPreview}
+                    alt="Cover preview"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
               )}
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t-2 border-black">
+            <div className="flex justify-end gap-3 pt-4 border-t border-border">
               <Button
                 type="button"
+                variant="outline"
                 onClick={() => {
                   setIsCreateOpen(false);
                   resetForm();
                 }}
-                className="btn-brutal-secondary h-auto"
+                className="h-9 text-xs font-semibold"
               >
                 Cancel
               </Button>
-              <Button type="submit" className="btn-brutal bg-brutal-violet h-auto">
+              <Button type="submit" className="h-9 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/95 shadow-sm rounded-md">
                 Create Task
               </Button>
             </div>
@@ -552,30 +649,32 @@ export default function Todos() {
 
       {/* Editing Dialog (using Shadcn Dialog) */}
       <Dialog open={isEditOpen} onOpenChange={(open) => { if (!open) { setIsEditOpen(false); resetForm(); } }}>
-        <DialogContent className="card-brutal bg-white w-full max-w-lg shadow-[8px_8px_0_0_#000] p-6 max-h-[90vh] overflow-y-auto" showCloseButton={false}>
-          <DialogHeader className="border-b-3 border-black pb-3 mb-6 flex flex-row justify-between items-center gap-2">
-            <DialogTitle className="text-2xl font-black flex items-center gap-2">
-              <Edit2 size={22} /> Edit Task
+        <DialogContent className="bg-card w-full max-w-lg border border-border p-6 rounded-xl shadow-lg overflow-y-auto max-h-[90vh]" showCloseButton={false}>
+          <DialogHeader className="border-b border-border pb-3 mb-5 flex flex-row justify-between items-center gap-2">
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <Edit2 size={18} className="text-primary" /> Edit Task
             </DialogTitle>
             <Button
+              variant="ghost"
+              size="icon"
               onClick={() => {
                 setIsEditOpen(false);
                 resetForm();
               }}
-              className="p-1 h-auto w-auto border-2 border-black rounded hover:bg-brutal-pink transition shadow-brutal-sm bg-white text-black hover:translate-x-0 hover:translate-y-0"
+              className="h-8 w-8 rounded-md hover:bg-slate-100"
             >
-              <X size={18} />
+              <X size={16} />
             </Button>
           </DialogHeader>
 
-          <form onSubmit={handleUpdateTodo} className="space-y-5">
-            <div className="flex flex-col">
-              <label className="text-sm font-black mb-1.5 uppercase">Title</label>
+          <form onSubmit={handleUpdateTodo} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Title</label>
               <Input
                 type="text"
                 required
                 placeholder="Task title"
-                className="input-brutal w-full"
+                className="w-full h-10 rounded-md border border-input focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 bg-transparent text-sm"
                 value={title}
                 onChange={(e) => {
                   setTitle(e.target.value);
@@ -585,18 +684,18 @@ export default function Todos() {
                 }}
               />
               {validationErrors.title && (
-                <p className="text-red-600 text-xs font-black mt-1 uppercase tracking-wide">
+                <p className="text-destructive text-xs font-semibold mt-1">
                   ⚠️ {validationErrors.title}
                 </p>
               )}
             </div>
 
-            <div className="flex flex-col">
-              <label className="text-sm font-black mb-1.5 uppercase">Description</label>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Description</label>
               <textarea
                 rows={3}
                 placeholder="Task description"
-                className="input-brutal w-full"
+                className="w-full p-3 rounded-md border border-input focus:outline-none focus:ring-1 focus:ring-primary bg-transparent text-sm"
                 value={description}
                 onChange={(e) => {
                   setDescription(e.target.value);
@@ -606,17 +705,17 @@ export default function Todos() {
                 }}
               ></textarea>
               {validationErrors.description && (
-                <p className="text-red-600 text-xs font-black mt-1 uppercase tracking-wide">
+                <p className="text-destructive text-xs font-semibold mt-1">
                   ⚠️ {validationErrors.description}
                 </p>
               )}
             </div>
 
-            <div className="flex flex-col">
-              <label className="text-sm font-black mb-1.5 uppercase">Cover Image</label>
-              <div className="flex items-center gap-4">
-                <label className="btn-brutal-secondary py-2 px-4 text-sm font-black cursor-pointer flex items-center gap-2">
-                  <Upload size={16} /> Change File
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Cover Image</label>
+              <div className="flex items-center gap-3">
+                <label className="h-9 px-4 text-xs font-semibold border border-input rounded-md hover:bg-slate-50 cursor-pointer flex items-center gap-1.5 select-none">
+                  <Upload size={14} /> Change File
                   <input
                     type="file"
                     accept="image/*"
@@ -627,43 +726,90 @@ export default function Todos() {
                 {coverPreview && (
                   <Button
                     type="button"
+                    variant="destructive"
                     onClick={() => {
                       setCoverFile(null);
                       setCoverPreview('');
                     }}
-                    className="btn-brutal-danger py-2 px-3 h-auto text-sm font-black flex items-center gap-1 hover:translate-x-0 hover:translate-y-0"
+                    className="h-9 px-3 text-xs font-semibold"
                   >
                     Remove
                   </Button>
                 )}
               </div>
               {coverPreview && (
-                <img
-                  src={coverPreview}
-                  alt="Cover preview"
-                  className="w-full h-32 object-cover border-3 border-black rounded-lg mt-4 shadow-brutal-sm"
-                />
+                <div className="w-full h-32 overflow-hidden border border-border rounded-lg mt-3">
+                  <img
+                    src={coverPreview}
+                    alt="Cover preview"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
               )}
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t-2 border-black">
+            <div className="flex justify-end gap-3 pt-4 border-t border-border">
               <Button
                 type="button"
+                variant="outline"
                 onClick={() => {
                   setIsEditOpen(false);
                   resetForm();
                 }}
-                className="btn-brutal-secondary h-auto"
+                className="h-9 text-xs font-semibold"
               >
                 Cancel
               </Button>
-              <Button type="submit" className="btn-brutal bg-brutal-violet h-auto">
+              <Button type="submit" className="h-9 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/95 shadow-sm rounded-md">
                 Save Changes
               </Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+
+      {/* Delete Confirmation Dialog (using Shadcn Dialog) */}
+      <Dialog open={!!todoToDelete} onOpenChange={(open) => { if (!open) setTodoToDelete(null); }}>
+        <DialogContent className="bg-card w-full max-w-md border border-border p-6 rounded-xl shadow-lg" showCloseButton={false}>
+          <DialogHeader className="border-b border-border pb-3 mb-5 flex flex-row justify-between items-center gap-2">
+            <DialogTitle className="text-xl font-bold flex items-center gap-2 text-slate-900">
+              <Trash2 size={20} className="text-destructive" /> Delete Task
+            </DialogTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setTodoToDelete(null)}
+              className="h-8 w-8 rounded-md hover:bg-slate-100"
+            >
+              <X size={16} />
+            </Button>
+          </DialogHeader>
+
+          <div className="space-y-5">
+            <p className="text-slate-600 text-sm leading-relaxed">
+              Are you sure you want to delete the task <span className="font-bold text-slate-900">"{todoToDelete?.title}"</span>? This action is permanent and cannot be undone.
+            </p>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setTodoToDelete(null)}
+                className="h-9 text-xs font-semibold"
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive"
+                onClick={handleDeleteConfirm} 
+                className="h-9 text-xs font-semibold px-4 shadow-sm rounded-md"
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </TooltipProvider>
   );
 }
