@@ -49,9 +49,9 @@ import {
 } from '@/components/ui/table';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { AppSidebar } from '@/components/app-sidebar';
-import useAuthStore from '../../auth/store';
+import useAuthStore from '../../../auth/store';
 import useUsersStore, { User } from '../store';
-import { createUserSchema, updateUserSchema } from '../../../lib/schemas';
+import { createUserSchema, updateUserSchema } from '../../../../lib/schemas';
 import { usePermission } from '@/hooks/usePermission';
 
 export default function Users() {

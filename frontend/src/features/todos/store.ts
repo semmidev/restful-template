@@ -100,7 +100,7 @@ export const useTodoStore = create<TodoState>((set, get) => ({
     }
   },
 
-  createTodo: async (title, description, coverFile, importance = false, urgency = false) => {
+  createTodo: async (title, description, coverFile, importance = true, urgency = false) => {
     set({ error: null });
     const formData = new FormData();
     formData.append('title', title);
