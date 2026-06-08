@@ -1,10 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { loginRequest, registerRequest, googleLoginRequest, logoutRequest } from './api';
+import { loginRequest, registerRequest, googleLoginRequest, logoutRequest, switchRoleRequest } from './api';
 import { LoginInput, RegisterInput } from '../../lib/schemas';
 
 interface AuthState {
   userEmail: string | null;
+  activeRole: string | null;
+  roles: string[];
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
@@ -12,6 +14,7 @@ interface AuthState {
   register: (input: RegisterInput) => Promise<{ success: boolean; error?: string }>;
   loginWithGoogle: (code: string, codeVerifier: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
+  switchRole: (role: string) => Promise<{ success: boolean; error?: string }>;
   clearError: () => void;
 }
 
@@ -19,6 +22,8 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       userEmail: null,
+      activeRole: null,
+      roles: [],
       isAuthenticated: false,
       isLoading: false,
       error: null,
@@ -31,6 +36,8 @@ export const useAuthStore = create<AuthState>()(
 
           set({
             userEmail: user.email,
+            activeRole: user.active_role || 'user',
+            roles: user.roles || ['user'],
             isAuthenticated: true,
             isLoading: false,
             error: null,
@@ -54,6 +61,8 @@ export const useAuthStore = create<AuthState>()(
 
           set({
             userEmail: user.email,
+            activeRole: user.active_role || 'user',
+            roles: user.roles || ['user'],
             isAuthenticated: true,
             isLoading: false,
             error: null,
@@ -74,6 +83,8 @@ export const useAuthStore = create<AuthState>()(
 
           set({
             userEmail: user.email,
+            activeRole: user.active_role || 'user',
+            roles: user.roles || ['user'],
             isAuthenticated: true,
             isLoading: false,
             error: null,
@@ -94,9 +105,33 @@ export const useAuthStore = create<AuthState>()(
         }
         set({
           userEmail: null,
+          activeRole: null,
+          roles: [],
           isAuthenticated: false,
           error: null,
         });
+      },
+
+      switchRole: async (role) => {
+        set({ isLoading: true, error: null });
+        try {
+          const res = await switchRoleRequest(role);
+          const { user } = res.data;
+
+          set({
+            userEmail: user.email,
+            activeRole: user.active_role || 'user',
+            roles: user.roles || ['user'],
+            isAuthenticated: true,
+            isLoading: false,
+            error: null,
+          });
+          return { success: true };
+        } catch (err: any) {
+          const errMsg = err.response?.data?.detail || 'Failed to switch role';
+          set({ error: errMsg, isLoading: false });
+          return { success: false, error: errMsg };
+        }
       },
 
       clearError: () => set({ error: null }),
@@ -105,6 +140,8 @@ export const useAuthStore = create<AuthState>()(
       name: 'todoapp-auth',
       partialize: (state) => ({
         userEmail: state.userEmail,
+        activeRole: state.activeRole,
+        roles: state.roles,
         isAuthenticated: state.isAuthenticated,
       }),
     }
@@ -112,3 +149,4 @@ export const useAuthStore = create<AuthState>()(
 );
 
 export default useAuthStore;
+

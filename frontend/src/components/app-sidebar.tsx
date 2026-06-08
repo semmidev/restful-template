@@ -5,6 +5,9 @@ import {
   LayoutGrid,
   LogOut,
   CheckSquare,
+  Shield,
+  Check,
+  User,
 } from "lucide-react"
 
 import {
@@ -32,9 +35,12 @@ import useAuthStore from "@/features/auth/store"
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const navigate = useNavigate()
   const logout = useAuthStore((state) => state.logout)
+  const switchRole = useAuthStore((state) => state.switchRole)
 
   const userEmail = useAuthStore((state) => state.userEmail)
   const email = userEmail || "user@example.com"
+  const activeRole = useAuthStore((state) => state.activeRole) || "user"
+  const roles = useAuthStore((state) => state.roles) || ["user"]
 
   const username = React.useMemo(() => {
     return email.split("@")[0] || "User"
@@ -49,6 +55,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const isDashboardActive = location.pathname === "/"
   const isTasksActive = location.pathname === "/todos"
   const isMatrixActive = location.pathname === "/matrix"
+  const isUsersActive = location.pathname === "/users"
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -119,6 +126,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
+            {activeRole === "admin" && (
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={isUsersActive}
+                  className="h-8.5 font-medium transition-all group-data-[collapsible=icon]:p-2! data-[active=true]:bg-accent/80 data-[active=true]:text-foreground rounded-lg"
+                  tooltip="User Management"
+                  asChild
+                >
+                  <Link to="/users" className="flex items-center gap-2.5 px-2">
+                    <User className={`size-4 transition-colors ${isUsersActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`} />
+                    <span className={`text-xs font-semibold ${isUsersActive ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'}`}>User Management</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
@@ -144,6 +166,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     <span className="truncate text-xs text-muted-foreground font-medium">
                       {email}
                     </span>
+                    <span className="truncate text-[9px] text-primary/90 font-extrabold uppercase tracking-wider mt-0.5">
+                      Role: {activeRole}
+                    </span>
                   </div>
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
@@ -165,9 +190,33 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       <span className="truncate text-xs text-muted-foreground font-medium">
                         {email}
                       </span>
+                      <span className="truncate text-[9px] text-primary/90 font-extrabold uppercase tracking-wider mt-0.5">
+                        Active: {activeRole}
+                      </span>
                     </div>
                   </div>
                 </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Switch Role
+                </DropdownMenuLabel>
+                {roles.map((r) => (
+                  <DropdownMenuItem
+                    key={r}
+                    onClick={() => r !== activeRole && switchRole(r)}
+                    className="flex items-center justify-between font-medium cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      {r === "admin" ? (
+                        <Shield className="size-3.5 text-indigo-500" />
+                      ) : (
+                        <User className="size-3.5 text-slate-500" />
+                      )}
+                      <span className="capitalize text-xs">{r}</span>
+                    </div>
+                    {r === activeRole && <Check className="size-3.5 text-primary" />}
+                  </DropdownMenuItem>
+                ))}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-destructive font-semibold">
                   <LogOut className="size-4 mr-2" />

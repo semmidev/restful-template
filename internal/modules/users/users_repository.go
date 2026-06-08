@@ -1,9 +1,10 @@
-package auth
+package users
 
 import (
 	"context"
 	"errors"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -12,14 +13,25 @@ import (
 	apperrors "github.com/semmidev/restful-template/internal/shared/errors"
 )
 
-type userRepository struct{ db *pgxpool.Pool }
+var allowedSortCols = map[string]string{
+	"created_at":  "created_at",
+	"updated_at":  "updated_at",
+	"email":       "email",
+	"active_role": "active_role",
+}
 
-func NewUserRepository(db *pgxpool.Pool) UserRepository { return &userRepository{db} }
+type userRepository struct {
+	db *pgxpool.Pool
+}
+
+func NewUserRepository(db *pgxpool.Pool) UserRepository {
+	return &userRepository{db: db}
+}
 
 func (r *userRepository) Create(ctx context.Context, u *User) error {
 	sql, args, err := database.QB.Insert("users").
 		Columns("id", "email", "password_hash", "google_id", "active_role", "created_at", "updated_at").
-		Values(u.ID, u.Email, u.PasswordHash, u.GoogleID, u.ActiveRole, u.CreatedAt, u.UpdatedAt).
+		Values(u.ID, u.Email, u.PasswordHash, nil, u.ActiveRole, u.CreatedAt, u.UpdatedAt).
 		ToSql()
 	if err != nil {
 		return err
@@ -81,33 +93,8 @@ func (r *userRepository) loadRoles(ctx context.Context, u *User) error {
 	return nil
 }
 
-func (r *userRepository) GetByEmail(ctx context.Context, email string) (*User, error) {
-	sql, args, err := database.QB.Select("id", "email", "password_hash", "google_id", "active_role", "created_at", "updated_at").
-		From("users").
-		Where("email = ?", email).
-		ToSql()
-	if err != nil {
-		return nil, err
-	}
-
-	row := database.GetDB(ctx, r.db).QueryRow(ctx, sql, args...)
-	var u User
-	if err := row.Scan(&u.ID, &u.Email, &u.PasswordHash, &u.GoogleID, &u.ActiveRole, &u.CreatedAt, &u.UpdatedAt); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, apperrors.ErrNotFound
-		}
-		return nil, err
-	}
-
-	if err := r.loadRoles(ctx, &u); err != nil {
-		return nil, err
-	}
-
-	return &u, nil
-}
-
 func (r *userRepository) GetByID(ctx context.Context, id uuid.UUID) (*User, error) {
-	sql, args, err := database.QB.Select("id", "email", "password_hash", "google_id", "active_role", "created_at", "updated_at").
+	sql, args, err := database.QB.Select("id", "email", "password_hash", "active_role", "created_at", "updated_at").
 		From("users").
 		Where("id = ?", id).
 		ToSql()
@@ -117,7 +104,7 @@ func (r *userRepository) GetByID(ctx context.Context, id uuid.UUID) (*User, erro
 
 	row := database.GetDB(ctx, r.db).QueryRow(ctx, sql, args...)
 	var u User
-	if err := row.Scan(&u.ID, &u.Email, &u.PasswordHash, &u.GoogleID, &u.ActiveRole, &u.CreatedAt, &u.UpdatedAt); err != nil {
+	if err := row.Scan(&u.ID, &u.Email, &u.PasswordHash, &u.ActiveRole, &u.CreatedAt, &u.UpdatedAt); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, apperrors.ErrNotFound
 		}
@@ -131,10 +118,10 @@ func (r *userRepository) GetByID(ctx context.Context, id uuid.UUID) (*User, erro
 	return &u, nil
 }
 
-func (r *userRepository) GetByGoogleID(ctx context.Context, googleID string) (*User, error) {
-	sql, args, err := database.QB.Select("id", "email", "password_hash", "google_id", "active_role", "created_at", "updated_at").
+func (r *userRepository) GetByEmail(ctx context.Context, email string) (*User, error) {
+	sql, args, err := database.QB.Select("id", "email", "password_hash", "active_role", "created_at", "updated_at").
 		From("users").
-		Where("google_id = ?", googleID).
+		Where("email = ?", email).
 		ToSql()
 	if err != nil {
 		return nil, err
@@ -142,7 +129,7 @@ func (r *userRepository) GetByGoogleID(ctx context.Context, googleID string) (*U
 
 	row := database.GetDB(ctx, r.db).QueryRow(ctx, sql, args...)
 	var u User
-	if err := row.Scan(&u.ID, &u.Email, &u.PasswordHash, &u.GoogleID, &u.ActiveRole, &u.CreatedAt, &u.UpdatedAt); err != nil {
+	if err := row.Scan(&u.ID, &u.Email, &u.PasswordHash, &u.ActiveRole, &u.CreatedAt, &u.UpdatedAt); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, apperrors.ErrNotFound
 		}
@@ -156,11 +143,66 @@ func (r *userRepository) GetByGoogleID(ctx context.Context, googleID string) (*U
 	return &u, nil
 }
 
+func (r *userRepository) List(ctx context.Context, limit, offset int, search string, sortBy, sortDir string) ([]*User, int, error) {
+	base := database.QB.Select().From("users")
+
+	if search != "" {
+		like := "%" + search + "%"
+		base = base.Where(sq.ILike{"email": like})
+	}
+
+	col := "created_at"
+	if c, ok := allowedSortCols[sortBy]; ok {
+		col = c
+	}
+
+	dir := "DESC"
+	if sortDir == "asc" {
+		dir = "ASC"
+	}
+
+	sql, args, err := base.
+		Columns("id", "email", "password_hash", "active_role", "created_at", "updated_at", "COUNT(*) OVER() AS total_count").
+		OrderBy(col + " " + dir).
+		Limit(uint64(limit)).
+		Offset(uint64(offset)).
+		ToSql()
+	if err != nil {
+		return nil, 0, err
+	}
+
+	rows, err := database.GetDB(ctx, r.db).Query(ctx, sql, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var users []*User
+	var total int
+	for rows.Next() {
+		var u User
+		if err := rows.Scan(&u.ID, &u.Email, &u.PasswordHash, &u.ActiveRole, &u.CreatedAt, &u.UpdatedAt, &total); err != nil {
+			return nil, 0, err
+		}
+		users = append(users, &u)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	for _, u := range users {
+		if err := r.loadRoles(ctx, u); err != nil {
+			return nil, 0, err
+		}
+	}
+
+	return users, total, nil
+}
+
 func (r *userRepository) Update(ctx context.Context, u *User) error {
 	sql, args, err := database.QB.Update("users").
 		Set("email", u.Email).
 		Set("password_hash", u.PasswordHash).
-		Set("google_id", u.GoogleID).
 		Set("active_role", u.ActiveRole).
 		Set("updated_at", u.UpdatedAt).
 		Where("id = ?", u.ID).
@@ -222,4 +264,3 @@ func (r *userRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	}
 	return nil
 }
-

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	jwtpkg "github.com/semmidev/restful-template/internal/shared/jwt"
 	"github.com/semmidev/restful-template/internal/shared/password"
 )
 
@@ -13,6 +14,8 @@ type User struct {
 	Email        string    `json:"email"`
 	PasswordHash *string   `json:"password_hash,omitempty"`
 	GoogleID     *string   `json:"google_id,omitempty"`
+	ActiveRole   string    `json:"active_role"`
+	Roles        []string  `json:"roles"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }
@@ -25,15 +28,10 @@ func (u *User) CheckPassword(plain string) bool {
 	return err == nil && ok
 }
 
-type TokenClaims struct {
-	UserID uuid.UUID
-	Email  string
-}
-
 type TokenService interface {
-	GeneratePair(ctx context.Context, userID uuid.UUID, email string) (access, refresh string, accessExp, refreshExp int64, err error)
-	ParseAccess(ctx context.Context, token string) (*TokenClaims, error)
-	ParseRefresh(ctx context.Context, token string) (*TokenClaims, error)
+	GeneratePair(ctx context.Context, userID uuid.UUID, email string, activeRole string, roles []string) (access, refresh string, accessExp, refreshExp int64, err error)
+	ParseAccess(ctx context.Context, token string) (*jwtpkg.TokenClaims, error)
+	ParseRefresh(ctx context.Context, token string) (*jwtpkg.TokenClaims, error)
 }
 
 type TodoService interface {
@@ -72,4 +70,6 @@ type AuthService interface {
 	GoogleConfig() (clientID, redirectURI string)
 	Logout(ctx context.Context, refreshToken string) error
 	DeleteAccount(ctx context.Context, userID uuid.UUID) error
+	SwitchRole(ctx context.Context, userID uuid.UUID, role string) (TokenPair, error)
 }
+

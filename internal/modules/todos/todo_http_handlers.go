@@ -11,12 +11,16 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/semmidev/restful-template/internal/shared/httpapi"
+	"github.com/semmidev/restful-template/internal/shared/policy"
 	"github.com/semmidev/restful-template/internal/shared/wideevent"
 )
 
 func (h *todoHandler) handleList(ctx context.Context, in *listTodosReq) (*listTodosRes, error) {
 	userID, err := httpapi.ExtractUserID(ctx)
 	if err != nil {
+		return nil, httpapi.ToHumaErr(ctx, err)
+	}
+	if err := policy.Authorize(ctx, "todo:list", ""); err != nil {
 		return nil, httpapi.ToHumaErr(ctx, err)
 	}
 	offset := (in.Page - 1) * in.PerPage
@@ -93,6 +97,9 @@ func (h *todoHandler) handleCreate(ctx context.Context, in *createTodoReq) (*cre
 	if err != nil {
 		return nil, httpapi.ToHumaErr(ctx, err)
 	}
+	if err := policy.Authorize(ctx, "todo:create", ""); err != nil {
+		return nil, httpapi.ToHumaErr(ctx, err)
+	}
 
 	coverBase64, err := processCoverImage(data.Cover)
 	if err != nil {
@@ -131,6 +138,9 @@ func (h *todoHandler) handleGet(ctx context.Context, in *getTodoReq) (*getTodoRe
 	if err != nil {
 		return nil, httpapi.ToHumaErr(ctx, err)
 	}
+	if err := policy.Authorize(ctx, "todo:read", t.UserID.String()); err != nil {
+		return nil, httpapi.ToHumaErr(ctx, err)
+	}
 
 	rawEtag := t.UpdatedAt.Format(time.RFC3339Nano)
 	if err := in.PreconditionFailed(rawEtag, t.UpdatedAt); err != nil {
@@ -159,6 +169,9 @@ func (h *todoHandler) handleUpdate(ctx context.Context, in *updateTodoReq) (*upd
 	// Optimistic locking check before update (1st and only GET)
 	existing, err := h.todos.Get(ctx, userID, in.ID)
 	if err != nil {
+		return nil, httpapi.ToHumaErr(ctx, err)
+	}
+	if err := policy.Authorize(ctx, "todo:update", existing.UserID.String()); err != nil {
 		return nil, httpapi.ToHumaErr(ctx, err)
 	}
 	rawEtag := existing.UpdatedAt.Format(time.RFC3339Nano)
@@ -246,6 +259,13 @@ func (h *todoHandler) handleDelete(ctx context.Context, in *deleteTodoReq) (*del
 	if err != nil {
 		return nil, httpapi.ToHumaErr(ctx, err)
 	}
+	existing, err := h.todos.Get(ctx, userID, in.ID)
+	if err != nil {
+		return nil, httpapi.ToHumaErr(ctx, err)
+	}
+	if err := policy.Authorize(ctx, "todo:delete", existing.UserID.String()); err != nil {
+		return nil, httpapi.ToHumaErr(ctx, err)
+	}
 	if err := h.todos.Delete(ctx, userID, in.ID); err != nil {
 		return nil, httpapi.ToHumaErr(ctx, err)
 	}
@@ -296,6 +316,9 @@ func processCoverImage(f huma.FormFile) (*string, error) {
 func (h *todoHandler) handleStats(ctx context.Context, in *getTodoStatsReq) (*getTodoStatsRes, error) {
 	userID, err := httpapi.ExtractUserID(ctx)
 	if err != nil {
+		return nil, httpapi.ToHumaErr(ctx, err)
+	}
+	if err := policy.Authorize(ctx, "todo:stats", ""); err != nil {
 		return nil, httpapi.ToHumaErr(ctx, err)
 	}
 

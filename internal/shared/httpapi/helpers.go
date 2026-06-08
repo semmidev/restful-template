@@ -40,8 +40,10 @@ func init() {
 type CtxKey string
 
 const (
-	UserIDKey    CtxKey = "user_id"
-	UserEmailKey CtxKey = "user_email"
+	UserIDKey         CtxKey = "user_id"
+	UserEmailKey      CtxKey = "user_email"
+	UserActiveRoleKey CtxKey = "user_active_role"
+	UserRolesKey      CtxKey = "user_roles"
 )
 
 // APIError is the canonical application error response.

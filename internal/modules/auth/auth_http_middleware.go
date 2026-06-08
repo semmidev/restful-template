@@ -75,9 +75,12 @@ func AuthMiddleware(api huma.API, tokens TokenService) func(ctx huma.Context, ne
 		// user identity without handlers needing to add it manually.
 		wideevent.Add(ctx.Context(), "user_id", claims.UserID.String())
 		wideevent.Add(ctx.Context(), "user_email", claims.Email)
+		wideevent.Add(ctx.Context(), "user_active_role", claims.ActiveRole)
 
 		ctx = huma.WithValue(ctx, httpapi.UserIDKey, claims.UserID)
 		ctx = huma.WithValue(ctx, httpapi.UserEmailKey, claims.Email)
+		ctx = huma.WithValue(ctx, httpapi.UserActiveRoleKey, claims.ActiveRole)
+		ctx = huma.WithValue(ctx, httpapi.UserRolesKey, claims.Roles)
 		next(ctx)
 	}
 }

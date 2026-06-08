@@ -6,9 +6,15 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/semmidev/restful-template/internal/modules/auth"
 	apperrors "github.com/semmidev/restful-template/internal/shared/errors"
 )
+
+type TokenClaims struct {
+	UserID     uuid.UUID
+	Email      string
+	ActiveRole string
+	Roles      []string
+}
 
 type JWTService struct {
 	secret     []byte
@@ -31,18 +37,20 @@ func NewJWTService(secret string, accessTTL, refreshTTL time.Duration, issuer, a
 	}
 }
 
-func (s *JWTService) GeneratePair(ctx context.Context, userID uuid.UUID, email string) (string, string, int64, int64, error) {
+func (s *JWTService) GeneratePair(ctx context.Context, userID uuid.UUID, email string, activeRole string, roles []string) (string, string, int64, int64, error) {
 	now := time.Now()
 	accessExp := now.Add(s.accessTTL).Unix()
 
 	access := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"jti":   uuid.New().String(),
-		"sub":   userID.String(),
-		"email": email,
-		"iss":   s.issuer,
-		"aud":   s.audience,
-		"exp":   accessExp,
-		"type":  "access",
+		"jti":         uuid.New().String(),
+		"sub":         userID.String(),
+		"email":       email,
+		"active_role": activeRole,
+		"roles":       roles,
+		"iss":         s.issuer,
+		"aud":         s.audience,
+		"exp":         accessExp,
+		"type":        "access",
 	})
 	aStr, err := access.SignedString(s.secret)
 	if err != nil {
@@ -51,27 +59,29 @@ func (s *JWTService) GeneratePair(ctx context.Context, userID uuid.UUID, email s
 
 	refreshExp := now.Add(s.refreshTTL).Unix()
 	refresh := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"jti":   uuid.New().String(),
-		"sub":   userID.String(),
-		"email": email,
-		"iss":   s.issuer,
-		"aud":   s.audience,
-		"exp":   refreshExp,
-		"type":  "refresh",
+		"jti":         uuid.New().String(),
+		"sub":         userID.String(),
+		"email":       email,
+		"active_role": activeRole,
+		"roles":       roles,
+		"iss":         s.issuer,
+		"aud":         s.audience,
+		"exp":         refreshExp,
+		"type":        "refresh",
 	})
 	rStr, err := refresh.SignedString(s.secret)
 	return aStr, rStr, accessExp, refreshExp, err
 }
 
-func (s *JWTService) ParseAccess(ctx context.Context, token string) (*auth.TokenClaims, error) {
+func (s *JWTService) ParseAccess(ctx context.Context, token string) (*TokenClaims, error) {
 	return s.parse(token, "access")
 }
 
-func (s *JWTService) ParseRefresh(ctx context.Context, token string) (*auth.TokenClaims, error) {
+func (s *JWTService) ParseRefresh(ctx context.Context, token string) (*TokenClaims, error) {
 	return s.parse(token, "refresh")
 }
 
-func (s *JWTService) parse(token, typ string) (*auth.TokenClaims, error) {
+func (s *JWTService) parse(token, typ string) (*TokenClaims, error) {
 	parsed, err := jwt.Parse(token, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, jwt.ErrSignatureInvalid
@@ -112,5 +122,21 @@ func (s *JWTService) parse(token, typ string) (*auth.TokenClaims, error) {
 		return nil, apperrors.ErrUnauthorized
 	}
 
-	return &auth.TokenClaims{UserID: uid, Email: email}, nil
+	activeRole, _ := claims["active_role"].(string)
+	var roles []string
+	if rawRoles, ok := claims["roles"].([]interface{}); ok {
+		for _, r := range rawRoles {
+			if rStr, ok := r.(string); ok {
+				roles = append(roles, rStr)
+			}
+		}
+	}
+
+	return &TokenClaims{
+		UserID:     uid,
+		Email:      email,
+		ActiveRole: activeRole,
+		Roles:      roles,
+	}, nil
 }
+

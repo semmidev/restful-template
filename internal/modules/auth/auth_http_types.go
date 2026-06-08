@@ -1,8 +1,10 @@
 package auth
 
 type authUserResponse struct {
-	ID    string `json:"id"`
-	Email string `json:"email"`
+	ID         string   `json:"id"`
+	Email      string   `json:"email"`
+	ActiveRole string   `json:"active_role"`
+	Roles      []string `json:"roles"`
 }
 
 // Register
@@ -66,6 +68,21 @@ type authDeleteAccountReq struct{}
 
 type authDeleteAccountRes struct{}
 
+// Switch Role
+
+type authSwitchRoleReq struct {
+	Body struct {
+		Role string `json:"role" minLength:"1" doc:"The role to switch to"`
+	}
+}
+
+type authSwitchRoleRes struct {
+	SetCookie []string `header:"Set-Cookie"`
+	Body      struct {
+		User authUserResponse `json:"user"`
+	}
+}
+
 // Google Login
 
 type authGoogleLoginReq struct {
@@ -92,3 +109,4 @@ type authGoogleConfigRes struct {
 		RedirectURI string `json:"redirect_uri"`
 	}
 }
+

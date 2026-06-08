@@ -12,6 +12,7 @@ const GoogleCallback = lazy(() => import('./features/auth/pages/GoogleCallback')
 const Todos = lazy(() => import('./features/todos/pages/Todos'));
 const Dashboard = lazy(() => import('./features/todos/pages/Dashboard'));
 const EisenhowerMatrix = lazy(() => import('./features/todos/pages/EisenhowerMatrix'));
+const Users = lazy(() => import('./features/users/pages/Users'));
 
 interface RouteProps {
   children: React.ReactNode;
@@ -79,6 +80,14 @@ function App() {
                 element={
                   <PrivateRoute>
                     <EisenhowerMatrix />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/users"
+                element={
+                  <PrivateRoute>
+                    <Users />
                   </PrivateRoute>
                 }
               />

@@ -18,6 +18,7 @@ import (
 	"github.com/semmidev/restful-template/internal/config"
 	"github.com/semmidev/restful-template/internal/modules/auth"
 	"github.com/semmidev/restful-template/internal/modules/todos"
+	"github.com/semmidev/restful-template/internal/modules/users"
 	sharedmw "github.com/semmidev/restful-template/internal/shared/middleware"
 	"github.com/semmidev/restful-template/internal/web"
 	"go.opentelemetry.io/otel/trace"
@@ -42,6 +43,7 @@ func NewServer(
 	log *slog.Logger,
 	authService auth.AuthService,
 	todosService todos.TodoService,
+	usersService users.UserService,
 	tokens auth.TokenService,
 	limiter *redis_rate.Limiter,
 	healthCheckers map[string]HealthChecker,
@@ -110,7 +112,7 @@ func NewServer(
 		api := humachi.New(r, humaConfig)
 		api.UseMiddleware(auth.AuthMiddleware(api, tokens))
 
-		RegisterRoutes(api, cfg, healthCheckers, authService, todosService)
+		RegisterRoutes(api, cfg, healthCheckers, authService, todosService, usersService)
 	})
 
 	mountSPAHandler(r)

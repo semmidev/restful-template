@@ -13,6 +13,8 @@ type TokenPair struct {
 	ExpiresIn    int64     `json:"expires_in"`
 	UserID       uuid.UUID `json:"user_id"`
 	UserEmail    string    `json:"user_email"`
+	ActiveRole   string    `json:"active_role"`
+	Roles        []string  `json:"roles"`
 }
 
 type RegisterInput struct {

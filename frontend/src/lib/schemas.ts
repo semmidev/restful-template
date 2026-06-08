@@ -22,3 +22,27 @@ export const todoSchema = z.object({
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type TodoInput = z.infer<typeof todoSchema>;
+
+export const createUserSchema = z.object({
+  email: z.string().email('Please enter a valid email address').min(3, 'Email is too short'),
+  password: z.string().min(8, 'Password must be at least 8 characters long'),
+  activeRole: z.string().min(1, 'Active role is required'),
+  roles: z.array(z.string()).min(1, 'At least one role must be selected'),
+}).refine((data) => data.roles.includes(data.activeRole), {
+  message: 'Active role must be one of the assigned roles',
+  path: ['activeRole'],
+});
+
+export const updateUserSchema = z.object({
+  email: z.string().email('Please enter a valid email address').min(3, 'Email is too short'),
+  password: z.string().min(8, 'Password must be at least 8 characters long').optional().or(z.literal('')),
+  activeRole: z.string().min(1, 'Active role is required'),
+  roles: z.array(z.string()).min(1, 'At least one role must be selected'),
+}).refine((data) => data.roles.includes(data.activeRole), {
+  message: 'Active role must be one of the assigned roles',
+  path: ['activeRole'],
+});
+
+export type CreateUserFormInput = z.infer<typeof createUserSchema>;
+export type UpdateUserFormInput = z.infer<typeof updateUserSchema>;
+

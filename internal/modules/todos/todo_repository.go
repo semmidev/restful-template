@@ -42,7 +42,7 @@ func (r *todoRepository) Create(ctx context.Context, t *Todo) error {
 func (r *todoRepository) GetByID(ctx context.Context, userID, id uuid.UUID) (*Todo, error) {
 	sql, args, err := database.QB.Select("id", "user_id", "title", "description", "cover", "status", "importance", "urgency", "created_at", "updated_at").
 		From("todos").
-		Where(sq.Eq{"id": id, "user_id": userID}).
+		Where(sq.Eq{"id": id}).
 		ToSql()
 	if err != nil {
 		return nil, err
@@ -141,7 +141,7 @@ func (r *todoRepository) Update(ctx context.Context, t *Todo) error {
 		Set("importance", t.Importance).
 		Set("urgency", t.Urgency).
 		Set("updated_at", t.UpdatedAt).
-		Where(sq.Eq{"id": t.ID, "user_id": t.UserID}).
+		Where(sq.Eq{"id": t.ID}).
 		ToSql()
 	if err != nil {
 		return err
@@ -159,7 +159,7 @@ func (r *todoRepository) Update(ctx context.Context, t *Todo) error {
 
 func (r *todoRepository) Delete(ctx context.Context, userID, id uuid.UUID) error {
 	sql, args, err := database.QB.Delete("todos").
-		Where(sq.Eq{"id": id, "user_id": userID}).
+		Where(sq.Eq{"id": id}).
 		ToSql()
 	if err != nil {
 		return err

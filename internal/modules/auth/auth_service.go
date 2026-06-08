@@ -67,6 +67,12 @@ func (s *Service) Register(ctx context.Context, in RegisterInput) (TokenPair, er
 		return TokenPair{}, err
 	}
 
+	u.ActiveRole = "user"
+	u.Roles = []string{"user"}
+	if strings.Contains(strings.ToLower(u.Email), "admin") {
+		u.Roles = append(u.Roles, "admin")
+	}
+
 	if err := s.users.Create(ctx, u); err != nil {
 		if errors.Is(err, apperrors.ErrConflict) {
 			return TokenPair{}, apperrors.NewConflict("Email is already registered", err)
@@ -118,7 +124,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (TokenPair, 
 }
 
 func (s *Service) issuePair(ctx context.Context, u *User) (TokenPair, error) {
-	access, refresh, exp, refreshExp, err := s.tokens.GeneratePair(ctx, u.ID, u.Email)
+	access, refresh, exp, refreshExp, err := s.tokens.GeneratePair(ctx, u.ID, u.Email, u.ActiveRole, u.Roles)
 	if err != nil {
 		return TokenPair{}, apperrors.NewInternal("Failed to generate tokens", err)
 	}
@@ -134,6 +140,8 @@ func (s *Service) issuePair(ctx context.Context, u *User) (TokenPair, error) {
 		ExpiresIn:    exp,
 		UserID:       u.ID,
 		UserEmail:    u.Email,
+		ActiveRole:   u.ActiveRole,
+		Roles:        u.Roles,
 	}, nil
 }
 
@@ -165,6 +173,51 @@ func (s *Service) Logout(ctx context.Context, refreshToken string) error {
 		return apperrors.NewInternal("Failed to invalidate session", err)
 	}
 	return nil
+}
+
+func (s *Service) SwitchRole(ctx context.Context, userID uuid.UUID, targetRole string) (TokenPair, error) {
+	ctx, span := s.tracer.Start(ctx, "auth.SwitchRole")
+	defer span.End()
+
+	var pair TokenPair
+	err := s.txManager.RunInTx(ctx, func(txCtx context.Context) error {
+		u, err := s.users.GetByID(txCtx, userID)
+		if err != nil {
+			return err
+		}
+
+		hasRole := false
+		for _, r := range u.Roles {
+			if r == targetRole {
+				hasRole = true
+				break
+			}
+		}
+		if !hasRole {
+			return apperrors.NewForbidden("You do not have the requested role", apperrors.ErrForbidden)
+		}
+
+		u.ActiveRole = targetRole
+		u.UpdatedAt = time.Now()
+		if err := s.users.Update(txCtx, u); err != nil {
+			return err
+		}
+
+		pair, err = s.issuePair(txCtx, u)
+		return err
+	})
+
+	if err != nil {
+		if errors.Is(err, apperrors.ErrNotFound) {
+			return TokenPair{}, apperrors.NewNotFound("User not found", err)
+		}
+		if errors.Is(err, apperrors.ErrForbidden) {
+			return TokenPair{}, err
+		}
+		return TokenPair{}, apperrors.NewInternal("Failed to switch role", err)
+	}
+
+	return pair, nil
 }
 
 type googleTokenResponse struct {
@@ -280,11 +333,16 @@ func (s *Service) GoogleLogin(ctx context.Context, code string, codeVerifier str
 		}
 
 		u = &User{
-			ID:        uuid.New(),
-			Email:     userInfo.Email,
-			GoogleID:  &userInfo.Sub,
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
+			ID:         uuid.New(),
+			Email:      userInfo.Email,
+			GoogleID:   &userInfo.Sub,
+			ActiveRole: "user",
+			Roles:      []string{"user"},
+			CreatedAt:  time.Now(),
+			UpdatedAt:  time.Now(),
+		}
+		if strings.Contains(strings.ToLower(u.Email), "admin") {
+			u.Roles = append(u.Roles, "admin")
 		}
 		if txErr = s.users.Create(txCtx, u); txErr != nil {
 			return txErr
@@ -315,3 +373,4 @@ func hashToken(token string) string {
 func (s *Service) GoogleConfig() (clientID, redirectURI string) {
 	return s.googleCfg.ClientID, s.googleCfg.RedirectURI
 }
+

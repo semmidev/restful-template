@@ -76,4 +76,14 @@ func RegisterAuthRoutes(api huma.API, auth AuthService, cfg config.Config) {
 		Summary:     "Get Google OAuth Configuration",
 		Tags:        []string{"Auth"},
 	}, h.handleGoogleConfig)
+
+	huma.Register(api, huma.Operation{
+		OperationID: "auth-switch-role",
+		Method:      http.MethodPost,
+		Path:        "/api/v1/auth/switch-role",
+		Summary:     "Switch user active role",
+		Tags:        []string{"Auth"},
+		Security:    []map[string][]string{{"bearerAuth": {}}},
+	}, h.handleSwitchRole)
 }
+

@@ -54,7 +54,7 @@ Untuk panduan detail bagi AI Agent/Copilot dalam memahami standar engineering da
 | **Query Builder** | [Squirrel](https://github.com/Masterminds/squirrel) |
 | **Migrations** | [golang-migrate](https://github.com/golang-migrate/migrate) — embedded ke binary |
 | **Cache** | Redis via `go-redis/v9` |
-| **Auth** | JWT Cookie-Based Session (Access + Refresh) · Argon2id password hashing |
+| **Auth & Policy** | JWT Cookie-Based Session (Access + Refresh) · Argon2id password hashing · **Open Policy Agent (OPA)** (policy engine embedded) |
 | **Observability** | OpenTelemetry · Prometheus · Grafana LGTM Stack |
 | **Async Worker** | [asynq](https://github.com/hibiken/asynq) — Redis-backed task queue (separate binary) |
 | **Worker UI** | [asynqmon](https://github.com/hibiken/asynqmon) — Web UI mounted at `/admin/asynq` (Basic Auth) |
@@ -149,6 +149,8 @@ make run
 - **Security & Authentication**
   - JWT dengan Access + Refresh cookies (rotasi otomatis, HTTP-Only, secure).
   - *Password hashing* Argon2id (format PHC, verifikasi *constant-time*).
+  - **Otorisasi Terpusat OPA (Open Policy Agent)**: Integrasi RBAC (Role-Based Access Control) dan ABAC (Attribute-Based Access Control) dinamis berbasis policy Rego (`policy.rego`).
+  - **User Management CRUD (Admin Only)**: Panel administrasi lengkap untuk manajemen pengguna (CRUD) terlindung dari self-lockout.
   - CORS siap pakai + Middleware *Secure HTTP Headers*.
 
 - **Observability & Reliability**

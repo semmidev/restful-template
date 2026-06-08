@@ -5,6 +5,7 @@ import (
 	"github.com/semmidev/restful-template/internal/config"
 	"github.com/semmidev/restful-template/internal/modules/auth"
 	"github.com/semmidev/restful-template/internal/modules/todos"
+	"github.com/semmidev/restful-template/internal/modules/users"
 )
 
 // RegisterRoutes wires all module routes onto the Huma API.
@@ -17,8 +18,10 @@ func RegisterRoutes(
 	healthCheckers map[string]HealthChecker,
 	authService auth.AuthService,
 	todosService todos.TodoService,
+	usersService users.UserService,
 ) {
 	RegisterHealthRoutes(api, healthCheckers)
 	auth.RegisterAuthRoutes(api, authService, cfg)
 	todos.RegisterTodoRoutes(api, todosService)
+	users.RegisterUserRoutes(api, usersService)
 }

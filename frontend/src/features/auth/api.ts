@@ -21,3 +21,8 @@ export async function logoutRequest() {
   return client.post('/auth/logout');
 }
 
+export async function switchRoleRequest(role: string) {
+  return client.post('/auth/switch-role', { role });
+}
+
+

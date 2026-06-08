@@ -54,7 +54,8 @@ internal/
 ├── delivery/http/   ← HTTP layer: server, routes, middleware (driven adapters)
 ├── modules/
 │   ├── auth/        ← auth domain, repository, service, HTTP handler, middleware
-│   └── todos/       ← todos domain, repository, service, HTTP handler
+│   ├── todos/       ← todos domain, repository, service, HTTP handler
+│   └── users/       ← users CRUD management domain, repository, service, HTTP handler
 ├── web/             ← embedded static SPA web server handler (go:embed)
 └── shared/
     ├── asynqtask/   ← task type constants, payload structs, TaskDistributor (producer)
@@ -66,6 +67,7 @@ internal/
     ├── middleware/   ← CORS, rate limiter, logger, Prometheus, security headers
     ├── observability/← OtelTracer adapter (interface-based)
     ├── password/    ← Argon2id helpers
+    ├── policy/      ← Open Policy Agent (OPA) dynamic RBAC/ABAC engine
     ├── redis/       ← Redis client + CacheRepository impl
     ├── uuidgen/     ← deterministic UUID generation (testable)
     └── wideevent/   ← canonical wide log event enrichment
@@ -166,6 +168,19 @@ return s.txManager.RunInTx(ctx, func(txCtx context.Context) error {
     return s.users.Delete(txCtx, userID)
 })
 ```
+
+### Authorization (Open Policy Agent - OPA)
+
+We enforce a security policy using Open Policy Agent (OPA) for both Role-Based Access Control (RBAC) and Attribute-Based Access Control (ABAC):
+- **Declarative Policies**: Authorization rules are defined in `internal/shared/policy/policy.rego` using Rego syntax. Helper functions (`role_permissions` map) are used to map roles (`admin`, `user`) to exact permissions (e.g. `todo:create`, `user:list`).
+- **ABAC Rules**: Resource ownership is validated dynamically by comparing the resource owner's ID with the requesting user's context ID (e.g. users can only access/mutate their own todos).
+- **Execution in Handlers**: Handlers should invoke the check at the controller layer:
+  ```go
+  if err := policy.Authorize(ctx, "todo:update", todo.UserID.String()); err != nil {
+      return nil, httpapi.ToHumaErr(ctx, err)
+  }
+  ```
+- **Admin Safety Guardrails**: To prevent accidental administrative self-lockout, the user delete handler returns a `400 Bad Request` if the logged-in administrator attempts to delete their own active user ID.
 
 ### Caching (Redis)
 

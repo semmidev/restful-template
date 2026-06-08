@@ -45,6 +45,8 @@ func (h *authHandler) handleRegister(ctx context.Context, in *authRegisterReq) (
 	}
 	res.Body.User.ID = pair.UserID.String()
 	res.Body.User.Email = pair.UserEmail
+	res.Body.User.ActiveRole = pair.ActiveRole
+	res.Body.User.Roles = pair.Roles
 	return res, nil
 }
 
@@ -62,6 +64,8 @@ func (h *authHandler) handleLogin(ctx context.Context, in *authLoginReq) (*authL
 	}
 	res.Body.User.ID = pair.UserID.String()
 	res.Body.User.Email = pair.UserEmail
+	res.Body.User.ActiveRole = pair.ActiveRole
+	res.Body.User.Roles = pair.Roles
 	return res, nil
 }
 
@@ -83,6 +87,8 @@ func (h *authHandler) handleRefresh(ctx context.Context, in *authRefreshReq) (*a
 	}
 	res.Body.User.ID = pair.UserID.String()
 	res.Body.User.Email = pair.UserEmail
+	res.Body.User.ActiveRole = pair.ActiveRole
+	res.Body.User.Roles = pair.Roles
 	return res, nil
 }
 
@@ -117,6 +123,32 @@ func (h *authHandler) handleDeleteAccount(ctx context.Context, in *authDeleteAcc
 	return &authDeleteAccountRes{}, nil
 }
 
+func (h *authHandler) handleSwitchRole(ctx context.Context, in *authSwitchRoleReq) (*authSwitchRoleRes, error) {
+	userID, err := httpapi.ExtractUserID(ctx)
+	if err != nil {
+		return nil, httpapi.ToHumaErr(ctx, err)
+	}
+	wideevent.Add(ctx, "user_id", userID.String())
+	wideevent.Add(ctx, "switch_role", in.Body.Role)
+
+	pair, err := h.auth.SwitchRole(ctx, userID, in.Body.Role)
+	if err != nil {
+		return nil, httpapi.ToHumaErr(ctx, err)
+	}
+
+	res := &authSwitchRoleRes{
+		SetCookie: []string{
+			h.makeCookie("access_token", pair.AccessToken, "/", int(h.cfg.JWT.AccessTTL.Seconds())),
+			h.makeCookie("refresh_token", pair.RefreshToken, "/api/v1/auth", int(h.cfg.JWT.RefreshTTL.Seconds())),
+		},
+	}
+	res.Body.User.ID = pair.UserID.String()
+	res.Body.User.Email = pair.UserEmail
+	res.Body.User.ActiveRole = pair.ActiveRole
+	res.Body.User.Roles = pair.Roles
+	return res, nil
+}
+
 func (h *authHandler) handleGoogleLogin(ctx context.Context, in *authGoogleLoginReq) (*authGoogleLoginRes, error) {
 	pair, err := h.auth.GoogleLogin(ctx, in.Body.Code, in.Body.CodeVerifier)
 	if err != nil {
@@ -130,6 +162,8 @@ func (h *authHandler) handleGoogleLogin(ctx context.Context, in *authGoogleLogin
 	}
 	res.Body.User.ID = pair.UserID.String()
 	res.Body.User.Email = pair.UserEmail
+	res.Body.User.ActiveRole = pair.ActiveRole
+	res.Body.User.Roles = pair.Roles
 	return res, nil
 }
 
@@ -140,3 +174,4 @@ func (h *authHandler) handleGoogleConfig(ctx context.Context, in *authGoogleConf
 	res.Body.RedirectURI = redirectURI
 	return res, nil
 }
+

@@ -12,11 +12,13 @@ import (
 	delivery "github.com/semmidev/restful-template/internal/delivery/http"
 	"github.com/semmidev/restful-template/internal/modules/auth"
 	"github.com/semmidev/restful-template/internal/modules/todos"
+	"github.com/semmidev/restful-template/internal/modules/users"
 	"github.com/semmidev/restful-template/internal/shared/asynqtask"
 	"github.com/semmidev/restful-template/internal/shared/database"
 	"github.com/semmidev/restful-template/internal/shared/email/smtp"
 	jwtpkg "github.com/semmidev/restful-template/internal/shared/jwt"
 	"github.com/semmidev/restful-template/internal/shared/observability"
+	"github.com/semmidev/restful-template/internal/shared/policy"
 	redispkg "github.com/semmidev/restful-template/internal/shared/redis"
 )
 
@@ -37,6 +39,12 @@ func Setup(ctx context.Context, cfg config.Config, logger *slog.Logger) (http.Ha
 			pool.Close()
 			return nil, nil, err
 		}
+	}
+
+	if err := policy.Init(ctx); err != nil {
+		logger.Error("failed to init OPA policy engine", "err", err)
+		pool.Close()
+		return nil, nil, err
 	}
 
 	rdb, limiter, err := redispkg.NewClient(ctx, cfg.Redis.DSN)
@@ -88,6 +96,9 @@ func Setup(ctx context.Context, cfg config.Config, logger *slog.Logger) (http.Ha
 
 	authSvc := auth.NewAuthService(userRepo, tokenSvc, tokenRepo, todoSvc, txManager, tracerAdapter, authDistributor, cfg.Google)
 
+	usersRepo := users.NewUserRepository(pool)
+	usersSvc := users.NewUserService(usersRepo, txManager, tracerAdapter)
+
 	healthCheckers := map[string]delivery.HealthChecker{
 		"postgres": func(hctx context.Context) error {
 			return pool.Ping(hctx)
@@ -97,7 +108,7 @@ func Setup(ctx context.Context, cfg config.Config, logger *slog.Logger) (http.Ha
 		},
 	}
 
-	server := delivery.NewServer(cfg, logger, authSvc, todoSvc, tokenSvc, limiter, healthCheckers, clientOpt)
+	server := delivery.NewServer(cfg, logger, authSvc, todoSvc, usersSvc, tokenSvc, limiter, healthCheckers, clientOpt)
 
 	return server.Handler(), cleanup, nil
 }
