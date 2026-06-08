@@ -94,7 +94,7 @@ func TestPolicyEvaluator(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res, err := evaluator.IsAllowed(ctx, tt.input)
+			res, err := evaluator.Load().IsAllowed(ctx, tt.input)
 			if err != nil {
 				t.Fatalf("IsAllowed returned error: %v", err)
 			}

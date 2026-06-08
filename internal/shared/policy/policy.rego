@@ -4,41 +4,38 @@ import rego.v1
 
 default allow = false
 
-# Role-permission mapping (RBAC)
-role_permissions := {
-    "admin": [
-        "todo:create", "todo:read", "todo:update", "todo:delete", "todo:list", "todo:stats",
-        "auth:delete_account", "auth:switch_role",
-        "user:create", "user:read", "user:update", "user:delete", "user:list"
-    ],
-    "user": [
-        "todo:create", "todo:read", "todo:update", "todo:delete", "todo:list", "todo:stats",
-        "auth:delete_account", "auth:switch_role"
-    ]
-}
+# Access permissions from the dynamically loaded permissions package
+role_permissions := data.permissions.role_permissions
 
-# Check if the active role has the permission
-role_has_permission(role, perm) if {
+# Check if any of the user's roles has the permission
+role_has_permission(roles, perm) if {
+    some role in roles
     role_permissions[role][_] == perm
 }
 
 # Allow evaluation
 allow if {
-    role_has_permission(input.active_role, input.action)
+    role_has_permission(input.roles, input.action)
     is_authorized_for_resource
 }
 
 is_authorized_for_resource if {
     # If no resource owner is specified, ownership check is not applicable
+    not input.resource.owner_id
     not input.resource_owner_id
 }
 
 is_authorized_for_resource if {
     # Admin can access any resource
-    input.active_role == "admin"
+    "admin" in input.roles
 }
 
 is_authorized_for_resource if {
-    # Owner can access their own resource
+    # Owner can access their own resource (legacy)
     input.resource_owner_id == input.user_id
+}
+
+is_authorized_for_resource if {
+    # Owner can access their own resource (new nested)
+    input.resource.owner_id == input.user_id
 }

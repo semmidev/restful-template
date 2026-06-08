@@ -1,6 +1,6 @@
 # OPA Authorization Guide
 
-Dokumentasi ini menjelaskan **Open Policy Agent (OPA)** dari dasar sampai konsep yang lebih advanced, sekaligus membedah policy Rego yang dipakai pada proyek ini.
+Dokumentasi ini menjelaskan **Open Policy Agent (OPA)** dari dasar sampai konsep yang lebih advanced, sekaligus membedah policy Rego dan teknik manajemen policy yang dinamis, thread-safe, dan scalable pada proyek ini.
 
 ---
 
@@ -15,7 +15,7 @@ OPA adalah **policy engine** untuk authorization. Ia membantu aplikasi memisahka
 Pada stack ini, alurnya biasanya seperti berikut:
 
 ```text
-React -> Go API -> OPA -> allow / deny
+React -> Go API -> OPA (Embedded) -> allow / deny
 ```
 
 Keycloak atau sistem auth lain bertugas mengeluarkan identitas user, sedangkan OPA bertugas memutuskan apakah request tersebut diizinkan.
@@ -52,85 +52,84 @@ OPA fokus ke authorization.
 
 ---
 
-### 2. RBAC
+### 2. RBAC Dinamis (Dynamic RBAC)
 
 RBAC = **Role-Based Access Control**.
 
-Hak akses diberikan berdasarkan role.
+Hak akses diberikan berdasarkan role. 
 
-Contoh:
+Dalam proyek ini, hak akses tidak lagi ditulis secara hardcoded dalam file Rego. Sebagai gantinya, data permission disimpan secara dinamis dalam file JSON (`permissions.json`) dan dimuat secara dinamis ke dalam ruang memori OPA saat runtime:
 
-* `admin` → semua akses
-* `user` → akses terbatas
+```json
+{
+  "admin": [
+    "todo:create", "todo:read", "todo:update", "todo:delete", "todo:list", "todo:stats",
+    "auth:delete_account", "auth:switch_role",
+    "user:create", "user:read", "user:update", "user:delete", "user:list"
+  ],
+  "user": [
+    "todo:create", "todo:read", "todo:update", "todo:delete", "todo:list", "todo:stats",
+    "auth:delete_account", "auth:switch_role"
+  ]
+}
+```
 
-Di policy ini, RBAC dipakai lewat mapping:
+Hal ini memungkinkan penambahan permission atau role baru tanpa perlu mengubah logika rule Rego atau melakukan kompilasi ulang (redeploy) kode policy utama.
+
+---
+
+### 3. Multiple Role Evaluation
+
+Seringkali, seorang user memiliki lebih dari satu role (misalnya `user` sekaligus `billing_admin`). Policy pada proyek ini dirancang agar dapat mengevaluasi **seluruh array role** (`input.roles`) yang dimiliki oleh user, bukan hanya satu role aktif saja. Jika salah satu dari role yang dimiliki user memiliki permission untuk aksi tersebut, maka akses akan diizinkan.
+
+---
+
+### 4. Ownership & ABAC (Attribute-Based Access Control)
+
+Selain role, policy ini juga mengecek atribut resource secara dinamis (ABAC). 
+
+Alih-alih menggunakan variabel flat yang kaku (seperti `input.resource_owner_id`), kita menggunakan struktur nested map `input.resource` yang dapat dikembangkan untuk menampung berbagai atribut resource lainnya di masa depan (misal: `status`, `created_at`, `org_id`):
 
 ```rego
-role_permissions := {
-    "admin": [...],
-    "user": [...]
+is_authorized_for_resource if {
+    input.resource.owner_id == input.user_id
 }
 ```
 
 ---
 
-### 3. Ownership Check
-
-Selain role, policy ini juga mengecek kepemilikan resource.
-
-Contoh:
-
-* user boleh mengakses todo miliknya sendiri
-* admin boleh mengakses semua todo
-
-Ini sudah mulai mendekati **RBAC + ABAC sederhana** karena ada atribut tambahan seperti `resource_owner_id` dan `user_id`.
-
----
-
-## Arsitektur Sederhana
+## Arsitektur & Manajemen Policy
 
 ```text
 [React SPA]
     |
     | login / request
     v
-[Go API]
+[Go API (Embedded OPA)]
     |
-    | verify token / build input
+    | Build input map (User ID, Roles, Action, Resource Context)
     v
-[OPA]
+[atomic.Pointer[Evaluator]]
     |
-    | evaluate Rego policy
+    | evaluates rules against data.permissions.role_permissions
     v
-[allow / deny]
+allow / deny
 ```
 
 ### Tugas tiap komponen
 
-**React**
-
-* hanya untuk UI
-* menampilkan menu sesuai permission
-* tidak boleh dipercaya untuk security final
-
-**Go API**
-
-* memverifikasi token
-* mengambil data resource
-* mengirim input ke OPA
-* menegakkan keputusan allow/deny
-
-**OPA**
-
-* membaca input
-* mengevaluasi policy
-* mengembalikan keputusan authorization
+* **React SPA**: Mengirim token access dalam HTTP request.
+* **Go API Server**:
+  * Mengekstrak identitas user dan daftar roles dari context request (didapat dari JWT token).
+  * Memanggil evaluator OPA secara thread-safe menggunakan `atomic.Pointer`.
+  * Mendukung dynamic **Hot-Reloading** lewat fungsi `Reload(ctx, permissionsJSON)` untuk mengganti aturan role-permission saat aplikasi berjalan tanpa downtime.
+* **OPA Engine (In-Process)**: Mengevaluasi rule Rego berdasarkan input dan dynamic data permissions.
 
 ---
 
 ## Policy yang Dipakai
 
-Berikut policy Rego yang dijelaskan dalam dokumentasi ini:
+Berikut policy Rego yang digunakan dalam proyek ini:
 
 ```rego
 package authz
@@ -139,43 +138,40 @@ import rego.v1
 
 default allow = false
 
-# Role-permission mapping (RBAC)
-role_permissions := {
-    "admin": [
-        "todo:create", "todo:read", "todo:update", "todo:delete", "todo:list", "todo:stats",
-        "auth:delete_account", "auth:switch_role",
-        "user:create", "user:read", "user:update", "user:delete", "user:list"
-    ],
-    "user": [
-        "todo:create", "todo:read", "todo:update", "todo:delete", "todo:list", "todo:stats",
-        "auth:delete_account", "auth:switch_role"
-    ]
-}
+# Mengambil mapping permission dari data dynamic permissions package
+role_permissions := data.permissions.role_permissions
 
-# Check if the active role has the permission
-role_has_permission(role, perm) if {
+# Mengecek apakah salah satu dari daftar roles milik user memiliki permission tertentu
+role_has_permission(roles, perm) if {
+    some role in roles
     role_permissions[role][_] == perm
 }
 
-# Allow evaluation
+# Evaluasi perizinan utama
 allow if {
-    role_has_permission(input.active_role, input.action)
+    role_has_permission(input.roles, input.action)
     is_authorized_for_resource
 }
 
 is_authorized_for_resource if {
-    # If no resource owner is specified, ownership check is not applicable
+    # Jika tidak ada resource owner yang dispesifikasikan, ownership check dilewati
+    not input.resource.owner_id
     not input.resource_owner_id
 }
 
 is_authorized_for_resource if {
-    # Admin can access any resource
-    input.active_role == "admin"
+    # Admin dibolehkan mengakses resource apapun
+    "admin" in input.roles
 }
 
 is_authorized_for_resource if {
-    # Owner can access their own resource
+    # Owner diperbolehkan mengakses resourcenya sendiri (legacy)
     input.resource_owner_id == input.user_id
+}
+
+is_authorized_for_resource if {
+    # Owner diperbolehkan mengakses resourcenya sendiri (nested resource map)
+    input.resource.owner_id == input.user_id
 }
 ```
 
@@ -185,384 +181,70 @@ is_authorized_for_resource if {
 
 ### `package authz`
 
-```rego
-package authz
+Menentukan namespace policy. Di Go, evaluator menunjuk namespace ini via query:
+```go
+rego.Query("data.authz.allow")
 ```
-
-Ini menentukan namespace policy.
-
-Artinya rule di dalam file ini nanti bisa diakses sebagai:
-
-```text
-data.authz.allow
-```
-
----
-
-### `import rego.v1`
-
-Baris ini mengaktifkan sintaks Rego modern.
-
-Biasanya dipakai agar penulisan policy lebih rapi dan mengikuti gaya terbaru.
-
----
-
-### `default allow = false`
-
-Ini berarti:
-
-* jika tidak ada rule `allow` yang terpenuhi
-* maka hasil akhirnya adalah `false`
-
-Konsep ini penting karena authorization sebaiknya **default deny**.
-
----
 
 ### `role_permissions`
 
-```rego
-role_permissions := {
-    "admin": [...],
-    "user": [...]
-}
-```
+Mengambil permission list dari modul data dinamis `permissions` yang di-inject dari memory store Go pada runtime.
 
-Ini adalah mapping dari role ke daftar permission.
+### `role_has_permission(roles, perm)`
 
-Contoh:
-
-* role `admin` punya permission untuk todo dan user management
-* role `user` hanya punya permission dasar
-
----
-
-### `role_has_permission(role, perm)`
-
-```rego
-role_has_permission(role, perm) if {
-    role_permissions[role][_] == perm
-}
-```
-
-Rule ini mengecek apakah sebuah role punya permission tertentu.
-
-Kalau disederhanakan ke gaya Go, logikanya mirip seperti:
+Menggunakan loop/quantifier `some role in roles` untuk mengecek apakah setidaknya salah satu role user mengandung permission target. Logika Go-nya setara dengan:
 
 ```go
-func RoleHasPermission(role string, perm string) bool {
-    for _, p := range rolePermissions[role] {
-        if p == perm {
-            return true
+func RoleHasPermission(roles []string, perm string) bool {
+    for _, role := range roles {
+        for _, p := range rolePermissions[role] {
+            if p == perm {
+                return true
+            }
         }
     }
     return false
 }
 ```
 
----
-
-### `allow if { ... }`
-
-```rego
-allow if {
-    role_has_permission(input.active_role, input.action)
-    is_authorized_for_resource
-}
-```
-
-Ini rule utama yang menentukan request boleh atau tidak.
-
-Agar `allow` bernilai `true`, dua syarat harus terpenuhi:
-
-1. role aktif punya permission untuk aksi itu
-2. resource juga lolos pemeriksaan akses
-
----
-
 ### `is_authorized_for_resource`
 
-Rule ini punya beberapa kemungkinan benar. Artinya cukup salah satu bernilai true.
-
-#### 1. Tidak ada resource owner
-
-```rego
-is_authorized_for_resource if {
-    not input.resource_owner_id
-}
-```
-
-Kalau resource tidak punya owner spesifik, ownership check tidak dilakukan.
-
-Contoh:
-
-* list todo
-* stats
-* endpoint umum yang tidak terkait satu resource tertentu
+Fungsi ABAC yang memvalidasi ownership resource secara aman. Jika resource memiliki metadata `owner_id`, OPA akan membandingkannya dengan `input.user_id`.
 
 ---
 
-#### 2. Admin boleh akses semua
-
-```rego
-is_authorized_for_resource if {
-    input.active_role == "admin"
-}
-```
-
-Admin tidak dibatasi oleh ownership.
-
----
-
-#### 3. Owner boleh akses resource miliknya sendiri
-
-```rego
-is_authorized_for_resource if {
-    input.resource_owner_id == input.user_id
-}
-```
-
-Kalau resource milik user itu sendiri, maka akses diizinkan.
-
----
-
-## Cara Membaca Policy Ini
-
-Policy ini bisa dibaca seperti kalimat berikut:
-
-> User boleh melakukan aksi jika role-nya punya permission untuk aksi tersebut, dan resource yang diakses sesuai dengan aturan ownership atau admin override.
-
-Dengan kata lain:
-
-```text
-ALLOW = Role Permission Match AND Resource Access Match
-```
-
----
-
-## Cara Kerja `allow`
-
-Banyak yang mengira `allow` adalah variable biasa. Dalam Rego, `allow` lebih tepat dianggap sebagai **rule**.
-
-Contoh:
-
-```rego
-default allow = false
-
-allow if {
-    ...
-}
-```
-
-Artinya:
-
-* default nilainya `false`
-* jika ada rule yang berhasil, hasilnya menjadi `true`
-
-Jadi OPA tidak sekadar membaca variable, tetapi **mencari bukti** apakah rule `allow` bisa dipenuhi.
-
----
-
-## Contoh Input
+## Contoh Input OPA
 
 ### 1. User biasa mengedit todo miliknya sendiri
-
 ```json
 {
-  "user_id": "123",
-  "active_role": "user",
+  "user_id": "user-123",
+  "roles": ["user"],
   "action": "todo:update",
-  "resource_owner_id": "123"
+  "resource": {
+    "owner_id": "user-123"
+  }
 }
 ```
-
-Hasil:
-
-* permission ada
-* resource milik sendiri
-* **allow = true**
-
----
+**Hasil**: `allow = true` (karena permission `todo:update` ada pada role `user`, dan user_id cocok dengan owner_id).
 
 ### 2. User biasa mengedit todo milik orang lain
-
 ```json
 {
-  "user_id": "123",
-  "active_role": "user",
+  "user_id": "user-123",
+  "roles": ["user"],
   "action": "todo:update",
-  "resource_owner_id": "999"
+  "resource": {
+    "owner_id": "user-999"
+  }
 }
 ```
-
-Hasil:
-
-* permission mungkin ada
-* resource bukan miliknya
-* **allow = false**
+**Hasil**: `allow = false` (karena owner_id tidak cocok dengan user_id).
 
 ---
 
-### 3. Admin mengakses resource apa pun
+## Kelebihan Teknik Dynamic & Thread-Safe OPA di Go
 
-```json
-{
-  "user_id": "1",
-  "active_role": "admin",
-  "action": "user:delete",
-  "resource_owner_id": "999"
-}
-```
-
-Hasil:
-
-* admin punya permission
-* admin boleh akses resource apa pun
-* **allow = true**
-
----
-
-## Kenapa Ada `404 Not Found` di Implementasi Go?
-
-Dalam implementasi Go, kadang hasil deny untuk resource tertentu dikembalikan sebagai `404 Not Found`.
-
-Tujuannya adalah untuk menghindari:
-
-* resource enumeration
-* user mengetahui resource ada tetapi tidak boleh diakses
-
-Dengan pendekatan ini, aplikasi tidak membocorkan informasi bahwa resource tersebut sebenarnya ada.
-
----
-
-## Flow Request End-to-End
-
-```text
-1. User login via Keycloak
-2. React menerima access token
-3. React memanggil Go API
-4. Go API memverifikasi token
-5. Go API membangun input authorization
-6. Go API mengirim input ke OPA
-7. OPA mengevaluasi policy
-8. OPA mengembalikan allow / deny
-9. Go API mengeksekusi atau menolak request
-```
-
----
-
-## Kapan Policy Ini Cocok Dipakai?
-
-Policy ini cocok untuk:
-
-* todo app
-* admin dashboard
-* CMS internal
-* sistem approval sederhana
-* aplikasi dengan role + ownership
-
-Tidak terlalu kompleks, tetapi sudah lebih kuat daripada RBAC murni karena ada ownership awareness.
-
----
-
-## Kelebihan Pendekatan Ini
-
-* policy terpisah dari business logic
-* mudah dibaca dan dirawat
-* default deny
-* bisa berkembang ke ABAC atau policy yang lebih kompleks
-* cocok untuk aplikasi Go yang butuh authorization rapi
-
----
-
-## Hal yang Bisa Dikembangkan
-
-Setelah policy ini stabil, beberapa pengembangan yang umum dilakukan:
-
-### 1. Permission per resource type
-
-Contoh:
-
-* `todo:create`
-* `user:update`
-* `report:export`
-
-### 2. ABAC tambahan
-
-Contoh:
-
-* branch harus sama
-* department harus sama
-* status resource harus `draft` atau `pending`
-
-### 3. Decision object
-
-Bukan hanya `allow` atau `deny`, tetapi juga alasan keputusan.
-
-Contoh:
-
-```rego
-decision := {
-  "allow": true,
-  "reason": "owner"
-}
-```
-
-### 4. Policy per domain
-
-Bisa dipisah menjadi:
-
-* `authz.rego`
-* `todo.rego`
-* `user.rego`
-* `report.rego`
-
----
-
-## Integrasi ke Go
-
-Secara umum, Go akan:
-
-* membaca user identity dari context
-* membaca role aktif dan roles list
-* mengambil resource owner id jika diperlukan
-* mengirim semua itu ke OPA
-* mengecek hasil `allow`
-
-Pattern ini membuat handler tetap bersih dan authorization logic tidak tersebar di banyak tempat.
-
----
-
-## Ringkasan Konsep
-
-```text
-package authz          -> namespace policy
-allow                  -> nama rule keputusan
-default allow = false  -> default deny
-role_permissions       -> mapping role ke permission
-role_has_permission    -> cek permission berdasarkan role
-is_authorized_for_resource -> cek ownership / admin override
-```
-
----
-
-## Kesimpulan
-
-Policy ini adalah contoh authorization yang sudah cukup matang untuk aplikasi modern:
-
-* memakai RBAC sebagai dasar
-* menambahkan ownership check
-* mengikuti prinsip default deny
-* mudah dikembangkan ke ABAC atau policy yang lebih advanced
-
-Kalau kamu paham policy ini, kamu sudah punya pondasi yang kuat untuk membangun authorization yang rapi di Go + React + Keycloak + OPA.
-
----
-
-## Next Step
-
-Langkah berikut yang paling berguna biasanya adalah:
-
-1. menambahkan diagram arsitektur
-2. menambahkan contoh request/response API
-3. menambahkan contoh implementasi middleware Go
-4. menambahkan contoh policy testing dengan OPA
+1. **Zero-Downtime Hot-Reloading**: Melalui `atomic.Pointer` di Go, kita dapat memanggil `Reload` untuk mengganti memori dynamic permissions tanpa memblokir request yang sedang berjalan (Lock-free Read).
+2. **Flexible ABAC Expansion**: Variabel nested `resource` map pada input OPA memungkinkan penulisan policy berdasarkan status task, department, IP range, dll., tanpa perlu mengubah tipe struct di Go.
+3. **No Redundant Re-compilation**: Dengan memisahkan deklarasi policy (.rego) dari skema permission (.json), perubahan pemetaan permission dapat dilakukan secara runtime (misal ditarik dari Redis cache atau database PostgreSQL).

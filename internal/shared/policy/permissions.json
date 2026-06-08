@@ -1,0 +1,11 @@
+{
+  "admin": [
+    "todo:create", "todo:read", "todo:update", "todo:delete", "todo:list", "todo:stats",
+    "auth:delete_account", "auth:switch_role",
+    "user:create", "user:read", "user:update", "user:delete", "user:list"
+  ],
+  "user": [
+    "todo:create", "todo:read", "todo:update", "todo:delete", "todo:list", "todo:stats",
+    "auth:delete_account", "auth:switch_role"
+  ]
+}
