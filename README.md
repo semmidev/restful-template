@@ -7,15 +7,29 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/semmidev/restful-template/ci.yml?label=CI&style=flat-square)](https://github.com/semmidev/restful-template/actions/workflows/ci.yml)
 [![CD](https://img.shields.io/github/actions/workflow/status/semmidev/restful-template/cd.yml?label=CD&style=flat-square)](https://github.com/semmidev/restful-template/actions/workflows/cd.yml)
 
-Aplikasi web fullstack ini mengusung arsitektur **Modular Monolith (Package by Feature)**, dengan frontend berupa Single Page Application (SPA) berbasis React, TypeScript, Zustand, Zod, dan Shadcn UI yang tersemat (*embedded*) langsung di dalam binary Go. Backend berkinerja tinggi menggunakan Chi, *auto-generation* OpenAPI 3.1 dengan Huma v2, serta PostgreSQL 18 untuk men-generate UUID yang aman dan terurut berdasarkan waktu (*time-ordered*).
+Template ini dirancang untuk membangun aplikasi web dengan arsitektur Modular Monolith yang sederhana untuk dikembangkan, mudah dipelihara, dan siap berkembang seiring kebutuhan bisnis. Frontend dan backend terintegrasi dalam satu deployment unit, sehingga proses pengembangan, distribusi, dan operasional menjadi lebih efisien. Template ini juga telah dilengkapi dengan dokumentasi API otomatis serta fondasi yang siap digunakan untuk membangun aplikasi produksi.
 
 Untuk panduan detail bagi AI Agent/Copilot dalam memahami standar engineering dan batasan arsitektur repositori ini, silakan merujuk ke [AGENTS.md](AGENTS.md).
 
 ## Preview
 
-![API Documentation](assets/api-docs.png)
-![Web UI](assets/web-ui.png)
-![API Monitoring](assets/api-monitoring.png)
+### API Documentation
+
+<p align="center">
+  <img src="assets/api-docs.png" alt="API Documentation" width="100%">
+</p>
+
+### Web UI
+
+<p align="center">
+  <img src="assets/web-ui.png" alt="Web UI" width="100%">
+</p>
+
+### API Monitoring
+
+<p align="center">
+  <img src="assets/api-monitoring.png" alt="API Monitoring" width="100%">
+</p>
 
 ## Tech Stack
 
@@ -174,7 +188,7 @@ Proyek ini melampaui sekadar kerangka kerja RESTful biasa dan menerapkan pola *E
      4. SPA memverifikasi `state`, mengambil `code_verifier`, lalu mengirimkan `code` dan `code_verifier` ke Go backend.
      5. Go backend melakukan pertukaran kode (*token exchange*) secara aman ke Google Token API. Google memverifikasi `code_verifier` terhadap `code_challenge` awal.
      6. Setelah divalidasi oleh Google, Go backend mengambil data profil user, mencocokkannya ke database (membuat user baru jika belum ada), dan menghasilkan JWT Session token (Access & Refresh) yang disimpan secara aman di dalam cookie HTTP-Only (Set-Cookie) untuk dikembalikan ke React SPA.
-   
+
    ```mermaid
    sequenceDiagram
        autonumber
@@ -483,29 +497,6 @@ Selama server berjalan, dokumentasi interaktif dapat diakses di:
 | **OpenAPI 3.1 JSON** | [http://localhost:8080/openapi.json](http://localhost:8080/openapi.json) |
 | **Asynqmon Worker UI** | [http://localhost:8080/admin/asynq](http://localhost:8080/admin/asynq) (login: `ASYNQMON_USERNAME` / `ASYNQMON_PASSWORD`) |
 | **Grafana Dashboard** | [http://localhost:3000](http://localhost:3000) |
-
----
-
-## Konfigurasi Variabel (`.env`)
-
-Salin `.env.example` ke `.env` dan sesuaikan nilai-nilainya.
-
-| Variabel | Deskripsi | Default |
-| :--- | :--- | :--- |
-| `APP_ENV` | Mode operasi (`development` / `production`) | `development` |
-| `APP_NAME` | Nama aplikasi | `restful-template` |
-| `APP_DESCRIPTION` | Deskripsi singkat aplikasi | `Template RESTful API menggunakan Go 1.26` |
-| `HTTP_PORT` | Port server HTTP | `8080` |
-| `DATABASE_DSN` | Connection string PostgreSQL | `postgres://todo:todo@localhost:5432/todo?sslmode=disable` |
-| `REDIS_DSN` | Connection string Redis | `redis://localhost:6379/0` |
-| `JWT_SECRET` | Secret key untuk signing JWT (**WAJIB** diganti di production) | `change-me-in-production-min-32-bytes!` |
-| `JWT_ACCESS_TTL` | Masa berlaku Access Token | `15m` |
-| `JWT_REFRESH_TTL` | Masa berlaku Refresh Token | `168h` |
-| `LOG_LEVEL` | Verbositas log (`debug`, `info`, `warn`, `error`) | `info` |
-| `LOG_FORMAT` | Format log (`json` untuk production, `text` untuk lokal) | `json` |
-| `TELEMETRY_OTLP_ENDPOINT` | OpenTelemetry gRPC target endpoint | `localhost:4317` |
-| `ASYNQMON_USERNAME` | Username untuk Basic Auth Asynqmon Web UI | `admin` |
-| `ASYNQMON_PASSWORD` | Password untuk Basic Auth Asynqmon Web UI (**WAJIB** diganti di production) | `admin` |
 
 ---
 
