@@ -20,6 +20,7 @@ import {
   SidebarMenuItem,
   SidebarGroup,
   SidebarGroupLabel,
+  SidebarSeparator,
 } from "@/components/ui/sidebar"
 import {
   DropdownMenu,
@@ -28,6 +29,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import useAuthStore from "@/features/auth/store"
@@ -129,19 +134,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               </SidebarMenuButton>
             </SidebarMenuItem>
             {canListUsers && (
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={isUsersActive}
-                  className="h-8.5 font-medium transition-all group-data-[collapsible=icon]:p-2! data-[active=true]:bg-accent/80 data-[active=true]:text-foreground rounded-lg"
-                  tooltip="User Management"
-                  asChild
-                >
-                  <Link to="/users" className="flex items-center gap-2.5 px-2">
-                    <User className={`size-4 transition-colors ${isUsersActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`} />
-                    <span className={`text-xs font-semibold ${isUsersActive ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'}`}>User Management</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              <>
+                <SidebarSeparator className="my-2" />
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={isUsersActive}
+                    className="h-8.5 font-medium transition-all group-data-[collapsible=icon]:p-2! data-[active=true]:bg-accent/80 data-[active=true]:text-foreground rounded-lg"
+                    tooltip="User Management"
+                    asChild
+                  >
+                    <Link to="/users" className="flex items-center gap-2.5 px-2">
+                      <User className={`size-4 transition-colors ${isUsersActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`} />
+                      <span className={`text-xs font-semibold ${isUsersActive ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'}`}>User Management</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </>
             )}
           </SidebarMenu>
         </SidebarGroup>
@@ -169,7 +177,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       {email}
                     </span>
                     <span className="truncate text-[9px] text-primary/90 font-extrabold uppercase tracking-wider mt-0.5">
-                      Role: {activeRole}
+                      {activeRole}
                     </span>
                   </div>
                 </SidebarMenuButton>
@@ -199,26 +207,33 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuLabel className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Switch Role
-                </DropdownMenuLabel>
-                {roles.map((r) => (
-                  <DropdownMenuItem
-                    key={r}
-                    onClick={() => r !== activeRole && switchRole(r)}
-                    className="flex items-center justify-between font-medium cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2">
-                      {r === "admin" ? (
-                        <Shield className="size-3.5 text-indigo-500" />
-                      ) : (
-                        <User className="size-3.5 text-slate-500" />
-                      )}
-                      <span className="capitalize text-xs">{r}</span>
-                    </div>
-                    {r === activeRole && <Check className="size-3.5 text-primary" />}
-                  </DropdownMenuItem>
-                ))}
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="cursor-pointer font-semibold text-xs py-1.5">
+                    <Shield className="size-3.5 mr-2 text-muted-foreground" />
+                    <span>Switch Role</span>
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuPortal>
+                    <DropdownMenuSubContent className="w-48">
+                      {roles.map((r) => (
+                        <DropdownMenuItem
+                          key={r}
+                          onClick={() => r !== activeRole && switchRole(r)}
+                          className="flex items-center justify-between font-medium cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2">
+                            {r === "admin" ? (
+                              <Shield className="size-3.5 text-indigo-500" />
+                            ) : (
+                              <User className="size-3.5 text-slate-500" />
+                            )}
+                            <span className="capitalize text-xs">{r}</span>
+                          </div>
+                          {r === activeRole && <Check className="size-3.5 text-primary" />}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuPortal>
+                </DropdownMenuSub>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-destructive font-semibold">
                   <LogOut className="size-4 mr-2" />
