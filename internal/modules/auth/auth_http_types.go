@@ -109,4 +109,3 @@ type authGoogleConfigRes struct {
 		RedirectURI string `json:"redirect_uri"`
 	}
 }
-

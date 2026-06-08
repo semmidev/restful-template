@@ -174,4 +174,3 @@ func (h *authHandler) handleGoogleConfig(ctx context.Context, in *authGoogleConf
 	res.Body.RedirectURI = redirectURI
 	return res, nil
 }
-

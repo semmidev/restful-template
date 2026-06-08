@@ -139,4 +139,3 @@ func (s *JWTService) parse(token, typ string) (*TokenClaims, error) {
 		Roles:      roles,
 	}, nil
 }
-

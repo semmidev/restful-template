@@ -86,4 +86,3 @@ func RegisterAuthRoutes(api huma.API, auth AuthService, cfg config.Config) {
 		Security:    []map[string][]string{{"bearerAuth": {}}},
 	}, h.handleSwitchRole)
 }
-

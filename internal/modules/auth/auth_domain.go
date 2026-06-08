@@ -72,4 +72,3 @@ type AuthService interface {
 	DeleteAccount(ctx context.Context, userID uuid.UUID) error
 	SwitchRole(ctx context.Context, userID uuid.UUID, role string) (TokenPair, error)
 }
-

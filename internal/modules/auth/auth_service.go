@@ -373,4 +373,3 @@ func hashToken(token string) string {
 func (s *Service) GoogleConfig() (clientID, redirectURI string) {
 	return s.googleCfg.ClientID, s.googleCfg.RedirectURI
 }
-

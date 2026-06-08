@@ -32,10 +32,10 @@ func (in *CreateUserInput) Validate() error {
 }
 
 type UpdateUserInput struct {
-	Email      *string   `json:"email,omitempty"`
-	Password   *string   `json:"password,omitempty"`
-	ActiveRole *string   `json:"active_role,omitempty"`
-	Roles      []string  `json:"roles,omitempty"`
+	Email      *string  `json:"email,omitempty"`
+	Password   *string  `json:"password,omitempty"`
+	ActiveRole *string  `json:"active_role,omitempty"`
+	Roles      []string `json:"roles,omitempty"`
 }
 
 func (in *UpdateUserInput) Validate(currentActiveRole string, currentRoles []string) error {
