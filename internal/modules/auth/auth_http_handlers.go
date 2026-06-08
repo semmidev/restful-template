@@ -10,7 +10,7 @@ import (
 )
 
 func (h *authHandler) makeCookie(name, value, path string, maxAge int) string {
-	cookie := &http.Cookie{
+	cookie := &http.Cookie{ //nolint:gosec // Secure is intentionally set based on runtime env config; HttpOnly and SameSite are always present
 		Name:     name,
 		Value:    value,
 		Path:     path,

@@ -123,7 +123,7 @@ func doRequest(api http.Handler, method, path, token string, body []byte, conten
 		req.Header.Set("Content-Type", contentType)
 	}
 	if token != "" {
-		req.AddCookie(&http.Cookie{
+		req.AddCookie(&http.Cookie{ //nolint:gosec // Test-only cookie; Secure/HttpOnly/SameSite are not required in integration test requests
 			Name:  "access_token",
 			Value: token,
 		})
