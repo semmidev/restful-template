@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import useAuthStore from "@/features/auth/store"
+import { usePermission } from "@/hooks/usePermission"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const navigate = useNavigate()
@@ -41,6 +42,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const email = userEmail || "user@example.com"
   const activeRole = useAuthStore((state) => state.activeRole) || "user"
   const roles = useAuthStore((state) => state.roles) || ["user"]
+  const canListUsers = usePermission("user:list")
 
   const username = React.useMemo(() => {
     return email.split("@")[0] || "User"
@@ -126,7 +128,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-            {activeRole === "admin" && (
+            {canListUsers && (
               <SidebarMenuItem>
                 <SidebarMenuButton
                   isActive={isUsersActive}

@@ -3,9 +3,9 @@ package delivery
 import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/semmidev/restful-template/internal/config"
+	"github.com/semmidev/restful-template/internal/modules/adm/users"
 	"github.com/semmidev/restful-template/internal/modules/auth"
 	"github.com/semmidev/restful-template/internal/modules/todos"
-	"github.com/semmidev/restful-template/internal/modules/users"
 )
 
 // RegisterRoutes wires all module routes onto the Huma API.

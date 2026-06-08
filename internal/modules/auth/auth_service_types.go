@@ -15,6 +15,7 @@ type TokenPair struct {
 	UserEmail    string    `json:"user_email"`
 	ActiveRole   string    `json:"active_role"`
 	Roles        []string  `json:"roles"`
+	Permissions  []string  `json:"permissions"`
 }
 
 type RegisterInput struct {

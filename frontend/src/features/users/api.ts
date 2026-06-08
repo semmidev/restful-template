@@ -23,17 +23,17 @@ export interface UpdateUserInput {
 }
 
 export async function fetchUsersRequest(params: FetchUsersParams) {
-  return client.get('/admin/users', { params });
+  return client.get('/adm/users', { params });
 }
 
 export async function createUserRequest(input: CreateUserInput) {
-  return client.post('/admin/users', input);
+  return client.post('/adm/users', input);
 }
 
 export async function updateUserRequest(id: string, input: UpdateUserInput) {
-  return client.patch(`/admin/users/${id}`, input);
+  return client.patch(`/adm/users/${id}`, input);
 }
 
 export async function deleteUserRequest(id: string) {
-  return client.delete(`/admin/users/${id}`);
+  return client.delete(`/adm/users/${id}`);
 }

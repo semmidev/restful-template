@@ -15,7 +15,8 @@ import (
 var regoPolicy string
 
 type Evaluator struct {
-	query rego.PreparedEvalQuery
+	query      rego.PreparedEvalQuery
+	permsQuery rego.PreparedEvalQuery
 }
 
 var evaluator *Evaluator
@@ -31,8 +32,60 @@ func Init(ctx context.Context) error {
 		return fmt.Errorf("failed to prepare rego query: %w", err)
 	}
 
-	evaluator = &Evaluator{query: query}
+	rPerms := rego.New(
+		rego.Query("data.authz.role_permissions"),
+		rego.Module("policy.rego", regoPolicy),
+	)
+	permsQuery, err := rPerms.PrepareForEval(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to prepare rego permissions query: %w", err)
+	}
+
+	evaluator = &Evaluator{
+		query:      query,
+		permsQuery: permsQuery,
+	}
 	return nil
+}
+
+// GetRolePermissions queries OPA to return all permissions assigned to a given role.
+func GetRolePermissions(ctx context.Context, role string) ([]string, error) {
+	if evaluator == nil {
+		return nil, apperrors.NewInternal("policy evaluator is not initialized", nil)
+	}
+
+	results, err := evaluator.permsQuery.Eval(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to evaluate permissions: %w", err)
+	}
+
+	if len(results) == 0 || len(results[0].Expressions) == 0 {
+		return nil, nil
+	}
+
+	rawMap, ok := results[0].Expressions[0].Value.(map[string]interface{})
+	if !ok {
+		return nil, nil
+	}
+
+	rawList, ok := rawMap[role]
+	if !ok {
+		return nil, nil
+	}
+
+	list, ok := rawList.([]interface{})
+	if !ok {
+		return nil, nil
+	}
+
+	perms := make([]string, len(list))
+	for i, v := range list {
+		if s, ok := v.(string); ok {
+			perms[i] = s
+		}
+	}
+
+	return perms, nil
 }
 
 type Input struct {

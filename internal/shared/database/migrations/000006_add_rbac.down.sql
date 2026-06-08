@@ -1,3 +1,0 @@
-ALTER TABLE users DROP COLUMN IF EXISTS active_role;
-DROP TABLE IF EXISTS user_roles;
-DROP TABLE IF EXISTS roles;

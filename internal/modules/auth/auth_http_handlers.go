@@ -47,6 +47,7 @@ func (h *authHandler) handleRegister(ctx context.Context, in *authRegisterReq) (
 	res.Body.User.Email = pair.UserEmail
 	res.Body.User.ActiveRole = pair.ActiveRole
 	res.Body.User.Roles = pair.Roles
+	res.Body.User.Permissions = pair.Permissions
 	return res, nil
 }
 
@@ -66,6 +67,7 @@ func (h *authHandler) handleLogin(ctx context.Context, in *authLoginReq) (*authL
 	res.Body.User.Email = pair.UserEmail
 	res.Body.User.ActiveRole = pair.ActiveRole
 	res.Body.User.Roles = pair.Roles
+	res.Body.User.Permissions = pair.Permissions
 	return res, nil
 }
 
@@ -89,6 +91,7 @@ func (h *authHandler) handleRefresh(ctx context.Context, in *authRefreshReq) (*a
 	res.Body.User.Email = pair.UserEmail
 	res.Body.User.ActiveRole = pair.ActiveRole
 	res.Body.User.Roles = pair.Roles
+	res.Body.User.Permissions = pair.Permissions
 	return res, nil
 }
 
@@ -146,6 +149,7 @@ func (h *authHandler) handleSwitchRole(ctx context.Context, in *authSwitchRoleRe
 	res.Body.User.Email = pair.UserEmail
 	res.Body.User.ActiveRole = pair.ActiveRole
 	res.Body.User.Roles = pair.Roles
+	res.Body.User.Permissions = pair.Permissions
 	return res, nil
 }
 
@@ -164,6 +168,7 @@ func (h *authHandler) handleGoogleLogin(ctx context.Context, in *authGoogleLogin
 	res.Body.User.Email = pair.UserEmail
 	res.Body.User.ActiveRole = pair.ActiveRole
 	res.Body.User.Roles = pair.Roles
+	res.Body.User.Permissions = pair.Permissions
 	return res, nil
 }
 

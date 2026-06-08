@@ -7,6 +7,7 @@ interface AuthState {
   userEmail: string | null;
   activeRole: string | null;
   roles: string[];
+  permissions: string[];
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
@@ -24,6 +25,7 @@ export const useAuthStore = create<AuthState>()(
       userEmail: null,
       activeRole: null,
       roles: [],
+      permissions: [],
       isAuthenticated: false,
       isLoading: false,
       error: null,
@@ -38,6 +40,7 @@ export const useAuthStore = create<AuthState>()(
             userEmail: user.email,
             activeRole: user.active_role || 'user',
             roles: user.roles || ['user'],
+            permissions: user.permissions || [],
             isAuthenticated: true,
             isLoading: false,
             error: null,
@@ -63,6 +66,7 @@ export const useAuthStore = create<AuthState>()(
             userEmail: user.email,
             activeRole: user.active_role || 'user',
             roles: user.roles || ['user'],
+            permissions: user.permissions || [],
             isAuthenticated: true,
             isLoading: false,
             error: null,
@@ -85,6 +89,7 @@ export const useAuthStore = create<AuthState>()(
             userEmail: user.email,
             activeRole: user.active_role || 'user',
             roles: user.roles || ['user'],
+            permissions: user.permissions || [],
             isAuthenticated: true,
             isLoading: false,
             error: null,
@@ -107,6 +112,7 @@ export const useAuthStore = create<AuthState>()(
           userEmail: null,
           activeRole: null,
           roles: [],
+          permissions: [],
           isAuthenticated: false,
           error: null,
         });
@@ -122,6 +128,7 @@ export const useAuthStore = create<AuthState>()(
             userEmail: user.email,
             activeRole: user.active_role || 'user',
             roles: user.roles || ['user'],
+            permissions: user.permissions || [],
             isAuthenticated: true,
             isLoading: false,
             error: null,
@@ -142,6 +149,7 @@ export const useAuthStore = create<AuthState>()(
         userEmail: state.userEmail,
         activeRole: state.activeRole,
         roles: state.roles,
+        permissions: state.permissions,
         isAuthenticated: state.isAuthenticated,
       }),
     }

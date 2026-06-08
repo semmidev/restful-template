@@ -18,6 +18,7 @@ import (
 	"github.com/semmidev/restful-template/internal/shared/database"
 	apperrors "github.com/semmidev/restful-template/internal/shared/errors"
 	"github.com/semmidev/restful-template/internal/shared/observability"
+	"github.com/semmidev/restful-template/internal/shared/policy"
 )
 
 type Service struct {
@@ -134,6 +135,11 @@ func (s *Service) issuePair(ctx context.Context, u *User) (TokenPair, error) {
 		return TokenPair{}, apperrors.NewInternal("Failed to store session", err)
 	}
 
+	perms, err := policy.GetRolePermissions(ctx, u.ActiveRole)
+	if err != nil {
+		return TokenPair{}, apperrors.NewInternal("Failed to load permissions", err)
+	}
+
 	return TokenPair{
 		AccessToken:  access,
 		RefreshToken: refresh,
@@ -142,6 +148,7 @@ func (s *Service) issuePair(ctx context.Context, u *User) (TokenPair, error) {
 		UserEmail:    u.Email,
 		ActiveRole:   u.ActiveRole,
 		Roles:        u.Roles,
+		Permissions:  perms,
 	}, nil
 }
 

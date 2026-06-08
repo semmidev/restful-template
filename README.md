@@ -57,7 +57,7 @@ Untuk panduan detail bagi AI Agent/Copilot dalam memahami standar engineering da
 | **Auth & Policy** | JWT Cookie-Based Session (Access + Refresh) · Argon2id password hashing · **Open Policy Agent (OPA)** (policy engine embedded) |
 | **Observability** | OpenTelemetry · Prometheus · Grafana LGTM Stack |
 | **Async Worker** | [asynq](https://github.com/hibiken/asynq) — Redis-backed task queue (separate binary) |
-| **Worker UI** | [asynqmon](https://github.com/hibiken/asynqmon) — Web UI mounted at `/admin/asynq` (Basic Auth) |
+| **Worker UI** | [asynqmon](https://github.com/hibiken/asynqmon) — Web UI mounted at `/adm/asynq` (Basic Auth) |
 | **Config** | [Viper](https://github.com/spf13/viper) — `.env` + OS env vars |
 | **Testing** | [testcontainers-go](https://github.com/testcontainers/testcontainers-go) — E2E Integration Tests |
 
@@ -158,7 +158,7 @@ make run
   - **OpenTelemetry** (OTEL) untuk *distributed tracing* (`otelchi`) dan DB traces (`otelpgx`).
   - *Graceful shutdown*, propagasi Request ID, *panic recovery middleware*.
   - Format error RFC 9457 (`application/problem+json`).
-  - **Asynqmon Web UI** (`/admin/asynq`) — pantau antrian task, worker, dan job history secara visual, dilindungi dengan Basic Auth.
+  - **Asynqmon Web UI** (`/adm/asynq`) — pantau antrian task, worker, dan job history secara visual, dilindungi dengan Basic Auth.
 
 - **Configuration & Deployment**
   - Standar *12-Factor App* via Viper (`.env` + OS environment variables).

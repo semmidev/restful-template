@@ -52,6 +52,7 @@ import { AppSidebar } from '@/components/app-sidebar';
 import useAuthStore from '../../auth/store';
 import useUsersStore, { User } from '../store';
 import { createUserSchema, updateUserSchema } from '../../../lib/schemas';
+import { usePermission } from '@/hooks/usePermission';
 
 export default function Users() {
   const navigate = useNavigate();
@@ -59,6 +60,7 @@ export default function Users() {
   const logout = useAuthStore((state) => state.logout);
   const currentUserEmail = useAuthStore((state) => state.userEmail);
   const activeRole = useAuthStore((state) => state.activeRole);
+  const canListUsers = usePermission('user:list');
 
   const {
     users,
@@ -103,18 +105,18 @@ export default function Users() {
   // Local debounced keyword state
   const [searchKeyword, setSearchKeyword] = useState(keyword);
 
-  // Redirect if not admin
+  // Redirect if not authorized
   useEffect(() => {
-    if (activeRole !== 'admin') {
+    if (!canListUsers) {
       navigate('/');
     }
-  }, [activeRole, navigate]);
+  }, [canListUsers, navigate]);
 
   useEffect(() => {
-    if (activeRole === 'admin') {
+    if (canListUsers) {
       fetchUsers();
     }
-  }, [page, keyword, sortBy, sortDir, fetchUsers, activeRole]);
+  }, [page, keyword, sortBy, sortDir, fetchUsers, canListUsers]);
 
   useEffect(() => {
     setSearchKeyword(keyword);
@@ -254,7 +256,7 @@ export default function Users() {
 
   const totalPages = Math.max(1, Math.ceil(total / perPage));
 
-  if (activeRole !== 'admin') {
+  if (!canListUsers) {
     return null;
   }
 

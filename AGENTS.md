@@ -25,7 +25,7 @@ intentionally kept simple so the *infrastructure and engineering patterns* take 
 |                  | Grafana Loki (logs via structured `slog`)             |
 | Scheduler        | `go-co-op/gocron v2` (separate binary)               |
 | Async Worker     | `hibiken/asynq` (separate binary, Redis-backed queue)|
-| Worker UI        | `hibiken/asynqmon` (mounted at `/admin/asynq`, Basic Auth) |
+| Worker UI        | `hibiken/asynqmon` (mounted at `/adm/asynq`, Basic Auth) |
 | Testing          | `smartystreets/goconvey` + `testcontainers-go`       |
 | Linting          | `golangci-lint v2` (see `.golangci.yml`)             |
 
@@ -55,7 +55,8 @@ internal/
 ├── modules/
 │   ├── auth/        ← auth domain, repository, service, HTTP handler, middleware
 │   ├── todos/       ← todos domain, repository, service, HTTP handler
-│   └── users/       ← users CRUD management domain, repository, service, HTTP handler
+│   └── adm/
+│       └── users/   ← users CRUD management domain, repository, service, HTTP handler
 ├── web/             ← embedded static SPA web server handler (go:embed)
 └── shared/
     ├── asynqtask/   ← task type constants, payload structs, TaskDistributor (producer)
@@ -393,7 +394,7 @@ The following patterns are **explicitly prohibited** in this codebase:
 | API        | http://localhost:8080     | Main application                 |
 | OpenAPI    | http://localhost:8080/docs| Huma auto-generated Swagger UI   |
 | Metrics    | http://localhost:8080/metrics | Prometheus scrape endpoint   |
-| Asynqmon   | http://localhost:8080/admin/asynq | Worker queue monitor (Basic Auth) |
+| Asynqmon   | http://localhost:8080/adm/asynq | Worker queue monitor (Basic Auth) |
 | Prometheus | http://localhost:9090     | Metrics storage                  |
 | Grafana    | http://localhost:3000     | Dashboards (metrics + logs + traces) |
 | Loki       | http://localhost:3100     | Log aggregation                  |
@@ -416,4 +417,4 @@ Logs are structured JSON via `log/slog`, collected by Alloy and forwarded to Lok
 6. **Wide events via `wideevent`**: A single structured log line per request carries all domain context (user ID, todo ID, counts) rather than multiple log statements scattered through the call stack. This makes Loki queries dramatically more useful.
 7. **`SafeError` with `Unwrap()`**: Allows `errors.Is(err, apperrors.ErrNotFound)` to work through the stack while keeping the public-facing message safe and the internal cause available for structured logging.
 8. **Service Interfaces over Concrete Structs**: Services (`AuthService`, `TodoService`) are exposed as interfaces to the HTTP layer and other modules. This enables isolated unit testing of HTTP handlers (mocking the service without DB setup), prevents strict cross-module coupling (circular dependencies), and enforces architectural boundaries.
-9. **Separate `cmd/worker` binary (asynq)**: Async task processing runs in its own isolated binary. The `TaskDistributor` interface (defined in the calling module's domain file) points to `internal/shared/asynqtask.Distributor` — this keeps the boundary clean. Worker handlers are implemented directly inside their respective modules (e.g., `auth_worker.go`) and registered in `cmd/worker`. The `ASYNQMON_USERNAME`/`ASYNQMON_PASSWORD` env vars guard the built-in Web UI at `/admin/asynq`.
+9. **Separate `cmd/worker` binary (asynq)**: Async task processing runs in its own isolated binary. The `TaskDistributor` interface (defined in the calling module's domain file) points to `internal/shared/asynqtask.Distributor` — this keeps the boundary clean. Worker handlers are implemented directly inside their respective modules (e.g., `auth_worker.go`) and registered in `cmd/worker`. The `ASYNQMON_USERNAME`/`ASYNQMON_PASSWORD` env vars guard the built-in Web UI at `/adm/asynq`.

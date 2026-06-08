@@ -1,2 +1,0 @@
-DROP TABLE IF EXISTS todos;
-DROP TYPE IF EXISTS todo_status;

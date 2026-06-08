@@ -104,3 +104,36 @@ func TestPolicyEvaluator(t *testing.T) {
 		})
 	}
 }
+
+func TestGetRolePermissions(t *testing.T) {
+	ctx := context.Background()
+	err := Init(ctx)
+	if err != nil {
+		t.Fatalf("failed to initialize evaluator: %v", err)
+	}
+
+	adminPerms, err := GetRolePermissions(ctx, "admin")
+	if err != nil {
+		t.Fatalf("failed to get admin permissions: %v", err)
+	}
+	found := false
+	for _, p := range adminPerms {
+		if p == "user:create" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected admin to have user:create permission")
+	}
+
+	userPerms, err := GetRolePermissions(ctx, "user")
+	if err != nil {
+		t.Fatalf("failed to get user permissions: %v", err)
+	}
+	for _, p := range userPerms {
+		if p == "user:create" {
+			t.Errorf("expected user not to have user:create permission")
+		}
+	}
+}

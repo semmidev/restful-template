@@ -30,7 +30,7 @@ var logSkipPaths = map[string]struct{}{
 // canonical log line. Use for entire sub-trees (e.g. admin UIs with many static
 // assets) where exact-path enumeration is impractical.
 var logSkipPrefixes = []string{
-	"/admin/asynq/", // asynqmon SPA static assets & polling endpoints
+	"/adm/asynq/", // asynqmon SPA static assets & polling endpoints
 }
 
 // Logger is the canonical wide-event middleware.

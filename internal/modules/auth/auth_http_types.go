@@ -1,10 +1,11 @@
 package auth
 
 type authUserResponse struct {
-	ID         string   `json:"id"`
-	Email      string   `json:"email"`
-	ActiveRole string   `json:"active_role"`
-	Roles      []string `json:"roles"`
+	ID          string   `json:"id"`
+	Email       string   `json:"email"`
+	ActiveRole  string   `json:"active_role"`
+	Roles       []string `json:"roles"`
+	Permissions []string `json:"permissions"`
 }
 
 // Register

@@ -49,7 +49,7 @@ func (h *userHandler) handleList(ctx context.Context, in *listUsersReq) (*listUs
 	resp.Body.Data.SortDir = in.SortDir
 
 	links := make(map[string]string)
-	baseURL := "/api/v1/admin/users"
+	baseURL := "/api/v1/adm/users"
 	links["self"] = fmt.Sprintf("%s?page=%d&per_page=%d", baseURL, in.Page, in.PerPage)
 	links["first"] = fmt.Sprintf("%s?page=%d&per_page=%d", baseURL, 1, in.PerPage)
 

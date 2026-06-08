@@ -16,9 +16,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/riandyrn/otelchi"
 	"github.com/semmidev/restful-template/internal/config"
+	"github.com/semmidev/restful-template/internal/modules/adm/users"
 	"github.com/semmidev/restful-template/internal/modules/auth"
 	"github.com/semmidev/restful-template/internal/modules/todos"
-	"github.com/semmidev/restful-template/internal/modules/users"
 	sharedmw "github.com/semmidev/restful-template/internal/shared/middleware"
 	"github.com/semmidev/restful-template/internal/web"
 	"go.opentelemetry.io/otel/trace"
@@ -74,7 +74,7 @@ func NewServer(
 	r.Get("/metrics", promhttp.Handler().ServeHTTP)
 
 	asynqmonUI := asynqmon.New(asynqmon.Options{
-		RootPath:     "/admin/asynq",
+		RootPath:     "/adm/asynq",
 		RedisConnOpt: redisClientOpt,
 	})
 
