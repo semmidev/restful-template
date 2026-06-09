@@ -32,6 +32,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { AppSidebar } from '@/components/app-sidebar';
 import useTodoStore, { Todo } from '../store';
 import { todoSchema } from '../../../lib/schemas';
+import { formatDueAtDisplay } from '@/lib/utils';
 
 // ─── Quadrant Config ─────────────────────────────────────────────────────────
 
@@ -146,7 +147,7 @@ function TodoCard({ todo, quadrant, onDragStart, onDelete }: TodoCardProps) {
           </span>
           <span className="text-muted-foreground/30 text-[9px]">•</span>
           <span className="text-[9px] text-muted-foreground/60 font-medium">
-            {todo.due_at ? `Due: ${new Date(todo.due_at).toLocaleDateString()}` : new Date(todo.updated_at).toLocaleDateString()}
+            {todo.due_at ? `Due: ${formatDueAtDisplay(todo.due_at)}` : new Date(todo.updated_at).toLocaleDateString()}
           </span>
         </div>
       </div>

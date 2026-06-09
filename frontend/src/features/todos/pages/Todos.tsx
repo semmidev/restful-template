@@ -44,6 +44,7 @@ import { AppSidebar } from '@/components/app-sidebar';
 import useAuthStore from '../../auth/store';
 import useTodoStore, { Todo } from '../store';
 import { todoSchema } from '../../../lib/schemas';
+import { formatToLocalISO, formatDueAtDisplay } from '@/lib/utils';
 import TodoSkeleton from '../components/TodoSkeleton';
 
 export default function Todos() {
@@ -188,7 +189,7 @@ export default function Todos() {
     setTitle(todo.title);
     setDescription(todo.description || '');
     setCoverPreview(todo.cover || '');
-    setDueAt(todo.due_at ? new Date(todo.due_at).toISOString().slice(0, 16) : '');
+    setDueAt(formatToLocalISO(todo.due_at));
     setIsEditOpen(true);
   };
 
@@ -458,11 +459,11 @@ export default function Todos() {
                     
                     <div className="flex flex-wrap items-center gap-4 shrink-0 justify-between sm:justify-end">
                       {/* Due date column */}
-                      <div className="w-24 flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium shrink-0">
+                      <div className="w-32 flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium shrink-0">
                         {todo.due_at ? (
                           <>
                             <Calendar size={11} className="text-muted-foreground/60 shrink-0" />
-                            <span>{new Date(todo.due_at).toLocaleDateString()}</span>
+                            <span>{formatDueAtDisplay(todo.due_at)}</span>
                           </>
                         ) : (
                           <span className="text-muted-foreground/30">—</span>
@@ -664,7 +665,7 @@ export default function Todos() {
                       </div>
                       <div className="flex items-center gap-1 text-[9px] text-muted-foreground font-medium">
                         <Calendar size={10} />
-                        <span>{todo.due_at ? `Due: ${new Date(todo.due_at).toLocaleDateString()}` : new Date(todo.updated_at).toLocaleDateString()}</span>
+                        <span>{todo.due_at ? `Due: ${formatDueAtDisplay(todo.due_at)}` : new Date(todo.updated_at).toLocaleDateString()}</span>
                       </div>
                     </CardFooter>
                   </Card>
