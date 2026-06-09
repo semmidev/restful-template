@@ -341,7 +341,7 @@ export default function Todos() {
                   setFilters({ archived: false, status: val });
                 }
               }}>
-                <TabsList className="bg-transparent p-0 gap-1 h-8 border-b border-transparent overflow-x-auto max-w-full flex-nowrap justify-start [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                <TabsList className="bg-muted/45 p-1 gap-1 h-9 rounded-lg border border-border/40 overflow-x-auto max-w-full flex-nowrap justify-start [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden shrink-0">
                   {[
                     { label: 'All Tasks', value: '' },
                     { label: 'Pending', value: 'pending' },
@@ -352,7 +352,7 @@ export default function Todos() {
                     <TabsTrigger
                       key={tab.value}
                       value={tab.value}
-                      className="px-3 h-7 text-xs font-semibold text-muted-foreground hover:text-foreground transition-all border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:bg-transparent rounded-none shadow-none shrink-0"
+                      className="px-3.5 h-7 text-xs font-semibold text-muted-foreground hover:text-foreground transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-md border-none bg-transparent shrink-0"
                     >
                       {tab.label}
                     </TabsTrigger>
