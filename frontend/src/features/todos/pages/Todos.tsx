@@ -974,8 +974,8 @@ export default function Todos() {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={!!todoToDelete} onOpenChange={(open) => { if (!open) setTodoToDelete(null); }}>
-        <DialogContent className="bg-card w-full max-w-md border border-border p-6 rounded-lg shadow-lg" showCloseButton={false}>
-          <DialogHeader className="border-b border-border/60 pb-3 mb-3 flex flex-row justify-between items-center gap-2">
+        <DialogContent className="bg-card w-full max-w-md border border-border p-6 rounded-lg shadow-lg gap-3" showCloseButton={false}>
+          <DialogHeader className="border-b border-border/60 pb-3 flex flex-row justify-between items-center gap-2">
             <DialogTitle className="text-sm font-bold uppercase tracking-wider flex items-center gap-2 text-foreground">
               <Trash2 size={16} className="text-destructive" /> Archive Task
             </DialogTitle>
