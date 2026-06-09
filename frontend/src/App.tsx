@@ -1,8 +1,9 @@
-import React, { Suspense, lazy } from 'react';
+import { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from 'next-themes';
 import useAuthStore from './features/auth/store';
-import LoadingPage from './components/LoadingPage';
+import LoadingFallback from './components/LoadingFallback';
+import RouteProgressBar from './components/RouteProgressBar';
 import ErrorBoundary from './components/ErrorBoundary';
 
 // Lazy load page bundles for code-splitting
@@ -31,9 +32,10 @@ const PublicRoute: React.FC<RouteProps> = ({ children }) => {
 function App() {
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+      <RouteProgressBar />
       <ErrorBoundary>
         <Router>
-          <Suspense fallback={<LoadingPage />}>
+          <Suspense fallback={<LoadingFallback />}>
             <Routes>
               <Route
                 path="/login"
