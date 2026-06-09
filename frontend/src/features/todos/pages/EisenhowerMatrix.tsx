@@ -155,7 +155,7 @@ function TodoCard({ todo, quadrant, onDragStart, onDelete }: TodoCardProps) {
           e.stopPropagation();
           onDelete(todo.id);
         }}
-        className="opacity-0 group-hover:opacity-100 shrink-0 p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
+        className="opacity-100 md:opacity-0 md:group-hover:opacity-100 shrink-0 p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
       >
         <X size={10} />
       </button>
@@ -311,7 +311,7 @@ function QuickAddDialog({ quadrant, open, onClose, onSubmit }: QuickAddDialogPro
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent
-        className="bg-card w-full max-w-md border border-border p-6 rounded-xl shadow-xl"
+        className="bg-card w-full max-w-[92vw] sm:max-w-md border border-border p-6 rounded-xl shadow-xl"
         showCloseButton={false}
       >
         <DialogHeader className="border-b border-border/60 pb-3 mb-4 flex flex-row justify-between items-center gap-2">
@@ -556,7 +556,7 @@ export default function EisenhowerMatrix() {
             )}
 
             {/* Matrix Grid */}
-            <div className="flex-1 grid grid-cols-2 grid-rows-2 gap-px bg-border/40 mx-4 mb-4 rounded-xl overflow-hidden border border-border/60 shadow-sm">
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 grid-rows-none md:grid-rows-2 gap-px bg-border/40 mx-4 mb-4 rounded-xl overflow-hidden border border-border/60 shadow-sm">
               {/* Row labels */}
               {QUADRANTS.map((q) => (
                 <QuadrantPanel

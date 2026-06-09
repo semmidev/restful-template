@@ -284,7 +284,7 @@ export default function Users() {
 
             {/* Header Actions */}
             <div className="flex items-center gap-2">
-              <div className="relative w-40 sm:w-60">
+              <div className="relative w-24 sm:w-48 md:w-60">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 size-3.5" />
                 <Input
                   type="text"
@@ -305,9 +305,10 @@ export default function Users() {
               </Button>
               <Button
                 onClick={() => setIsCreateOpen(true)}
-                className="h-7 px-2.5 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all rounded-md flex items-center gap-1"
+                className="h-7 px-2 sm:px-2.5 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all rounded-md flex items-center gap-1"
               >
-                <Plus size={14} /> New User
+                <Plus size={14} />
+                <span className="hidden sm:inline">New User</span>
               </Button>
             </div>
           </header>
@@ -361,7 +362,7 @@ export default function Users() {
 
             {/* Users Table */}
             <Card className="border border-border bg-card/25 shadow-none rounded-lg overflow-hidden">
-              <CardContent className="p-0">
+              <CardContent className="p-0 overflow-x-auto w-full">
                 {loading && users.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-20 gap-3">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -509,7 +510,7 @@ export default function Users() {
         }}
       >
         <DialogContent
-          className="bg-card w-full max-w-lg border border-border p-6 rounded-lg shadow-lg overflow-y-auto max-h-[90vh]"
+          className="bg-card w-full max-w-[92vw] sm:max-w-lg border border-border p-6 rounded-lg shadow-lg overflow-y-auto max-h-[90vh]"
           showCloseButton={false}
         >
           <DialogHeader className="border-b border-border/60 pb-3 mb-5 flex flex-row justify-between items-center gap-2">
@@ -673,7 +674,7 @@ export default function Users() {
         }}
       >
         <DialogContent
-          className="bg-card w-full max-w-lg border border-border p-6 rounded-lg shadow-lg overflow-y-auto max-h-[90vh]"
+          className="bg-card w-full max-w-[92vw] sm:max-w-lg border border-border p-6 rounded-lg shadow-lg overflow-y-auto max-h-[90vh]"
           showCloseButton={false}
         >
           <DialogHeader className="border-b border-border/60 pb-3 mb-5 flex flex-row justify-between items-center gap-2">
@@ -832,7 +833,7 @@ export default function Users() {
           if (!open) setUserToDelete(null);
         }}
       >
-        <DialogContent className="bg-card w-full max-w-md border border-border p-6 rounded-lg shadow-lg" showCloseButton={false}>
+        <DialogContent className="bg-card w-full max-w-[92vw] sm:max-w-md border border-border p-6 rounded-lg shadow-lg" showCloseButton={false}>
           <DialogHeader className="border-b border-border/60 pb-3 mb-5 flex flex-row justify-between items-center gap-2">
             <DialogTitle className="text-sm font-bold uppercase tracking-wider flex items-center gap-2 text-foreground">
               <UserX size={16} className="text-destructive" /> Delete User

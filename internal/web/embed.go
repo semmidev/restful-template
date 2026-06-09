@@ -111,6 +111,11 @@ func (h *SPAHandler) serveIndex(w http.ResponseWriter, r *http.Request) {
 
 // isAsset checks if the path is a static asset that should be cached.
 func isAsset(urlPath string) bool {
+	// Service workers must not be cached aggressively to allow updates to propagate
+	if strings.HasSuffix(urlPath, "sw.js") || strings.HasSuffix(urlPath, "service-worker.js") {
+		return false
+	}
+
 	ext := path.Ext(urlPath)
 	switch ext {
 	case ".js", ".css", ".woff", ".woff2", ".ttf", ".eot", ".svg", ".png", ".jpg", ".jpeg", ".gif", ".ico", ".webp":

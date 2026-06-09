@@ -290,7 +290,7 @@ export default function Todos() {
 
             {/* Header Actions */}
             <div className="flex items-center gap-2">
-              <div className="relative w-40 sm:w-60">
+              <div className="relative w-24 sm:w-48 md:w-60">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 size-3.5" />
                 <Input
                   type="text"
@@ -311,9 +311,10 @@ export default function Todos() {
               </Button>
               <Button
                 onClick={() => setIsCreateOpen(true)}
-                className="h-7 px-2.5 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all rounded-md flex items-center gap-1"
+                className="h-7 px-2 sm:px-2.5 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all rounded-md flex items-center gap-1"
               >
-                <Plus size={14} /> New Task
+                <Plus size={14} />
+                <span className="hidden sm:inline">New Task</span>
               </Button>
             </div>
           </header>
@@ -339,7 +340,7 @@ export default function Todos() {
                   setFilters({ archived: false, status: val });
                 }
               }}>
-                <TabsList className="bg-transparent p-0 gap-1 h-8 border-b border-transparent">
+                <TabsList className="bg-transparent p-0 gap-1 h-8 border-b border-transparent overflow-x-auto max-w-full flex-nowrap justify-start [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                   {[
                     { label: 'All Tasks', value: '' },
                     { label: 'Pending', value: 'pending' },
@@ -350,7 +351,7 @@ export default function Todos() {
                     <TabsTrigger
                       key={tab.value}
                       value={tab.value}
-                      className="px-3 h-7 text-xs font-semibold text-muted-foreground hover:text-foreground transition-all border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:bg-transparent rounded-none shadow-none"
+                      className="px-3 h-7 text-xs font-semibold text-muted-foreground hover:text-foreground transition-all border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:bg-transparent rounded-none shadow-none shrink-0"
                     >
                       {tab.label}
                     </TabsTrigger>
@@ -499,7 +500,8 @@ export default function Todos() {
                                 onClick={() => handleToggleStatus(todo, 'pending')}
                                 className="h-6 text-[10px] font-semibold px-2 rounded-md border border-border/80 hover:bg-accent text-foreground transition-colors"
                               >
-                                <Clock size={10} className="mr-1 inline-block" /> Reopen
+                                <Clock size={10} className="sm:mr-1 inline-block" />
+                                <span className="hidden sm:inline"> Reopen</span>
                               </Button>
                             )}
                             {todo.status !== 'in_progress' && todo.status !== 'done' && (
@@ -509,7 +511,8 @@ export default function Todos() {
                                 onClick={() => handleToggleStatus(todo, 'in_progress')}
                                 className="h-6 text-[10px] font-semibold px-2 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground transition-colors border-none shadow-none"
                               >
-                                <Play size={10} className="mr-1 inline-block" /> Start
+                                <Play size={10} className="sm:mr-1 inline-block" />
+                                <span className="hidden sm:inline"> Start</span>
                               </Button>
                             )}
                             {todo.status !== 'done' && (
@@ -519,7 +522,8 @@ export default function Todos() {
                                 onClick={() => handleToggleStatus(todo, 'done')}
                                 className="h-6 text-[10px] font-semibold px-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white transition-colors border-none shadow-none"
                               >
-                                <CheckCircle size={10} className="mr-1 inline-block" /> Finish
+                                <CheckCircle size={10} className="sm:mr-1 inline-block" />
+                                <span className="hidden sm:inline"> Finish</span>
                               </Button>
                             )}
 
@@ -698,7 +702,7 @@ export default function Todos() {
 
       {/* Creation Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={(open) => { if (!open) { setIsCreateOpen(false); resetForm(); } }}>
-        <DialogContent className="bg-card w-full max-w-lg border border-border p-6 rounded-lg shadow-lg overflow-y-auto max-h-[90vh]" showCloseButton={false}>
+        <DialogContent className="bg-card w-full max-w-[92vw] sm:max-w-lg border border-border p-6 rounded-lg shadow-lg overflow-y-auto max-h-[90vh]" showCloseButton={false}>
           <DialogHeader className="border-b border-border/60 pb-3 mb-5 flex flex-row justify-between items-center gap-2">
             <DialogTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-2 text-muted-foreground">
               <Plus size={14} className="text-primary" /> Create New Task
@@ -762,9 +766,9 @@ export default function Todos() {
 
             {/* Metadata Attributes Section */}
             <div className="border-t border-border/50 pt-4 space-y-3">
-              <div className="grid grid-cols-3 items-center gap-2">
+              <div className="flex flex-col sm:grid sm:grid-cols-3 sm:items-center gap-1.5 sm:gap-2">
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Due Date</span>
-                <div className="col-span-2 relative">
+                <div className="sm:col-span-2 relative">
                   <Calendar size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 pointer-events-none" />
                   <Input
                     type="datetime-local"
@@ -775,9 +779,9 @@ export default function Todos() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 items-center gap-2">
+              <div className="flex flex-col sm:grid sm:grid-cols-3 sm:items-center gap-1.5 sm:gap-2">
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Cover Image</span>
-                <div className="col-span-2 flex items-center gap-2">
+                <div className="sm:col-span-2 flex items-center gap-2">
                   <label className="h-7 px-2.5 text-[11px] font-semibold border border-border/80 rounded-md hover:bg-accent cursor-pointer flex items-center gap-1 select-none text-foreground bg-muted/10">
                     <Upload size={12} /> Choose Image
                     <input
@@ -836,7 +840,7 @@ export default function Todos() {
 
       {/* Editing Dialog */}
       <Dialog open={isEditOpen} onOpenChange={(open) => { if (!open) { setIsEditOpen(false); resetForm(); } }}>
-        <DialogContent className="bg-card w-full max-w-lg border border-border p-6 rounded-lg shadow-lg overflow-y-auto max-h-[90vh]" showCloseButton={false}>
+        <DialogContent className="bg-card w-full max-w-[92vw] sm:max-w-lg border border-border p-6 rounded-lg shadow-lg overflow-y-auto max-h-[90vh]" showCloseButton={false}>
           <DialogHeader className="border-b border-border/60 pb-3 mb-5 flex flex-row justify-between items-center gap-2">
             <DialogTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-2 text-muted-foreground">
               <Edit2 size={13} className="text-primary" /> Edit Task Properties
@@ -900,9 +904,9 @@ export default function Todos() {
 
             {/* Metadata Attributes Section */}
             <div className="border-t border-border/50 pt-4 space-y-3">
-              <div className="grid grid-cols-3 items-center gap-2">
+              <div className="flex flex-col sm:grid sm:grid-cols-3 sm:items-center gap-1.5 sm:gap-2">
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Due Date</span>
-                <div className="col-span-2 relative">
+                <div className="sm:col-span-2 relative">
                   <Calendar size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 pointer-events-none" />
                   <Input
                     type="datetime-local"
@@ -913,9 +917,9 @@ export default function Todos() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 items-center gap-2">
+              <div className="flex flex-col sm:grid sm:grid-cols-3 sm:items-center gap-1.5 sm:gap-2">
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Cover Image</span>
-                <div className="col-span-2 flex items-center gap-2">
+                <div className="sm:col-span-2 flex items-center gap-2">
                   <label className="h-7 px-2.5 text-[11px] font-semibold border border-border/80 rounded-md hover:bg-accent cursor-pointer flex items-center gap-1 select-none text-foreground bg-muted/10">
                     <Upload size={12} /> Choose Image
                     <input
@@ -974,7 +978,7 @@ export default function Todos() {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={!!todoToDelete} onOpenChange={(open) => { if (!open) setTodoToDelete(null); }}>
-        <DialogContent className="bg-card w-full max-w-md border border-border p-6 rounded-lg shadow-lg gap-3" showCloseButton={false}>
+        <DialogContent className="bg-card w-full max-w-[92vw] sm:max-w-md border border-border p-6 rounded-lg shadow-lg gap-3" showCloseButton={false}>
           <DialogHeader className="border-b border-border/60 pb-3 flex flex-row justify-between items-center gap-2">
             <DialogTitle className="text-sm font-bold uppercase tracking-wider flex items-center gap-2 text-foreground">
               <Trash2 size={16} className="text-destructive" /> Archive Task

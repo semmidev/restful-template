@@ -21,6 +21,7 @@ import {
   SidebarMenuItem,
   SidebarGroup,
   SidebarGroupLabel,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import {
   DropdownMenu,
@@ -47,6 +48,7 @@ import useAuthStore from "@/features/auth/store"
 import { usePermission } from "@/hooks/usePermission"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { isMobile } = useSidebar()
   const navigate = useNavigate()
   const logout = useAuthStore((state) => state.logout)
   const switchRole = useAuthStore((state) => state.switchRole)
@@ -216,8 +218,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   className="w-[var(--radix-dropdown-menu-trigger-width)] min-w-56 rounded-lg"
-                  side="right"
-                  align="end"
+                  side={isMobile ? "bottom" : "right"}
+                  align={isMobile ? "end" : "end"}
                   sideOffset={4}
                 >
                   <DropdownMenuLabel className="p-0 font-normal">
