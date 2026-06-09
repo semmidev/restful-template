@@ -46,17 +46,7 @@ Untuk panduan detail bagi AI Agent/Copilot dalam memahami standar engineering da
 ## 🎨 Web UI
 
 <p align="center">
-  <img src="assets/register-page.png" width="48%">
-  <img src="assets/login-page.png" width="48%">
-</p>
-
-<p align="center">
-  <img src="assets/dashboard-page.png" width="48%">
-  <img src="assets/task-page.png" width="48%">
-</p>
-
-<p align="center">
-  <img src="assets/matrix-page.png" width="48%">
+  <video src="assets/desktop-demo.webm" width="100%" controls autoplay loop muted></video>
 </p>
 
 ### API Monitoring
