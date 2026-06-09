@@ -1,8 +1,7 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from 'next-themes';
 import {
-  LayoutDashboard,
   CheckCircle,
   Clock,
   Activity,
@@ -30,7 +29,7 @@ import {
   Bar
 } from 'recharts';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import {
   SidebarProvider,
@@ -39,7 +38,7 @@ import {
 } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { AppSidebar } from '@/components/app-sidebar';
-import useAuthStore from '../../auth/store';
+
 import useTodoStore from '../store';
 
 // Custom Linear-style Tooltip for Recharts
@@ -65,7 +64,6 @@ const ChartTooltip = ({ active, payload, label }: any) => {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const logout = useAuthStore((state) => state.logout);
   const { theme, setTheme } = useTheme();
 
   const {
@@ -83,8 +81,8 @@ export default function Dashboard() {
   const pieData = stats
     ? [
         { name: 'Pending', value: stats.pending, color: '#f59e0b' },      // Amber
-        { name: 'In Progress', value: 'hsl(var(--primary))', color: 'hsl(var(--primary))' }, // Linear Purple
-        { name: 'Completed', value: '#10b981', color: '#10b981' },    // Emerald
+        { name: 'In Progress', value: stats.in_progress, color: 'hsl(var(--primary))' }, // Linear Purple
+        { name: 'Completed', value: stats.completed, color: '#10b981' },    // Emerald
       ].filter((d) => d.value > 0)
     : [];
 

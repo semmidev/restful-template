@@ -1,12 +1,12 @@
 import { z } from 'zod';
 
 export const loginSchema = z.object({
-  email: z.string().email('Please enter a valid email address').min(3, 'Email is too short'),
+  email: z.email('Please enter a valid email address').min(3, 'Email is too short'),
   password: z.string().min(8, 'Password must be at least 8 characters long'),
 });
 
 export const registerSchema = z.object({
-  email: z.string().email('Please enter a valid email address').min(3, 'Email is too short'),
+  email: z.email('Please enter a valid email address').min(3, 'Email is too short'),
   password: z.string().min(8, 'Password must be at least 8 characters long'),
   confirmPassword: z.string().min(8, 'Confirm password must be at least 8 characters long'),
 }).refine((data) => data.password === data.confirmPassword, {
@@ -24,7 +24,7 @@ export type RegisterInput = z.infer<typeof registerSchema>;
 export type TodoInput = z.infer<typeof todoSchema>;
 
 export const createUserSchema = z.object({
-  email: z.string().email('Please enter a valid email address').min(3, 'Email is too short'),
+  email: z.email('Please enter a valid email address').min(3, 'Email is too short'),
   password: z.string().min(8, 'Password must be at least 8 characters long'),
   activeRole: z.string().min(1, 'Active role is required'),
   roles: z.array(z.string()).min(1, 'At least one role must be selected'),
@@ -34,7 +34,7 @@ export const createUserSchema = z.object({
 });
 
 export const updateUserSchema = z.object({
-  email: z.string().email('Please enter a valid email address').min(3, 'Email is too short'),
+  email: z.email('Please enter a valid email address').min(3, 'Email is too short'),
   password: z.string().min(8, 'Password must be at least 8 characters long').optional().or(z.literal('')),
   activeRole: z.string().min(1, 'Active role is required'),
   roles: z.array(z.string()).min(1, 'At least one role must be selected'),

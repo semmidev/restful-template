@@ -20,7 +20,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import {
   SidebarProvider,
@@ -109,12 +108,11 @@ const QUADRANTS: Quadrant[] = [
 
 interface TodoCardProps {
   todo: Todo;
-  quadrant: Quadrant;
   onDragStart: (e: React.DragEvent, todo: Todo) => void;
   onDelete: (id: string) => void;
 }
 
-function TodoCard({ todo, quadrant, onDragStart, onDelete }: TodoCardProps) {
+function TodoCard({ todo, onDragStart, onDelete }: TodoCardProps) {
   return (
     <div
       draggable
@@ -255,7 +253,6 @@ function QuadrantPanel({
             <TodoCard
               key={todo.id}
               todo={todo}
-              quadrant={quadrant}
               onDragStart={onDragStart}
               onDelete={onDelete}
             />

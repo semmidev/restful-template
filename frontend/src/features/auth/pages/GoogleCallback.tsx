@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import useAuthStore from '../store';
 export default function GoogleCallback() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { loginWithGoogle, isLoading } = useAuthStore();
+  const { loginWithGoogle } = useAuthStore();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -41,7 +41,7 @@ export default function GoogleCallback() {
     let isMounted = true;
 
     async function exchangeCode() {
-      const result = await loginWithGoogle(code, storedVerifier!);
+      const result = await loginWithGoogle(code as string, storedVerifier as string);
       if (isMounted) {
         if (result.success) {
           navigate('/');

@@ -11,8 +11,6 @@ import {
   X,
   Sun,
   Moon,
-  Shield,
-  UserCheck,
   UserX,
   ArrowUp,
   ArrowDown,
@@ -22,7 +20,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -57,9 +55,7 @@ import { usePermission } from '@/hooks/usePermission';
 export default function Users() {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
-  const logout = useAuthStore((state) => state.logout);
   const currentUserEmail = useAuthStore((state) => state.userEmail);
-  const activeRole = useAuthStore((state) => state.activeRole);
   const canListUsers = usePermission('user:list');
 
   const {

@@ -14,7 +14,6 @@ import {
   FileText,
   ChevronLeft,
   ChevronRight,
-  Activity,
   Upload,
   X,
   Sun,
@@ -28,7 +27,6 @@ import {
   LayoutGrid
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -41,7 +39,7 @@ import {
 } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { AppSidebar } from '@/components/app-sidebar';
-import useAuthStore from '../../auth/store';
+
 import useTodoStore, { Todo } from '../store';
 import { todoSchema } from '../../../lib/schemas';
 import { formatToLocalISO, formatDueAtDisplay } from '@/lib/utils';
@@ -49,7 +47,7 @@ import TodoSkeleton from '../components/TodoSkeleton';
 
 export default function Todos() {
   const navigate = useNavigate();
-  const logout = useAuthStore((state) => state.logout);
+
   const { theme, setTheme } = useTheme();
 
   const {
@@ -134,11 +132,6 @@ export default function Todos() {
 
     return () => clearTimeout(delayDebounceFn);
   }, [searchKeyword, keyword, setFilters]);
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
