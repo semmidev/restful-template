@@ -4,6 +4,7 @@ import {
   createTodoRequest,
   updateTodoRequest,
   deleteTodoRequest,
+  restoreTodoRequest,
   fetchTodoStatsRequest
 } from './api';
 
@@ -31,6 +32,8 @@ export interface Todo {
   status: 'pending' | 'in_progress' | 'done';
   importance: boolean;
   urgency: boolean;
+  due_at: string | null;
+  deleted_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -44,6 +47,7 @@ interface TodoState {
   keyword: string;
   sortBy: string;
   sortDir: string;
+  archived: boolean;
   loading: boolean;
   error: string | null;
   editingTodo: Todo | null;
@@ -52,12 +56,13 @@ interface TodoState {
   statsError: string | null;
 
   fetchTodos: () => Promise<void>;
-  createTodo: (title: string, description: string, coverFile: File | null, importance?: boolean, urgency?: boolean) => Promise<boolean>;
-  updateTodo: (id: string, title: string, description: string, coverFile: File | null, coverPreview: string, currentStatus: 'pending' | 'in_progress' | 'done', originalUpdatedAt: string, importance?: boolean, urgency?: boolean) => Promise<boolean>;
+  createTodo: (title: string, description: string, coverFile: File | null, importance?: boolean, urgency?: boolean, dueAt?: string | null) => Promise<boolean>;
+  updateTodo: (id: string, title: string, description: string, coverFile: File | null, coverPreview: string, currentStatus: 'pending' | 'in_progress' | 'done', originalUpdatedAt: string, importance?: boolean, urgency?: boolean, dueAt?: string | null) => Promise<boolean>;
   updateTodoPriority: (todo: Todo, importance: boolean, urgency: boolean) => Promise<void>;
   toggleTodoStatus: (todo: Todo, nextStatus: 'pending' | 'in_progress' | 'done') => Promise<void>;
   deleteTodo: (id: string) => Promise<void>;
-  setFilters: (filters: Partial<Pick<TodoState, 'status' | 'keyword' | 'sortBy' | 'sortDir'>>) => void;
+  restoreTodo: (id: string) => Promise<void>;
+  setFilters: (filters: Partial<Pick<TodoState, 'status' | 'keyword' | 'sortBy' | 'sortDir' | 'archived'>>) => void;
   setPage: (page: number) => void;
   setEditingTodo: (todo: Todo | null) => void;
   setError: (error: string | null) => void;
@@ -73,13 +78,14 @@ export const useTodoStore = create<TodoState>((set, get) => ({
   keyword: '',
   sortBy: 'created_at',
   sortDir: 'desc',
+  archived: false,
   loading: false,
   error: null,
   editingTodo: null,
 
   fetchTodos: async () => {
     set({ loading: true, error: null });
-    const { page, perPage, status, keyword, sortBy, sortDir } = get();
+    const { page, perPage, status, keyword, sortBy, sortDir, archived } = get();
     try {
       const res = await fetchTodosRequest({
         page,
@@ -88,6 +94,7 @@ export const useTodoStore = create<TodoState>((set, get) => ({
         q: keyword || undefined,
         sort_by: sortBy,
         sort_dir: sortDir,
+        archived: archived || undefined,
       });
       set({
         todos: res.data.data.items || [],
@@ -100,13 +107,16 @@ export const useTodoStore = create<TodoState>((set, get) => ({
     }
   },
 
-  createTodo: async (title, description, coverFile, importance = true, urgency = false) => {
+  createTodo: async (title, description, coverFile, importance = true, urgency = false, dueAt = null) => {
     set({ error: null });
     const formData = new FormData();
     formData.append('title', title);
     formData.append('description', description);
     formData.append('importance', String(importance));
     formData.append('urgency', String(urgency));
+    if (dueAt) {
+      formData.append('due_at', dueAt);
+    }
     if (coverFile) {
       formData.append('cover', coverFile);
     }
@@ -123,7 +133,7 @@ export const useTodoStore = create<TodoState>((set, get) => ({
     }
   },
 
-  updateTodo: async (id, title, description, coverFile, coverPreview, currentStatus, originalUpdatedAt, importance, urgency) => {
+  updateTodo: async (id, title, description, coverFile, coverPreview, currentStatus, originalUpdatedAt, importance, urgency, dueAt = undefined) => {
     set({ error: null });
     const formData = new FormData();
     formData.append('title', title);
@@ -139,6 +149,11 @@ export const useTodoStore = create<TodoState>((set, get) => ({
     if (urgency !== undefined) {
       formData.append('urgency', String(urgency));
       maskFields.push('urgency');
+    }
+
+    if (dueAt !== undefined) {
+      formData.append('due_at', dueAt || '');
+      maskFields.push('due_at');
     }
 
     if (coverFile) {
@@ -207,6 +222,17 @@ export const useTodoStore = create<TodoState>((set, get) => ({
     } catch (err: any) {
       console.error(err);
       set({ error: 'Failed to delete todo' });
+    }
+  },
+
+  restoreTodo: async (id) => {
+    set({ error: null });
+    try {
+      await restoreTodoRequest(id);
+      await get().fetchTodos();
+    } catch (err: any) {
+      console.error(err);
+      set({ error: 'Failed to restore todo' });
     }
   },
 

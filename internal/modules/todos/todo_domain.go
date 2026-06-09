@@ -26,6 +26,8 @@ type Todo struct {
 	Status      TodoStatus `json:"status"`
 	Importance  bool       `json:"importance"`
 	Urgency     bool       `json:"urgency"`
+	DueAt       *time.Time `json:"due_at"`
+	DeletedAt   *time.Time `json:"deleted_at"`
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
 }
@@ -51,6 +53,10 @@ func (t *Todo) ChangeStatus(status TodoStatus) {
 
 func NewTodoEntity(in CreateTodoInput) *Todo {
 	now := time.Now().UTC().Truncate(time.Microsecond)
+	urgency := in.Urgency
+	if in.DueAt != nil && in.DueAt.Sub(now) <= 24*time.Hour {
+		urgency = true
+	}
 	return &Todo{
 		ID:          uuidgen.New(),
 		UserID:      in.UserID,
@@ -59,7 +65,8 @@ func NewTodoEntity(in CreateTodoInput) *Todo {
 		Cover:       in.Cover,
 		Status:      TodoStatusPending,
 		Importance:  in.Importance,
-		Urgency:     in.Urgency,
+		Urgency:     urgency,
+		DueAt:       in.DueAt,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
@@ -116,6 +123,15 @@ func (t *Todo) ApplyUpdate(in UpdateTodoInput) {
 				} else {
 					t.Urgency = false
 				}
+			case "due_at":
+				if in.ClearDueAt {
+					t.DueAt = nil
+				} else if in.DueAt != nil {
+					t.DueAt = in.DueAt
+					if t.DueAt != nil && t.DueAt.Sub(time.Now().UTC()) <= 24*time.Hour && t.Status != TodoStatusDone {
+						t.Urgency = true
+					}
+				}
 			}
 		}
 	} else {
@@ -140,6 +156,14 @@ func (t *Todo) ApplyUpdate(in UpdateTodoInput) {
 		}
 		if in.Urgency != nil {
 			t.Urgency = *in.Urgency
+		}
+		if in.ClearDueAt {
+			t.DueAt = nil
+		} else if in.DueAt != nil {
+			t.DueAt = in.DueAt
+			if t.DueAt != nil && t.DueAt.Sub(time.Now().UTC()) <= 24*time.Hour && t.Status != TodoStatusDone {
+				t.Urgency = true
+			}
 		}
 	}
 	// Stamp UpdatedAt exactly once regardless of which branch ran.
@@ -167,8 +191,10 @@ type TodoRepository interface {
 	ListByUser(ctx context.Context, q ListTodosQuery) ([]*Todo, int, error)
 	Update(ctx context.Context, todo *Todo) error
 	Delete(ctx context.Context, userID, id uuid.UUID) error
+	Restore(ctx context.Context, userID, id uuid.UUID) error
 	DeleteAllByUserID(ctx context.Context, userID uuid.UUID) error
 	GetStats(ctx context.Context, userID uuid.UUID) (*TodoStats, error)
+	EscalateUrgency(ctx context.Context, threshold time.Time) ([]*Todo, error)
 }
 
 // TodoService is the interface consumed by the HTTP handler.
@@ -183,6 +209,7 @@ type TodoService interface {
 	Get(ctx context.Context, userID, id uuid.UUID) (*Todo, error)
 	Update(ctx context.Context, existing *Todo, input UpdateTodoInput) (*Todo, error)
 	Delete(ctx context.Context, userID, id uuid.UUID) error
+	Restore(ctx context.Context, userID, id uuid.UUID) (*Todo, error)
 	DeleteAllByUserID(ctx context.Context, userID uuid.UUID) error
 	GetStats(ctx context.Context, userID uuid.UUID) (*TodoStats, error)
 }

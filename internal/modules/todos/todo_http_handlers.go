@@ -36,9 +36,10 @@ func (h *todoHandler) handleList(ctx context.Context, in *listTodosReq) (*listTo
 			s := TodoStatus(in.Status)
 			return &s
 		}(),
-		Keyword: in.Keyword,
-		SortBy:  in.SortBy,
-		SortDir: in.SortDir,
+		Keyword:  in.Keyword,
+		SortBy:   in.SortBy,
+		SortDir:  in.SortDir,
+		Archived: in.Archived,
 	})
 	if err != nil {
 		return nil, httpapi.ToHumaErr(ctx, err)
@@ -106,6 +107,15 @@ func (h *todoHandler) handleCreate(ctx context.Context, in *createTodoReq) (*cre
 		return nil, err
 	}
 
+	var dueAt *time.Time
+	if data.DueAt != "" {
+		parsed, err := time.Parse(time.RFC3339, data.DueAt)
+		if err != nil {
+			return nil, huma.Error400BadRequest("invalid due_at format, must be RFC3339")
+		}
+		dueAt = &parsed
+	}
+
 	importance := data.Importance
 	urgency := data.Urgency
 
@@ -116,6 +126,7 @@ func (h *todoHandler) handleCreate(ctx context.Context, in *createTodoReq) (*cre
 		Cover:       coverBase64,
 		Importance:  importance,
 		Urgency:     urgency,
+		DueAt:       dueAt,
 	})
 	if err != nil {
 		return nil, httpapi.ToHumaErr(ctx, err)
@@ -137,6 +148,9 @@ func (h *todoHandler) handleGet(ctx context.Context, in *getTodoReq) (*getTodoRe
 	t, err := h.todos.Get(ctx, userID, in.ID)
 	if err != nil {
 		return nil, httpapi.ToHumaErr(ctx, err)
+	}
+	if t.DeletedAt != nil {
+		return nil, huma.Error404NotFound("The requested todo does not exist")
 	}
 	if err := policy.Authorize(ctx, "todo:read", t.UserID.String()); err != nil {
 		return nil, httpapi.ToHumaErr(ctx, err)
@@ -170,6 +184,9 @@ func (h *todoHandler) handleUpdate(ctx context.Context, in *updateTodoReq) (*upd
 	existing, err := h.todos.Get(ctx, userID, in.ID)
 	if err != nil {
 		return nil, httpapi.ToHumaErr(ctx, err)
+	}
+	if existing.DeletedAt != nil {
+		return nil, huma.Error404NotFound("The requested todo does not exist")
 	}
 	if err := policy.Authorize(ctx, "todo:update", existing.UserID.String()); err != nil {
 		return nil, httpapi.ToHumaErr(ctx, err)
@@ -209,6 +226,21 @@ func (h *todoHandler) handleUpdate(ctx context.Context, in *updateTodoReq) (*upd
 		urgency = &v
 	}
 
+	var dueAt *time.Time
+	var clearDueAt bool
+	if _, ok := in.RawBody.Form.Value["due_at"]; ok {
+		val := data.DueAt
+		if val != "" {
+			parsed, err := time.Parse(time.RFC3339, val)
+			if err != nil {
+				return nil, huma.Error400BadRequest("invalid due_at format, must be RFC3339")
+			}
+			dueAt = &parsed
+		} else {
+			clearDueAt = true
+		}
+	}
+
 	coverBase64, err := processCoverImage(data.Cover)
 	if err != nil {
 		return nil, err
@@ -239,6 +271,8 @@ func (h *todoHandler) handleUpdate(ctx context.Context, in *updateTodoReq) (*upd
 		Status:      status,
 		Importance:  importance,
 		Urgency:     urgency,
+		DueAt:       dueAt,
+		ClearDueAt:  clearDueAt,
 		UpdateMask:  updateMask,
 	})
 	if err != nil {
@@ -262,6 +296,9 @@ func (h *todoHandler) handleDelete(ctx context.Context, in *deleteTodoReq) (*del
 	existing, err := h.todos.Get(ctx, userID, in.ID)
 	if err != nil {
 		return nil, httpapi.ToHumaErr(ctx, err)
+	}
+	if existing.DeletedAt != nil {
+		return nil, huma.Error404NotFound("The requested todo does not exist")
 	}
 	if err := policy.Authorize(ctx, "todo:delete", existing.UserID.String()); err != nil {
 		return nil, httpapi.ToHumaErr(ctx, err)
@@ -329,5 +366,27 @@ func (h *todoHandler) handleStats(ctx context.Context, in *getTodoStatsReq) (*ge
 
 	resp := &getTodoStatsRes{}
 	resp.Body.Data = stats
+	return resp, nil
+}
+
+func (h *todoHandler) handleRestore(ctx context.Context, in *restoreTodoReq) (*restoreTodoRes, error) {
+	wideevent.Add(ctx, "todo_id", in.ID.String())
+	userID, err := httpapi.ExtractUserID(ctx)
+	if err != nil {
+		return nil, httpapi.ToHumaErr(ctx, err)
+	}
+	existing, err := h.todos.Get(ctx, userID, in.ID)
+	if err != nil {
+		return nil, httpapi.ToHumaErr(ctx, err)
+	}
+	if err := policy.Authorize(ctx, "todo:update", existing.UserID.String()); err != nil {
+		return nil, httpapi.ToHumaErr(ctx, err)
+	}
+	t, err := h.todos.Restore(ctx, userID, in.ID)
+	if err != nil {
+		return nil, httpapi.ToHumaErr(ctx, err)
+	}
+	resp := &restoreTodoRes{}
+	resp.Body.Data = t
 	return resp, nil
 }

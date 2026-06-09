@@ -135,6 +135,28 @@ func (s *Service) Delete(ctx context.Context, userID, id uuid.UUID) error {
 	return nil
 }
 
+func (s *Service) Restore(ctx context.Context, userID, id uuid.UUID) (*Todo, error) {
+	ctx, span := s.tracer.Start(ctx, "todo.Restore")
+	defer span.End()
+
+	if err := s.repo.Restore(ctx, userID, id); err != nil {
+		return nil, apperrors.NewInternal("Failed to restore todo", err)
+	}
+
+	t, err := s.repo.GetByID(ctx, userID, id)
+	if err != nil {
+		return nil, apperrors.NewNotFound("The requested todo does not exist", err)
+	}
+
+	key := todoCacheKey(userID, id)
+	_ = s.cache.Delete(ctx, key)
+	if b, jsonErr := json.Marshal(t); jsonErr == nil {
+		_ = s.cache.Set(ctx, key, string(b), todoCacheTTL)
+	}
+
+	return t, nil
+}
+
 func (s *Service) DeleteAllByUserID(ctx context.Context, userID uuid.UUID) error {
 	ctx, span := s.tracer.Start(ctx, "todo.DeleteAllByUserID")
 	defer span.End()

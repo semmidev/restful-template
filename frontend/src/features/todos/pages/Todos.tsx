@@ -54,6 +54,7 @@ export default function Todos() {
     keyword,
     sortBy,
     sortDir,
+    archived,
     loading,
     error,
     editingTodo,
@@ -62,6 +63,7 @@ export default function Todos() {
     updateTodo,
     toggleTodoStatus,
     deleteTodo,
+    restoreTodo,
     setFilters,
     setPage,
     setEditingTodo,
@@ -78,6 +80,7 @@ export default function Todos() {
   const [description, setDescription] = useState('');
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState('');
+  const [dueAt, setDueAt] = useState('');
 
   // Form validation errors
   const [validationErrors, setValidationErrors] = useState<{ title?: string; description?: string }>({});
@@ -87,7 +90,7 @@ export default function Todos() {
 
   useEffect(() => {
     fetchTodos();
-  }, [page, status, sortBy, sortDir, keyword, fetchTodos]);
+  }, [page, status, sortBy, sortDir, keyword, archived, fetchTodos]);
 
   useEffect(() => {
     setSearchKeyword(keyword);
@@ -138,7 +141,14 @@ export default function Todos() {
       return;
     }
 
-    const success = await createTodo(title, description || '', coverFile);
+    const success = await createTodo(
+      title,
+      description || '',
+      coverFile,
+      undefined,
+      undefined,
+      dueAt ? new Date(dueAt).toISOString() : null
+    );
     if (success) {
       setIsCreateOpen(false);
       resetForm();
@@ -150,6 +160,7 @@ export default function Todos() {
     setTitle(todo.title);
     setDescription(todo.description || '');
     setCoverPreview(todo.cover || '');
+    setDueAt(todo.due_at ? new Date(todo.due_at).toISOString().slice(0, 16) : '');
     setIsEditOpen(true);
   };
 
@@ -179,7 +190,10 @@ export default function Todos() {
       coverFile,
       coverPreview,
       editingTodo.status,
-      editingTodo.updated_at
+      editingTodo.updated_at,
+      undefined,
+      undefined,
+      dueAt ? new Date(dueAt).toISOString() : null
     );
     if (success) {
       setIsEditOpen(false);
@@ -207,6 +221,7 @@ export default function Todos() {
     setDescription('');
     setCoverFile(null);
     setCoverPreview('');
+    setDueAt('');
     setEditingTodo(null);
     setValidationErrors({});
   };
@@ -274,13 +289,20 @@ export default function Todos() {
 
             {/* Filters Toolbar */}
             <section className="flex flex-col md:flex-row gap-4 justify-between items-stretch md:items-center bg-card/25 border border-border p-3 rounded-lg">
-              <Tabs value={status} onValueChange={(val) => { setFilters({ status: val }); }}>
+              <Tabs value={archived ? 'archived' : status} onValueChange={(val) => {
+                if (val === 'archived') {
+                  setFilters({ archived: true, status: '' });
+                } else {
+                  setFilters({ archived: false, status: val });
+                }
+              }}>
                 <TabsList className="bg-muted/75 p-0.5 rounded-md gap-0.5 h-8">
                   {[
                     { label: 'All Tasks', value: '' },
                     { label: 'Pending', value: 'pending' },
                     { label: 'In Progress', value: 'in_progress' },
                     { label: 'Completed', value: 'done' },
+                    { label: 'Archived', value: 'archived' },
                   ].map((tab) => (
                     <TabsTrigger
                       key={tab.value}
@@ -374,22 +396,26 @@ export default function Todos() {
                             {todo.status === 'in_progress' ? 'in progress' : todo.status}
                           </Badge>
                           <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleEditClick(todo)}
-                              className="h-6 w-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent border-none"
-                            >
-                              <Edit2 size={12} />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteClick(todo)}
-                              className="h-6 w-6 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 border-none"
-                            >
-                              <Trash2 size={12} />
-                            </Button>
+                            {!todo.deleted_at && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleEditClick(todo)}
+                                  className="h-6 w-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent border-none"
+                                >
+                                  <Edit2 size={12} />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleDeleteClick(todo)}
+                                  className="h-6 w-6 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 border-none"
+                                >
+                                  <Trash2 size={12} />
+                                </Button>
+                              </>
+                            )}
                           </div>
                         </div>
                         <CardTitle className="text-sm font-bold text-foreground line-clamp-1 leading-snug">
@@ -406,40 +432,53 @@ export default function Todos() {
 
                     <CardFooter className="border-t border-border/60 pt-3 pb-3 px-5 flex items-center justify-between gap-4 mt-auto">
                       <div className="flex gap-1.5">
-                        {todo.status !== 'pending' && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleToggleStatus(todo, 'pending')}
-                            className="h-6 text-[10px] font-semibold px-2 rounded-md border border-border/80 hover:bg-accent text-foreground transition-colors"
-                          >
-                            <Clock size={10} className="mr-1 inline-block" /> Reopen
-                          </Button>
-                        )}
-                        {todo.status !== 'in_progress' && todo.status !== 'done' && (
+                        {todo.deleted_at ? (
                           <Button
                             variant="default"
                             size="sm"
-                            onClick={() => handleToggleStatus(todo, 'in_progress')}
-                            className="h-6 text-[10px] font-semibold px-2 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground transition-colors shadow-none"
-                          >
-                            <Play size={10} className="mr-1 inline-block" /> Start
-                          </Button>
-                        )}
-                        {todo.status !== 'done' && (
-                          <Button
-                            variant="default"
-                            size="sm"
-                            onClick={() => handleToggleStatus(todo, 'done')}
+                            onClick={() => restoreTodo(todo.id)}
                             className="h-6 text-[10px] font-semibold px-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-none"
                           >
-                            <CheckCircle size={10} className="mr-1 inline-block" /> Finish
+                            Restore
                           </Button>
+                        ) : (
+                          <>
+                            {todo.status !== 'pending' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleToggleStatus(todo, 'pending')}
+                                className="h-6 text-[10px] font-semibold px-2 rounded-md border border-border/80 hover:bg-accent text-foreground transition-colors"
+                              >
+                                <Clock size={10} className="mr-1 inline-block" /> Reopen
+                              </Button>
+                            )}
+                            {todo.status !== 'in_progress' && todo.status !== 'done' && (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => handleToggleStatus(todo, 'in_progress')}
+                                className="h-6 text-[10px] font-semibold px-2 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground transition-colors shadow-none"
+                              >
+                                <Play size={10} className="mr-1 inline-block" /> Start
+                              </Button>
+                            )}
+                            {todo.status !== 'done' && (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => handleToggleStatus(todo, 'done')}
+                                className="h-6 text-[10px] font-semibold px-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-none"
+                              >
+                                <CheckCircle size={10} className="mr-1 inline-block" /> Finish
+                              </Button>
+                            )}
+                          </>
                         )}
                       </div>
                       <div className="flex items-center gap-1 text-[9px] text-muted-foreground font-medium">
                         <Calendar size={10} />
-                        <span>{new Date(todo.updated_at).toLocaleDateString()}</span>
+                        <span>{todo.due_at ? `Due: ${new Date(todo.due_at).toLocaleDateString()}` : new Date(todo.updated_at).toLocaleDateString()}</span>
                       </div>
                     </CardFooter>
                   </Card>
@@ -537,6 +576,16 @@ export default function Todos() {
                   ⚠️ {validationErrors.description}
                 </p>
               )}
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Due Date</label>
+              <Input
+                type="datetime-local"
+                className="w-full h-9 rounded-md border border-border/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 bg-transparent text-xs text-foreground [color-scheme:dark]"
+                value={dueAt}
+                onChange={(e) => setDueAt(e.target.value)}
+              />
             </div>
 
             <div className="space-y-1.5">
@@ -661,6 +710,16 @@ export default function Todos() {
             </div>
 
             <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Due Date</label>
+              <Input
+                type="datetime-local"
+                className="w-full h-9 rounded-md border border-border/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 bg-transparent text-xs text-foreground [color-scheme:dark]"
+                value={dueAt}
+                onChange={(e) => setDueAt(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Cover Image</label>
               <div className="flex items-center gap-3">
                 <label className="h-8 px-3 text-[11px] font-semibold border border-border/85 rounded-md hover:bg-accent cursor-pointer flex items-center gap-1.5 select-none text-foreground">
@@ -722,7 +781,7 @@ export default function Todos() {
         <DialogContent className="bg-card w-full max-w-md border border-border p-6 rounded-lg shadow-lg" showCloseButton={false}>
           <DialogHeader className="border-b border-border/60 pb-3 mb-5 flex flex-row justify-between items-center gap-2">
             <DialogTitle className="text-sm font-bold uppercase tracking-wider flex items-center gap-2 text-foreground">
-              <Trash2 size={16} className="text-destructive" /> Delete Task
+              <Trash2 size={16} className="text-destructive" /> Archive Task
             </DialogTitle>
             <Button
               variant="ghost"
@@ -736,7 +795,7 @@ export default function Todos() {
 
           <div className="space-y-4">
             <p className="text-muted-foreground text-xs leading-relaxed">
-              Are you sure you want to delete <span className="font-bold text-foreground">"{todoToDelete?.title}"</span>? This is permanent and cannot be undone.
+              Are you sure you want to archive <span className="font-bold text-foreground">"{todoToDelete?.title}"</span>? You can view and restore it from the Archived tab later.
             </p>
 
             <div className="flex justify-end gap-2 pt-4 border-t border-border/60">
@@ -753,7 +812,7 @@ export default function Todos() {
                 onClick={handleDeleteConfirm}
                 className="h-8 text-xs font-semibold px-4 rounded-md"
               >
-                Delete
+                Archive
               </Button>
             </div>
           </div>

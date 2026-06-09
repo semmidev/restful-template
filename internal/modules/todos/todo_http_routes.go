@@ -61,6 +61,15 @@ func RegisterTodoRoutes(api huma.API, todos TodoService) {
 	}, h.handleDelete)
 
 	huma.Register(api, huma.Operation{
+		OperationID: "restore-todo",
+		Method:      http.MethodPost,
+		Path:        "/api/v1/todos/{id}/restore",
+		Summary:     "Restore a soft-deleted todo",
+		Tags:        []string{"Todos"},
+		Security:    []map[string][]string{{"bearerAuth": {}}},
+	}, h.handleRestore)
+
+	huma.Register(api, huma.Operation{
 		OperationID: "get-todo-stats",
 		Method:      http.MethodGet,
 		Path:        "/api/v1/todos/stats",

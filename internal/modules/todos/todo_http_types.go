@@ -16,12 +16,13 @@ type todoBody struct {
 // List
 
 type listTodosReq struct {
-	Page    int    `query:"page"      default:"1"  minimum:"1"`
-	PerPage int    `query:"per_page"  default:"20" minimum:"1" maximum:"100"`
-	Status  string `query:"status"  enum:"pending,in_progress,done," doc:"Filter by status (empty = all)"`
-	Keyword string `query:"q"       maxLength:"100"              doc:"Case-insensitive substring search on title and description"`
-	SortBy  string `query:"sort_by" default:"created_at" enum:"created_at,updated_at,title,status" doc:"Column to sort by"`
-	SortDir string `query:"sort_dir" default:"desc" enum:"asc,desc" doc:"Sort direction"`
+	Page     int    `query:"page"      default:"1"  minimum:"1"`
+	PerPage  int    `query:"per_page"  default:"20" minimum:"1" maximum:"100"`
+	Status   string `query:"status"  enum:"pending,in_progress,done," doc:"Filter by status (empty = all)"`
+	Keyword  string `query:"q"       maxLength:"100"              doc:"Case-insensitive substring search on title and description"`
+	SortBy   string `query:"sort_by" default:"created_at" enum:"created_at,updated_at,title,status" doc:"Column to sort by"`
+	SortDir  string `query:"sort_dir" default:"desc" enum:"asc,desc" doc:"Sort direction"`
+	Archived bool   `query:"archived" default:"false" doc:"Show archived/soft-deleted tasks only"`
 }
 
 type listTodosData struct {
@@ -53,6 +54,7 @@ type CreateTodoForm struct {
 	Cover       huma.FormFile `form:"cover" contentType:"image/*" doc:"Image file to upload as cover (max 5 MB)" required:"false"`
 	Importance  bool          `form:"importance" required:"false"`
 	Urgency     bool          `form:"urgency" required:"false"`
+	DueAt       string        `form:"due_at" required:"false" doc:"Optional due date in RFC3339 format"`
 }
 
 type createTodoReq struct {
@@ -87,6 +89,7 @@ type UpdateTodoForm struct {
 	Cover       huma.FormFile `form:"cover" contentType:"image/*" doc:"Image file to upload as cover (max 5 MB)" required:"false"`
 	Importance  bool          `form:"importance" required:"false"`
 	Urgency     bool          `form:"urgency" required:"false"`
+	DueAt       string        `form:"due_at" required:"false" doc:"Optional due date in RFC3339 format"`
 }
 
 type updateTodoReq struct {
@@ -109,6 +112,17 @@ type deleteTodoReq struct {
 }
 
 type deleteTodoRes struct{}
+
+// Restore
+
+type restoreTodoReq struct {
+	ID uuid.UUID `path:"id" doc:"Todo UUID"`
+}
+
+type restoreTodoRes struct {
+	Body todoBody
+}
+
 
 // Stats
 

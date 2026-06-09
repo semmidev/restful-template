@@ -7,6 +7,7 @@ export interface FetchTodosParams {
   q?: string;
   sort_by: string;
   sort_dir: string;
+  archived?: boolean;
 }
 
 export async function fetchTodosRequest(params: FetchTodosParams) {
@@ -40,6 +41,10 @@ export async function updateTodoRequest(
 
 export async function deleteTodoRequest(id: string) {
   return client.delete(`/todos/${id}`);
+}
+
+export async function restoreTodoRequest(id: string) {
+  return client.post(`/todos/${id}/restore`);
 }
 
 export async function fetchTodoStatsRequest() {

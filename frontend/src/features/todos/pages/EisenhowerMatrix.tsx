@@ -144,7 +144,7 @@ function TodoCard({ todo, quadrant, onDragStart, onDelete }: TodoCardProps) {
             {todo.status === 'in_progress' ? 'in progress' : todo.status}
           </Badge>
           <span className="text-[9px] text-muted-foreground/60 font-medium">
-            {new Date(todo.updated_at).toLocaleDateString()}
+            {todo.due_at ? `Due: ${new Date(todo.due_at).toLocaleDateString()}` : new Date(todo.updated_at).toLocaleDateString()}
           </span>
         </div>
       </div>
@@ -425,7 +425,7 @@ export default function EisenhowerMatrix() {
   // Map todos to quadrants
   const getQuadrantTodos = (q: Quadrant): Todo[] =>
     todos.filter(
-      (t) => t.importance === q.importance && t.urgency === q.urgency
+      (t) => t.importance === q.importance && t.urgency === q.urgency && !t.deleted_at
     );
 
   // ── Drag handlers ──

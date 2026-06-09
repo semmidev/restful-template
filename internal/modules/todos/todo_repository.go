@@ -28,8 +28,8 @@ func NewTodoRepository(db *pgxpool.Pool) TodoRepository { return &todoRepository
 
 func (r *todoRepository) Create(ctx context.Context, t *Todo) error {
 	sql, args, err := database.QB.Insert("todos").
-		Columns("id", "user_id", "title", "description", "cover", "status", "importance", "urgency", "created_at", "updated_at").
-		Values(t.ID, t.UserID, t.Title, t.Description, t.Cover, t.Status, t.Importance, t.Urgency, t.CreatedAt, t.UpdatedAt).
+		Columns("id", "user_id", "title", "description", "cover", "status", "importance", "urgency", "due_at", "deleted_at", "created_at", "updated_at").
+		Values(t.ID, t.UserID, t.Title, t.Description, t.Cover, t.Status, t.Importance, t.Urgency, t.DueAt, t.DeletedAt, t.CreatedAt, t.UpdatedAt).
 		ToSql()
 	if err != nil {
 		return err
@@ -40,7 +40,7 @@ func (r *todoRepository) Create(ctx context.Context, t *Todo) error {
 }
 
 func (r *todoRepository) GetByID(ctx context.Context, userID, id uuid.UUID) (*Todo, error) {
-	sql, args, err := database.QB.Select("id", "user_id", "title", "description", "cover", "status", "importance", "urgency", "created_at", "updated_at").
+	sql, args, err := database.QB.Select("id", "user_id", "title", "description", "cover", "status", "importance", "urgency", "due_at", "deleted_at", "created_at", "updated_at").
 		From("todos").
 		Where(sq.Eq{"id": id}).
 		ToSql()
@@ -50,7 +50,7 @@ func (r *todoRepository) GetByID(ctx context.Context, userID, id uuid.UUID) (*To
 
 	row := database.GetDB(ctx, r.db).QueryRow(ctx, sql, args...)
 	var t Todo
-	if err := row.Scan(&t.ID, &t.UserID, &t.Title, &t.Description, &t.Cover, &t.Status, &t.Importance, &t.Urgency, &t.CreatedAt, &t.UpdatedAt); err != nil {
+	if err := row.Scan(&t.ID, &t.UserID, &t.Title, &t.Description, &t.Cover, &t.Status, &t.Importance, &t.Urgency, &t.DueAt, &t.DeletedAt, &t.CreatedAt, &t.UpdatedAt); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, apperrors.ErrNotFound
 		}
@@ -63,6 +63,12 @@ func (r *todoRepository) GetByID(ctx context.Context, userID, id uuid.UUID) (*To
 // in the same query, avoiding a second round-trip for pagination metadata.
 func (r *todoRepository) ListByUser(ctx context.Context, q ListTodosQuery) ([]*Todo, int, error) {
 	base := database.QB.Select().From("todos").Where(sq.Eq{"user_id": q.UserID})
+
+	if q.Archived {
+		base = base.Where(sq.NotEq{"deleted_at": nil})
+	} else {
+		base = base.Where(sq.Eq{"deleted_at": nil})
+	}
 
 	if q.Status != nil {
 		base = base.Where(sq.Eq{"status": *q.Status})
@@ -90,7 +96,7 @@ func (r *todoRepository) ListByUser(ctx context.Context, q ListTodosQuery) ([]*T
 	dataQuery := base.
 		Columns(
 			"id", "user_id", "title", "description", "cover",
-			"status", "importance", "urgency", "created_at", "updated_at",
+			"status", "importance", "urgency", "due_at", "deleted_at", "created_at", "updated_at",
 			"COUNT(*) OVER() AS total_count",
 		).
 		OrderBy(sortBy + " " + sortDir).
@@ -114,7 +120,7 @@ func (r *todoRepository) ListByUser(ctx context.Context, q ListTodosQuery) ([]*T
 		var t Todo
 		if err := rows.Scan(
 			&t.ID, &t.UserID, &t.Title, &t.Description, &t.Cover,
-			&t.Status, &t.Importance, &t.Urgency, &t.CreatedAt, &t.UpdatedAt,
+			&t.Status, &t.Importance, &t.Urgency, &t.DueAt, &t.DeletedAt, &t.CreatedAt, &t.UpdatedAt,
 			&total,
 		); err != nil {
 			return nil, 0, err
@@ -140,6 +146,8 @@ func (r *todoRepository) Update(ctx context.Context, t *Todo) error {
 		Set("status", t.Status).
 		Set("importance", t.Importance).
 		Set("urgency", t.Urgency).
+		Set("due_at", t.DueAt).
+		Set("deleted_at", t.DeletedAt).
 		Set("updated_at", t.UpdatedAt).
 		Where(sq.Eq{"id": t.ID}).
 		ToSql()
@@ -158,8 +166,24 @@ func (r *todoRepository) Update(ctx context.Context, t *Todo) error {
 }
 
 func (r *todoRepository) Delete(ctx context.Context, userID, id uuid.UUID) error {
-	sql, args, err := database.QB.Delete("todos").
-		Where(sq.Eq{"id": id}).
+	sql, args, err := database.QB.Update("todos").
+		Set("deleted_at", time.Now().UTC()).
+		Set("updated_at", time.Now().UTC()).
+		Where(sq.Eq{"id": id, "user_id": userID}).
+		ToSql()
+	if err != nil {
+		return err
+	}
+
+	_, err = database.GetDB(ctx, r.db).Exec(ctx, sql, args...)
+	return err
+}
+
+func (r *todoRepository) Restore(ctx context.Context, userID, id uuid.UUID) error {
+	sql, args, err := database.QB.Update("todos").
+		Set("deleted_at", nil).
+		Set("updated_at", time.Now().UTC()).
+		Where(sq.Eq{"id": id, "user_id": userID}).
 		ToSql()
 	if err != nil {
 		return err
@@ -182,13 +206,13 @@ func (r *todoRepository) DeleteAllByUserID(ctx context.Context, userID uuid.UUID
 }
 
 func (r *todoRepository) GetStats(ctx context.Context, userID uuid.UUID) (*TodoStats, error) {
-	// 1. Get status counts
+	// 1. Get status counts for active todos (deleted_at is null)
 	countSQL, countArgs, err := database.QB.Select(
 		"COUNT(*)",
 		"COUNT(*) FILTER (WHERE status = 'pending')",
 		"COUNT(*) FILTER (WHERE status = 'in_progress')",
 		"COUNT(*) FILTER (WHERE status = 'done')",
-	).From("todos").Where(sq.Eq{"user_id": userID}).ToSql()
+	).From("todos").Where(sq.Eq{"user_id": userID, "deleted_at": nil}).ToSql()
 	if err != nil {
 		return nil, err
 	}
@@ -206,7 +230,7 @@ func (r *todoRepository) GetStats(ctx context.Context, userID uuid.UUID) (*TodoS
 		stats.CompletionRate = 0
 	}
 
-	// 2. Daily stats for the last 7 days
+	// 2. Daily stats for the last 7 days (active/completed)
 	now := time.Now().UTC()
 	startDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC).AddDate(0, 0, -6)
 
@@ -225,7 +249,7 @@ func (r *todoRepository) GetStats(ctx context.Context, userID uuid.UUID) (*TodoS
 		"DATE(created_at) AS date",
 		"COUNT(*)",
 	).From("todos").
-		Where(sq.Eq{"user_id": userID}).
+		Where(sq.Eq{"user_id": userID, "deleted_at": nil}).
 		Where(sq.GtOrEq{"created_at": startDate}).
 		GroupBy("DATE(created_at)").
 		ToSql()
@@ -258,7 +282,7 @@ func (r *todoRepository) GetStats(ctx context.Context, userID uuid.UUID) (*TodoS
 		"DATE(updated_at) AS date",
 		"COUNT(*)",
 	).From("todos").
-		Where(sq.Eq{"user_id": userID, "status": TodoStatusDone}).
+		Where(sq.Eq{"user_id": userID, "status": TodoStatusDone, "deleted_at": nil}).
 		Where(sq.GtOrEq{"updated_at": startDate}).
 		GroupBy("DATE(updated_at)").
 		ToSql()
@@ -288,4 +312,47 @@ func (r *todoRepository) GetStats(ctx context.Context, userID uuid.UUID) (*TodoS
 	}
 
 	return &stats, nil
+}
+
+func (r *todoRepository) EscalateUrgency(ctx context.Context, threshold time.Time) ([]*Todo, error) {
+	// Query to find and update todos matching:
+	// status != 'done' AND urgency = false AND due_at <= threshold AND deleted_at IS NULL
+	// Set urgency = true, updated_at = NOW()
+	sql, args, err := database.QB.Update("todos").
+		Set("urgency", true).
+		Set("updated_at", time.Now().UTC()).
+		Where(sq.And{
+			sq.NotEq{"status": TodoStatusDone},
+			sq.Eq{"urgency": false},
+			sq.LtOrEq{"due_at": threshold},
+			sq.Eq{"deleted_at": nil},
+		}).
+		Suffix("RETURNING id, user_id, title, description, cover, status, importance, urgency, due_at, deleted_at, created_at, updated_at").
+		ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := database.GetDB(ctx, r.db).Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	updated := make([]*Todo, 0)
+	for rows.Next() {
+		var t Todo
+		if err := rows.Scan(
+			&t.ID, &t.UserID, &t.Title, &t.Description, &t.Cover,
+			&t.Status, &t.Importance, &t.Urgency, &t.DueAt, &t.DeletedAt, &t.CreatedAt, &t.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		updated = append(updated, &t)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return updated, nil
 }

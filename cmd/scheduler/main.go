@@ -12,6 +12,7 @@ import (
 	"github.com/go-co-op/gocron/v2"
 	"github.com/semmidev/restful-template/internal/config"
 	"github.com/semmidev/restful-template/internal/modules/auth"
+	"github.com/semmidev/restful-template/internal/modules/todos"
 	"github.com/semmidev/restful-template/internal/shared/banner"
 	"github.com/semmidev/restful-template/internal/shared/database"
 	"github.com/semmidev/restful-template/internal/shared/observability"
@@ -60,6 +61,10 @@ func run(ctx context.Context) error {
 	tokenRepo := auth.NewTokenRepository(pool)
 	authJob := auth.NewAuthJob(tokenRepo, logger)
 
+	todoRepo := todos.NewTodoRepository(pool)
+	cacheRepo := redis.NewCacheRepository(rdb)
+	todoJob := todos.NewTodoJob(todoRepo, cacheRepo, logger)
+
 	// 5-minute TTL prevents a dead scheduler replica from holding a lock past a
 	// reasonable job window and blocking the next election.
 	locker := redis.NewRedisLocker(rdb, "gocron:lock:", 5*time.Minute)
@@ -81,18 +86,28 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("failed to register cleanup job: %w", err)
 	}
 
+	// Run every 10 minutes.
+	_, err = s.NewJob(
+		gocron.CronJob("*/10 * * * *", false),
+		gocron.NewTask(todoJob.EscalateUrgency),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to register todo escalation job: %w", err)
+	}
+
 	banner.Print(cfg.App.Name+" (Scheduler)", cfg.App.Version, []banner.Field{
 		{Key: "env", Value: cfg.App.Env},
-		{Key: "jobs", Value: "1 (cleanup tokens)"},
+		{Key: "jobs", Value: "2 (cleanup tokens, escalate urgency)"},
 		{Key: "lock", Value: "redis (5m TTL)"},
 	})
 
 	s.Start()
 	logger.Info("scheduler started successfully", "jobs", len(s.Jobs()))
 
-	// Run once immediately so tokens that expired while the scheduler was down
-	// are cleared without waiting up to an hour.
+	// Run once immediately so tokens/urgency that expired/changed while the scheduler was down
+	// are cleared/escalated without waiting.
 	authJob.CleanupExpiredTokens()
+	todoJob.EscalateUrgency()
 
 	<-ctx.Done()
 	logger.Info("shutdown signal received")
