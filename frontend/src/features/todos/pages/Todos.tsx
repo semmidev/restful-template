@@ -258,6 +258,21 @@ export default function Todos() {
 
   return (
     <TooltipProvider>
+      {/* CSS custom styles for datetime input */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        .custom-datetime-input::-webkit-calendar-picker-indicator {
+          background: transparent;
+          bottom: 0;
+          color: transparent;
+          cursor: pointer;
+          height: auto;
+          left: 0;
+          position: absolute;
+          right: 0;
+          top: 0;
+          width: auto;
+        }
+      `}} />
       <SidebarProvider>
         <AppSidebar />
         <SidebarInset>
@@ -425,49 +440,91 @@ export default function Todos() {
             ) : viewMode === 'list' ? (
               <div className="flex flex-col border border-border/60 rounded-lg bg-card/10 overflow-hidden divide-y divide-border/40">
                 {todos.map((todo) => (
-                  <div key={todo.id} className="group flex items-center justify-between px-4 py-2.5 hover:bg-muted/30 transition-colors text-xs">
+                  <div key={todo.id} className="group flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors gap-3 text-xs">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <span className="shrink-0">{getStatusIcon(todo)}</span>
-                      <div className="flex items-baseline gap-2 min-w-0 flex-1">
+                      <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-2.5 min-w-0 flex-1">
                         <span className={`font-semibold text-foreground truncate ${todo.status === 'done' ? 'line-through text-muted-foreground/60' : ''}`}>
                           {todo.title}
                         </span>
                         {todo.description && (
-                          <span className="text-[11px] text-muted-foreground truncate max-w-lg hidden sm:inline">
+                          <span className="text-[11px] text-muted-foreground truncate max-w-md">
                             — {todo.description}
                           </span>
                         )}
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-4 shrink-0 pl-3">
-                      {todo.due_at && (
-                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-medium">
-                          <Calendar size={11} className="text-muted-foreground/60" />
-                          <span>{new Date(todo.due_at).toLocaleDateString()}</span>
-                        </div>
-                      )}
-                      
-                      {todo.cover && (
-                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground bg-primary/10 border border-primary/20 text-primary px-1.5 py-0.5 rounded" title="Has cover image">
-                          <span className="text-[9px] font-bold uppercase tracking-wider">Image</span>
-                        </div>
-                      )}
-                      
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                        {!todo.deleted_at ? (
+                    <div className="flex flex-wrap items-center gap-4 shrink-0 justify-between sm:justify-end">
+                      {/* Due date column */}
+                      <div className="w-24 flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium shrink-0">
+                        {todo.due_at ? (
                           <>
-                            {todo.status !== 'done' && (
+                            <Calendar size={11} className="text-muted-foreground/60 shrink-0" />
+                            <span>{new Date(todo.due_at).toLocaleDateString()}</span>
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground/30">—</span>
+                        )}
+                      </div>
+                      
+                      {/* Cover Image Indicator */}
+                      <div className="w-14 shrink-0 flex justify-start">
+                        {todo.cover ? (
+                          <div className="text-[9px] font-extrabold uppercase tracking-wider bg-primary/10 border border-primary/20 text-primary px-1.5 py-0.5 rounded">
+                            Image
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground/30">—</span>
+                        )}
+                      </div>
+                      
+                      {/* Actions Controls (aligned like Card View) */}
+                      <div className="flex items-center gap-1.5 min-w-[150px] justify-end">
+                        {todo.deleted_at ? (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => restoreTodo(todo.id)}
+                            className="h-6 text-[10px] font-semibold px-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white transition-colors border-none shadow-none"
+                          >
+                            Restore
+                          </Button>
+                        ) : (
+                          <>
+                            {todo.status !== 'pending' && (
                               <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleToggleStatus(todo, 'done')}
-                                className="h-6 w-6 rounded-md hover:bg-emerald-500/10 text-muted-foreground hover:text-emerald-500 border-none"
-                                title="Mark as done"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleToggleStatus(todo, 'pending')}
+                                className="h-6 text-[10px] font-semibold px-2 rounded-md border border-border/80 hover:bg-accent text-foreground transition-colors"
                               >
-                                <CheckCircle size={12} />
+                                <Clock size={10} className="mr-1 inline-block" /> Reopen
                               </Button>
                             )}
+                            {todo.status !== 'in_progress' && todo.status !== 'done' && (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => handleToggleStatus(todo, 'in_progress')}
+                                className="h-6 text-[10px] font-semibold px-2 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground transition-colors border-none shadow-none"
+                              >
+                                <Play size={10} className="mr-1 inline-block" /> Start
+                              </Button>
+                            )}
+                            {todo.status !== 'done' && (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => handleToggleStatus(todo, 'done')}
+                                className="h-6 text-[10px] font-semibold px-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white transition-colors border-none shadow-none"
+                              >
+                                <CheckCircle size={10} className="mr-1 inline-block" /> Finish
+                              </Button>
+                            )}
+
+                            <Separator orientation="vertical" className="h-4 mx-1" />
+
                             <Button
                               variant="ghost"
                               size="icon"
@@ -475,7 +532,7 @@ export default function Todos() {
                               className="h-6 w-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent border-none"
                               title="Edit task"
                             >
-                              <Edit2 size={12} />
+                              <Edit2 size={11} />
                             </Button>
                             <Button
                               variant="ghost"
@@ -484,18 +541,9 @@ export default function Todos() {
                               className="h-6 w-6 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 border-none"
                               title="Archive task"
                             >
-                              <Trash2 size={12} />
+                              <Trash2 size={11} />
                             </Button>
                           </>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => restoreTodo(todo.id)}
-                            className="h-6 px-2 text-[10px] font-semibold text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10 border-none"
-                          >
-                            Restore
-                          </Button>
                         )}
                       </div>
                     </div>
@@ -669,12 +717,13 @@ export default function Todos() {
           </DialogHeader>
 
           <form onSubmit={handleCreateTodo} className="space-y-4">
-            <div className="space-y-1">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Title</label>
               <Input
                 type="text"
                 required
-                placeholder="Task Title"
-                className="w-full text-base font-bold bg-transparent border-none border-b border-border/20 rounded-none px-0 py-1.5 focus-visible:ring-0 focus-visible:border-primary placeholder:text-muted-foreground/40 text-foreground"
+                placeholder="Task title..."
+                className="w-full h-9 rounded-md border border-border/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 bg-transparent text-xs text-foreground px-3"
                 value={title}
                 onChange={(e) => {
                   setTitle(e.target.value);
@@ -690,11 +739,12 @@ export default function Todos() {
               )}
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Description</label>
               <textarea
                 rows={4}
                 placeholder="Add task details & description..."
-                className="w-full min-h-[100px] text-xs bg-transparent border-none rounded-none px-0 py-1.5 focus:outline-none focus:ring-0 resize-none placeholder:text-muted-foreground/45 leading-relaxed text-foreground"
+                className="w-full p-3 rounded-md border border-border/80 focus:outline-none focus:ring-1 focus:ring-primary bg-transparent text-xs text-foreground resize-none leading-relaxed"
                 value={description}
                 onChange={(e) => {
                   setDescription(e.target.value);
@@ -714,10 +764,11 @@ export default function Todos() {
             <div className="border-t border-border/50 pt-4 space-y-3">
               <div className="grid grid-cols-3 items-center gap-2">
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Due Date</span>
-                <div className="col-span-2">
+                <div className="col-span-2 relative">
+                  <Calendar size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 pointer-events-none" />
                   <Input
                     type="datetime-local"
-                    className="w-full h-7 border border-border/60 rounded-md bg-muted/10 text-xs px-2 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 [color-scheme:dark] text-foreground"
+                    className="w-full h-8 pl-8 pr-2 border border-border/60 rounded-md bg-muted/10 text-xs focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 [color-scheme:dark] text-foreground custom-datetime-input cursor-pointer"
                     value={dueAt}
                     onChange={(e) => setDueAt(e.target.value)}
                   />
@@ -804,12 +855,13 @@ export default function Todos() {
           </DialogHeader>
 
           <form onSubmit={handleUpdateTodo} className="space-y-4">
-            <div className="space-y-1">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Title</label>
               <Input
                 type="text"
                 required
-                placeholder="Task Title"
-                className="w-full text-base font-bold bg-transparent border-none border-b border-border/20 rounded-none px-0 py-1.5 focus-visible:ring-0 focus-visible:border-primary placeholder:text-muted-foreground/40 text-foreground"
+                placeholder="Task title..."
+                className="w-full h-9 rounded-md border border-border/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 bg-transparent text-xs text-foreground px-3"
                 value={title}
                 onChange={(e) => {
                   setTitle(e.target.value);
@@ -825,11 +877,12 @@ export default function Todos() {
               )}
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Description</label>
               <textarea
                 rows={4}
                 placeholder="Add task details & description..."
-                className="w-full min-h-[100px] text-xs bg-transparent border-none rounded-none px-0 py-1.5 focus:outline-none focus:ring-0 resize-none placeholder:text-muted-foreground/45 leading-relaxed text-foreground"
+                className="w-full p-3 rounded-md border border-border/80 focus:outline-none focus:ring-1 focus:ring-primary bg-transparent text-xs text-foreground resize-none leading-relaxed"
                 value={description}
                 onChange={(e) => {
                   setDescription(e.target.value);
@@ -849,10 +902,11 @@ export default function Todos() {
             <div className="border-t border-border/50 pt-4 space-y-3">
               <div className="grid grid-cols-3 items-center gap-2">
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Due Date</span>
-                <div className="col-span-2">
+                <div className="col-span-2 relative">
+                  <Calendar size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 pointer-events-none" />
                   <Input
                     type="datetime-local"
-                    className="w-full h-7 border border-border/60 rounded-md bg-muted/10 text-xs px-2 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 [color-scheme:dark] text-foreground"
+                    className="w-full h-8 pl-8 pr-2 border border-border/60 rounded-md bg-muted/10 text-xs focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 [color-scheme:dark] text-foreground custom-datetime-input cursor-pointer"
                     value={dueAt}
                     onChange={(e) => setDueAt(e.target.value)}
                   />
@@ -921,7 +975,7 @@ export default function Todos() {
       {/* Delete Confirmation Dialog */}
       <Dialog open={!!todoToDelete} onOpenChange={(open) => { if (!open) setTodoToDelete(null); }}>
         <DialogContent className="bg-card w-full max-w-md border border-border p-6 rounded-lg shadow-lg" showCloseButton={false}>
-          <DialogHeader className="border-b border-border/60 pb-3 mb-5 flex flex-row justify-between items-center gap-2">
+          <DialogHeader className="border-b border-border/60 pb-3 mb-3 flex flex-row justify-between items-center gap-2">
             <DialogTitle className="text-sm font-bold uppercase tracking-wider flex items-center gap-2 text-foreground">
               <Trash2 size={16} className="text-destructive" /> Archive Task
             </DialogTitle>
