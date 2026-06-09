@@ -255,6 +255,12 @@ test('capture comprehensive desktop demo video', async ({ page }) => {
   await mainContent.evaluate(el => el.scrollBy(0, 400));
   await page.waitForTimeout(4000);
 
+  // Take thumbnail screenshot of the final dashboard
+  const thumbnailPath = path.join(assetsDir, 'desktop-demo-thumbnail.png');
+  await page.screenshot({ path: thumbnailPath });
+  fs.copyFileSync(thumbnailPath, path.join(artifactDir, 'desktop_demo_thumbnail.png'));
+  console.log('Thumbnail screenshot successfully captured!');
+
   // 8. Close page and copy video
   const video = page.video();
   await page.close();

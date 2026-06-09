@@ -45,7 +45,13 @@ Untuk panduan detail bagi AI Agent/Copilot dalam memahami standar engineering da
 
 ## 🎨 Web UI
 
-![Web UI Preview](assets/desktop-demo.webm)
+<p align="center">
+  <a href="assets/desktop-demo.webm">
+    <img src="assets/desktop-demo-thumbnail.png" alt="Web UI Preview" width="100%">
+  </a>
+  <br>
+  <sub><i>Klik gambar di atas untuk memutar video demonstrasi lengkap.</i></sub>
+</p>
 
 
 ### API Monitoring
