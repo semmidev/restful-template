@@ -33,7 +33,7 @@ export default class ErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-slate-50/50 flex flex-col justify-center items-center p-6">
+        <div className="min-h-svh bg-muted/40 flex flex-col justify-center items-center p-6">
           <div className="w-full max-w-md">
             <Card className="border border-border bg-card shadow-lg rounded-xl">
               <CardHeader className="space-y-1">
@@ -46,23 +46,23 @@ export default class ErrorBoundary extends Component<Props, State> {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
-                <p className="text-sm font-medium text-slate-600 leading-relaxed">
+                <p className="text-sm font-medium text-muted-foreground leading-relaxed">
                   Our task synchronizer ran into an unexpected runtime script error. You can try reloading the page or reset your credentials.
                 </p>
                 
                 {this.state.error && (
-                  <div className="bg-slate-100 border border-slate-200 p-4 rounded-lg font-mono text-[11px] overflow-x-auto select-all max-h-40 text-slate-800">
+                  <div className="bg-muted border border-border p-4 rounded-lg font-mono text-xs overflow-x-auto select-all max-h-40 text-foreground">
                     <span className="font-bold text-destructive">Error: </span>
                     {this.state.error.message}
                     {this.state.error.stack && (
-                      <div className="mt-2 text-slate-500 whitespace-pre">
+                      <div className="mt-2 text-muted-foreground whitespace-pre text-[10px] opacity-80 leading-normal">
                         {this.state.error.stack}
                       </div>
                     )}
                   </div>
                 )}
 
-                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <div className="flex flex-col gap-2 pt-2">
                   <Button
                     onClick={this.handleReload}
                     className="w-full h-10 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/95 transition-all shadow-sm rounded-md"
@@ -75,7 +75,7 @@ export default class ErrorBoundary extends Component<Props, State> {
                       localStorage.clear();
                       window.location.href = '/login';
                     }}
-                    className="w-full h-10 text-sm font-semibold rounded-md"
+                    className="w-full h-10 text-sm font-semibold rounded-md text-muted-foreground hover:text-foreground"
                   >
                     Reset & Sign In
                   </Button>
