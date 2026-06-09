@@ -45,9 +45,8 @@ Untuk panduan detail bagi AI Agent/Copilot dalam memahami standar engineering da
 
 ## 🎨 Web UI
 
-<p align="center">
-  <video src="assets/desktop-demo.webm" width="100%" controls autoplay loop muted></video>
-</p>
+![Web UI Preview](assets/desktop-demo.webm)
+
 
 ### API Monitoring
 
