@@ -14,6 +14,9 @@ import {
   Trash2,
   X,
   Zap,
+  CheckCircle2,
+  CircleDot,
+  Circle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -130,19 +133,18 @@ function TodoCard({ todo, quadrant, onDragStart, onDelete }: TodoCardProps) {
             {todo.description}
           </p>
         )}
-        <div className="flex items-center gap-2 mt-1.5">
-          <Badge
-            variant="secondary"
-            className={`text-[9px] uppercase tracking-wider font-bold py-0 px-1.5 rounded border shadow-none ${
-              todo.status === 'done'
-                ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-500'
-                : todo.status === 'in_progress'
-                ? 'bg-primary/5 border-primary/20 text-primary'
-                : 'bg-amber-500/5 border-amber-500/20 text-amber-500'
-            }`}
-          >
+        <div className="flex items-center gap-1.5 mt-1.5">
+          {todo.status === 'done' ? (
+            <CheckCircle2 size={11} className="text-emerald-500 shrink-0" />
+          ) : todo.status === 'in_progress' ? (
+            <CircleDot size={11} className="text-primary shrink-0 animate-pulse" />
+          ) : (
+            <Circle size={11} className="text-muted-foreground/50 shrink-0" />
+          )}
+          <span className="text-[10px] text-muted-foreground/80 font-semibold capitalize">
             {todo.status === 'in_progress' ? 'in progress' : todo.status}
-          </Badge>
+          </span>
+          <span className="text-muted-foreground/30 text-[9px]">•</span>
           <span className="text-[9px] text-muted-foreground/60 font-medium">
             {todo.due_at ? `Due: ${new Date(todo.due_at).toLocaleDateString()}` : new Date(todo.updated_at).toLocaleDateString()}
           </span>

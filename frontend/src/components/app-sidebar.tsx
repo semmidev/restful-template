@@ -202,7 +202,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       </AvatarFallback>
                     </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                      <span className="truncate font-semibold text-slate-800 dark:text-slate-200">
+                      <span className="truncate font-semibold text-foreground">
                         {username}
                       </span>
                       <span className="truncate text-xs text-muted-foreground font-medium">

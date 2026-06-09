@@ -128,15 +128,18 @@ export default function Dashboard() {
           </header>
 
           {/* Main Dashboard Content */}
-          <main className="flex flex-col gap-6 p-6 lg:p-8 bg-background min-h-[calc(100vh-3.5rem)]">
+          <main className="flex flex-col gap-6 p-6 lg:p-8 bg-background min-h-[calc(100vh-3.5rem)] relative overflow-hidden">
+            {/* Ambient decorative glow */}
+            <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-primary/5 rounded-full blur-[80px] pointer-events-none z-0" />
+
             {statsError && (
-              <div className="bg-destructive/10 border border-destructive/20 text-destructive text-xs font-semibold p-4 rounded-lg shadow-sm">
+              <div className="bg-destructive/10 border border-destructive/20 text-destructive text-xs font-semibold p-4 rounded-lg shadow-sm relative z-10">
                 ⚠️ {statsError}
               </div>
             )}
 
             {/* Metrics cards */}
-            <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 relative z-10">
               <Card className="border border-border bg-card/25 shadow-none rounded-lg p-5 hover:border-border/80 transition-colors">
                 <div className="flex items-center justify-between text-muted-foreground mb-3">
                   <span className="text-[10px] font-bold uppercase tracking-wider">Total Tasks</span>
@@ -191,7 +194,7 @@ export default function Dashboard() {
             </section>
 
             {/* Charts Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 relative z-10">
               {/* Pie Chart: Status Breakdown */}
               <Card className="lg:col-span-1 border border-border bg-card/25 shadow-none rounded-lg p-5 flex flex-col justify-between">
                 <div>
@@ -343,7 +346,7 @@ export default function Dashboard() {
             </div>
 
             {/* Sub-row: Productivity Comparison */}
-            <div className="grid grid-cols-1 gap-6">
+            <div className="grid grid-cols-1 gap-6 relative z-10">
               <Card className="border border-border bg-card/25 shadow-none rounded-lg p-5">
                 <div className="mb-4">
                   <div className="flex items-center gap-2 mb-1">

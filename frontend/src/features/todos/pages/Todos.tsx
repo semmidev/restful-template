@@ -10,6 +10,7 @@ import {
   Clock,
   Play,
   CheckCircle,
+  CheckCircle2,
   FileText,
   ChevronLeft,
   ChevronRight,
@@ -19,7 +20,12 @@ import {
   Sun,
   Moon,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Archive,
+  CircleDot,
+  Circle,
+  List,
+  LayoutGrid
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -69,6 +75,28 @@ export default function Todos() {
     setEditingTodo,
     setError,
   } = useTodoStore();
+
+  // View mode preference
+  const [viewMode, setViewMode] = useState<'list' | 'card'>((localStorage.getItem('todos_view_mode') as 'list' | 'card') || 'list');
+
+  useEffect(() => {
+    localStorage.setItem('todos_view_mode', viewMode);
+  }, [viewMode]);
+
+  // Helper for status icons
+  const getStatusIcon = (item: Todo) => {
+    if (item.deleted_at) {
+      return <Archive size={13} className="text-muted-foreground/60" />;
+    }
+    switch (item.status) {
+      case 'done':
+        return <CheckCircle2 size={13} className="text-emerald-500 fill-emerald-500/10" />;
+      case 'in_progress':
+        return <CircleDot size={13} className="text-primary animate-pulse" />;
+      default:
+        return <Circle size={13} className="text-muted-foreground/50" />;
+    }
+  };
 
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -288,7 +316,7 @@ export default function Todos() {
             )}
 
             {/* Filters Toolbar */}
-            <section className="flex flex-col md:flex-row gap-4 justify-between items-stretch md:items-center bg-card/25 border border-border p-3 rounded-lg">
+            <section className="flex flex-col md:flex-row gap-3.5 justify-between items-stretch md:items-center py-2 border-b border-border/50">
               <Tabs value={archived ? 'archived' : status} onValueChange={(val) => {
                 if (val === 'archived') {
                   setFilters({ archived: true, status: '' });
@@ -296,7 +324,7 @@ export default function Todos() {
                   setFilters({ archived: false, status: val });
                 }
               }}>
-                <TabsList className="bg-muted/75 p-0.5 rounded-md gap-0.5 h-8">
+                <TabsList className="bg-transparent p-0 gap-1 h-8 border-b border-transparent">
                   {[
                     { label: 'All Tasks', value: '' },
                     { label: 'Pending', value: 'pending' },
@@ -307,7 +335,7 @@ export default function Todos() {
                     <TabsTrigger
                       key={tab.value}
                       value={tab.value}
-                      className="px-3 py-1 text-xs font-semibold rounded-sm transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-none"
+                      className="px-3 h-7 text-xs font-semibold text-muted-foreground hover:text-foreground transition-all border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:bg-transparent rounded-none shadow-none"
                     >
                       {tab.label}
                     </TabsTrigger>
@@ -316,36 +344,68 @@ export default function Todos() {
               </Tabs>
 
               <div className="flex flex-wrap items-center gap-2">
+                {/* View Switcher */}
+                <div className="flex items-center border border-border/60 rounded-md p-0.5 bg-muted/20">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setViewMode('list')}
+                    className={`h-6 w-6 rounded-sm p-0 transition-all border-none ${viewMode === 'list' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                    title="List View"
+                  >
+                    <List size={13} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setViewMode('card')}
+                    className={`h-6 w-6 rounded-sm p-0 transition-all border-none ${viewMode === 'card' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                    title="Card/Grid View"
+                  >
+                    <LayoutGrid size={13} />
+                  </Button>
+                </div>
+
+                <Separator orientation="vertical" className="h-4 hidden sm:block" />
+
                 <select
-                  className="h-8 px-2.5 rounded-md border border-border/80 bg-background text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
+                  className="h-7 px-2 rounded-md border border-border/80 bg-background text-[11px] font-semibold focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
                   value={sortBy}
                   onChange={(e) => setFilters({ sortBy: e.target.value })}
                 >
-                  <option value="created_at">Created Time</option>
-                  <option value="updated_at">Updated Time</option>
-                  <option value="title">Title Alphabetical</option>
-                  <option value="status">Status Priority</option>
+                  <option value="created_at">Sort by Created</option>
+                  <option value="updated_at">Sort by Updated</option>
+                  <option value="title">Sort by Title</option>
+                  <option value="status">Sort by Status</option>
                 </select>
 
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setFilters({ sortDir: sortDir === 'asc' ? 'desc' : 'asc' })}
-                  className="h-8 text-xs font-semibold border-border/80 flex items-center gap-1 hover:bg-accent"
+                  className="h-7 text-[11px] font-semibold border-border/80 flex items-center gap-1 hover:bg-accent px-2 rounded-md"
                 >
-                  Sort: {sortDir === 'asc' ? 'Ascending' : 'Descending'}
-                  {sortDir === 'asc' ? <ArrowUp className="size-3.5" /> : <ArrowDown className="size-3.5" />}
+                  {sortDir === 'asc' ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />}
+                  {sortDir === 'asc' ? 'Asc' : 'Desc'}
                 </Button>
               </div>
             </section>
 
-            {/* Tasks Grid */}
+            {/* Tasks Section */}
             {loading && todos.length === 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {Array.from({ length: 6 }).map((_, index) => (
-                  <TodoSkeleton key={index} />
-                ))}
-              </div>
+              viewMode === 'list' ? (
+                <div className="flex flex-col border border-border/60 rounded-lg bg-card/10 overflow-hidden divide-y divide-border/40">
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <div key={index} className="h-10 w-full animate-pulse bg-muted/20" />
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <TodoSkeleton key={index} />
+                  ))}
+                </div>
+              )
             ) : todos.length === 0 ? (
               <Card className="border border-border border-dashed bg-transparent text-center py-16 rounded-lg">
                 <CardContent className="flex flex-col items-center justify-center p-0">
@@ -362,6 +422,86 @@ export default function Todos() {
                   </Button>
                 </CardContent>
               </Card>
+            ) : viewMode === 'list' ? (
+              <div className="flex flex-col border border-border/60 rounded-lg bg-card/10 overflow-hidden divide-y divide-border/40">
+                {todos.map((todo) => (
+                  <div key={todo.id} className="group flex items-center justify-between px-4 py-2.5 hover:bg-muted/30 transition-colors text-xs">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <span className="shrink-0">{getStatusIcon(todo)}</span>
+                      <div className="flex items-baseline gap-2 min-w-0 flex-1">
+                        <span className={`font-semibold text-foreground truncate ${todo.status === 'done' ? 'line-through text-muted-foreground/60' : ''}`}>
+                          {todo.title}
+                        </span>
+                        {todo.description && (
+                          <span className="text-[11px] text-muted-foreground truncate max-w-lg hidden sm:inline">
+                            — {todo.description}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-4 shrink-0 pl-3">
+                      {todo.due_at && (
+                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-medium">
+                          <Calendar size={11} className="text-muted-foreground/60" />
+                          <span>{new Date(todo.due_at).toLocaleDateString()}</span>
+                        </div>
+                      )}
+                      
+                      {todo.cover && (
+                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground bg-primary/10 border border-primary/20 text-primary px-1.5 py-0.5 rounded" title="Has cover image">
+                          <span className="text-[9px] font-bold uppercase tracking-wider">Image</span>
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                        {!todo.deleted_at ? (
+                          <>
+                            {todo.status !== 'done' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleToggleStatus(todo, 'done')}
+                                className="h-6 w-6 rounded-md hover:bg-emerald-500/10 text-muted-foreground hover:text-emerald-500 border-none"
+                                title="Mark as done"
+                              >
+                                <CheckCircle size={12} />
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEditClick(todo)}
+                              className="h-6 w-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent border-none"
+                              title="Edit task"
+                            >
+                              <Edit2 size={12} />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteClick(todo)}
+                              className="h-6 w-6 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 border-none"
+                              title="Archive task"
+                            >
+                              <Trash2 size={12} />
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => restoreTodo(todo.id)}
+                            className="h-6 px-2 text-[10px] font-semibold text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10 border-none"
+                          >
+                            Restore
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {todos.map((todo) => (
@@ -383,18 +523,12 @@ export default function Todos() {
 
                       <CardHeader className="pt-4 pb-2 px-5 space-y-2">
                         <div className="flex justify-between items-center gap-2">
-                          <Badge
-                            variant="secondary"
-                            className={`text-[9px] uppercase tracking-wider font-bold py-0.5 px-2 rounded-md border shadow-none ${
-                              todo.status === 'done'
-                                ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-500'
-                                : todo.status === 'in_progress'
-                                ? 'bg-primary/5 border-primary/20 text-primary'
-                                : 'bg-amber-500/5 border-amber-500/20 text-amber-500'
-                            }`}
-                          >
-                            {todo.status === 'in_progress' ? 'in progress' : todo.status}
-                          </Badge>
+                          <div className="flex items-center gap-1.5">
+                            {getStatusIcon(todo)}
+                            <span className="text-[10px] font-bold text-muted-foreground capitalize">
+                              {todo.status === 'in_progress' ? 'in progress' : todo.status}
+                            </span>
+                          </div>
                           <div className="flex gap-1">
                             {!todo.deleted_at && (
                               <>
@@ -518,8 +652,8 @@ export default function Todos() {
       <Dialog open={isCreateOpen} onOpenChange={(open) => { if (!open) { setIsCreateOpen(false); resetForm(); } }}>
         <DialogContent className="bg-card w-full max-w-lg border border-border p-6 rounded-lg shadow-lg overflow-y-auto max-h-[90vh]" showCloseButton={false}>
           <DialogHeader className="border-b border-border/60 pb-3 mb-5 flex flex-row justify-between items-center gap-2">
-            <DialogTitle className="text-sm font-bold uppercase tracking-wider flex items-center gap-2">
-              <Plus size={16} className="text-primary" /> Create Task
+            <DialogTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-2 text-muted-foreground">
+              <Plus size={14} className="text-primary" /> Create New Task
             </DialogTitle>
             <Button
               variant="ghost"
@@ -535,13 +669,12 @@ export default function Todos() {
           </DialogHeader>
 
           <form onSubmit={handleCreateTodo} className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Title</label>
+            <div className="space-y-1">
               <Input
                 type="text"
                 required
-                placeholder="Task title..."
-                className="w-full h-9 rounded-md border border-border/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 bg-transparent text-xs"
+                placeholder="Task Title"
+                className="w-full text-base font-bold bg-transparent border-none border-b border-border/20 rounded-none px-0 py-1.5 focus-visible:ring-0 focus-visible:border-primary placeholder:text-muted-foreground/40 text-foreground"
                 value={title}
                 onChange={(e) => {
                   setTitle(e.target.value);
@@ -551,18 +684,17 @@ export default function Todos() {
                 }}
               />
               {validationErrors.title && (
-                <p className="text-destructive text-xs font-semibold mt-1">
+                <p className="text-destructive text-[11px] font-semibold mt-1">
                   ⚠️ {validationErrors.title}
                 </p>
               )}
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Description</label>
+            <div className="space-y-1">
               <textarea
-                rows={3}
-                placeholder="Details of what needs to be done..."
-                className="w-full p-2.5 rounded-md border border-border/80 focus:outline-none focus:ring-1 focus:ring-primary bg-transparent text-xs"
+                rows={4}
+                placeholder="Add task details & description..."
+                className="w-full min-h-[100px] text-xs bg-transparent border-none rounded-none px-0 py-1.5 focus:outline-none focus:ring-0 resize-none placeholder:text-muted-foreground/45 leading-relaxed text-foreground"
                 value={description}
                 onChange={(e) => {
                   setDescription(e.target.value);
@@ -572,50 +704,56 @@ export default function Todos() {
                 }}
               ></textarea>
               {validationErrors.description && (
-                <p className="text-destructive text-xs font-semibold mt-1">
+                <p className="text-destructive text-[11px] font-semibold mt-1">
                   ⚠️ {validationErrors.description}
                 </p>
               )}
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Due Date</label>
-              <Input
-                type="datetime-local"
-                className="w-full h-9 rounded-md border border-border/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 bg-transparent text-xs text-foreground [color-scheme:dark]"
-                value={dueAt}
-                onChange={(e) => setDueAt(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Cover Image</label>
-              <div className="flex items-center gap-3">
-                <label className="h-8 px-3 text-[11px] font-semibold border border-border/85 rounded-md hover:bg-accent cursor-pointer flex items-center gap-1.5 select-none text-foreground">
-                  <Upload size={13} /> Choose File
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleFileChange}
+            {/* Metadata Attributes Section */}
+            <div className="border-t border-border/50 pt-4 space-y-3">
+              <div className="grid grid-cols-3 items-center gap-2">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Due Date</span>
+                <div className="col-span-2">
+                  <Input
+                    type="datetime-local"
+                    className="w-full h-7 border border-border/60 rounded-md bg-muted/10 text-xs px-2 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 [color-scheme:dark] text-foreground"
+                    value={dueAt}
+                    onChange={(e) => setDueAt(e.target.value)}
                   />
-                </label>
-                {coverPreview && (
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={() => {
-                      setCoverFile(null);
-                      setCoverPreview('');
-                    }}
-                    className="h-8 px-2.5 text-[11px] font-semibold"
-                  >
-                    Remove
-                  </Button>
-                )}
+                </div>
               </div>
+
+              <div className="grid grid-cols-3 items-center gap-2">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Cover Image</span>
+                <div className="col-span-2 flex items-center gap-2">
+                  <label className="h-7 px-2.5 text-[11px] font-semibold border border-border/80 rounded-md hover:bg-accent cursor-pointer flex items-center gap-1 select-none text-foreground bg-muted/10">
+                    <Upload size={12} /> Choose Image
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleFileChange}
+                    />
+                  </label>
+                  {coverPreview && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => {
+                        setCoverFile(null);
+                        setCoverPreview('');
+                      }}
+                      className="h-7 px-2 text-[10px] font-semibold text-destructive hover:bg-destructive/10 border-none"
+                    >
+                      Remove
+                    </Button>
+                  )}
+                </div>
+              </div>
+
               {coverPreview && (
-                <div className="w-full h-32 overflow-hidden border border-border rounded-md mt-3">
+                <div className="w-full h-24 overflow-hidden border border-border/65 rounded-md mt-1">
                   <img
                     src={coverPreview}
                     alt="Cover preview"
@@ -649,8 +787,8 @@ export default function Todos() {
       <Dialog open={isEditOpen} onOpenChange={(open) => { if (!open) { setIsEditOpen(false); resetForm(); } }}>
         <DialogContent className="bg-card w-full max-w-lg border border-border p-6 rounded-lg shadow-lg overflow-y-auto max-h-[90vh]" showCloseButton={false}>
           <DialogHeader className="border-b border-border/60 pb-3 mb-5 flex flex-row justify-between items-center gap-2">
-            <DialogTitle className="text-sm font-bold uppercase tracking-wider flex items-center gap-2">
-              <Edit2 size={14} className="text-primary" /> Edit Task
+            <DialogTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-2 text-muted-foreground">
+              <Edit2 size={13} className="text-primary" /> Edit Task Properties
             </DialogTitle>
             <Button
               variant="ghost"
@@ -666,13 +804,12 @@ export default function Todos() {
           </DialogHeader>
 
           <form onSubmit={handleUpdateTodo} className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Title</label>
+            <div className="space-y-1">
               <Input
                 type="text"
                 required
-                placeholder="Task title"
-                className="w-full h-9 rounded-md border border-border/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 bg-transparent text-xs"
+                placeholder="Task Title"
+                className="w-full text-base font-bold bg-transparent border-none border-b border-border/20 rounded-none px-0 py-1.5 focus-visible:ring-0 focus-visible:border-primary placeholder:text-muted-foreground/40 text-foreground"
                 value={title}
                 onChange={(e) => {
                   setTitle(e.target.value);
@@ -682,18 +819,17 @@ export default function Todos() {
                 }}
               />
               {validationErrors.title && (
-                <p className="text-destructive text-xs font-semibold mt-1">
+                <p className="text-destructive text-[11px] font-semibold mt-1">
                   ⚠️ {validationErrors.title}
                 </p>
               )}
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Description</label>
+            <div className="space-y-1">
               <textarea
-                rows={3}
-                placeholder="Task description"
-                className="w-full p-2.5 rounded-md border border-border/80 focus:outline-none focus:ring-1 focus:ring-primary bg-transparent text-xs"
+                rows={4}
+                placeholder="Add task details & description..."
+                className="w-full min-h-[100px] text-xs bg-transparent border-none rounded-none px-0 py-1.5 focus:outline-none focus:ring-0 resize-none placeholder:text-muted-foreground/45 leading-relaxed text-foreground"
                 value={description}
                 onChange={(e) => {
                   setDescription(e.target.value);
@@ -703,50 +839,56 @@ export default function Todos() {
                 }}
               ></textarea>
               {validationErrors.description && (
-                <p className="text-destructive text-xs font-semibold mt-1">
+                <p className="text-destructive text-[11px] font-semibold mt-1">
                   ⚠️ {validationErrors.description}
                 </p>
               )}
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Due Date</label>
-              <Input
-                type="datetime-local"
-                className="w-full h-9 rounded-md border border-border/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 bg-transparent text-xs text-foreground [color-scheme:dark]"
-                value={dueAt}
-                onChange={(e) => setDueAt(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Cover Image</label>
-              <div className="flex items-center gap-3">
-                <label className="h-8 px-3 text-[11px] font-semibold border border-border/85 rounded-md hover:bg-accent cursor-pointer flex items-center gap-1.5 select-none text-foreground">
-                  <Upload size={13} /> Change File
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleFileChange}
+            {/* Metadata Attributes Section */}
+            <div className="border-t border-border/50 pt-4 space-y-3">
+              <div className="grid grid-cols-3 items-center gap-2">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Due Date</span>
+                <div className="col-span-2">
+                  <Input
+                    type="datetime-local"
+                    className="w-full h-7 border border-border/60 rounded-md bg-muted/10 text-xs px-2 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 [color-scheme:dark] text-foreground"
+                    value={dueAt}
+                    onChange={(e) => setDueAt(e.target.value)}
                   />
-                </label>
-                {coverPreview && (
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={() => {
-                      setCoverFile(null);
-                      setCoverPreview('');
-                    }}
-                    className="h-8 px-2.5 text-[11px] font-semibold"
-                  >
-                    Remove
-                  </Button>
-                )}
+                </div>
               </div>
+
+              <div className="grid grid-cols-3 items-center gap-2">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Cover Image</span>
+                <div className="col-span-2 flex items-center gap-2">
+                  <label className="h-7 px-2.5 text-[11px] font-semibold border border-border/80 rounded-md hover:bg-accent cursor-pointer flex items-center gap-1 select-none text-foreground bg-muted/10">
+                    <Upload size={12} /> Choose Image
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleFileChange}
+                    />
+                  </label>
+                  {coverPreview && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => {
+                        setCoverFile(null);
+                        setCoverPreview('');
+                      }}
+                      className="h-7 px-2 text-[10px] font-semibold text-destructive hover:bg-destructive/10 border-none"
+                    >
+                      Remove
+                    </Button>
+                  )}
+                </div>
+              </div>
+
               {coverPreview && (
-                <div className="w-full h-32 overflow-hidden border border-border rounded-md mt-3">
+                <div className="w-full h-24 overflow-hidden border border-border/65 rounded-md mt-1">
                   <img
                     src={coverPreview}
                     alt="Cover preview"

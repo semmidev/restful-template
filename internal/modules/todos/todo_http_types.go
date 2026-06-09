@@ -123,7 +123,6 @@ type restoreTodoRes struct {
 	Body todoBody
 }
 
-
 // Stats
 
 type getTodoStatsReq struct{}

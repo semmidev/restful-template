@@ -81,93 +81,101 @@ func NewTodoEntity(in CreateTodoInput) *Todo {
 // fields are mutated.
 func (t *Todo) ApplyUpdate(in UpdateTodoInput) {
 	if len(in.UpdateMask) > 0 {
-		for _, field := range in.UpdateMask {
-			switch field {
-			case "title":
-				if in.Title != nil {
-					t.Title = *in.Title
-				} else {
-					t.Title = ""
-				}
-			case "description":
-				if in.Description != nil {
-					t.Description = *in.Description
-				} else {
-					t.Description = ""
-				}
-			case "cover":
-				if in.Cover != nil {
-					if *in.Cover == "" {
-						t.Cover = nil
-					} else {
-						t.Cover = in.Cover
-					}
-				} else {
-					t.Cover = nil
-				}
-			case "status":
-				if in.Status != nil {
-					t.ChangeStatus(*in.Status)
-				} else {
-					t.ChangeStatus(TodoStatusPending)
-				}
-			case "importance":
-				if in.Importance != nil {
-					t.Importance = *in.Importance
-				} else {
-					t.Importance = false
-				}
-			case "urgency":
-				if in.Urgency != nil {
-					t.Urgency = *in.Urgency
-				} else {
-					t.Urgency = false
-				}
-			case "due_at":
-				if in.ClearDueAt {
-					t.DueAt = nil
-				} else if in.DueAt != nil {
-					t.DueAt = in.DueAt
-					if t.DueAt != nil && t.DueAt.Sub(time.Now().UTC()) <= 24*time.Hour && t.Status != TodoStatusDone {
-						t.Urgency = true
-					}
-				}
-			}
-		}
+		t.applyMaskedUpdate(in)
 	} else {
-		if in.Title != nil {
-			t.Title = *in.Title
-		}
-		if in.Description != nil {
-			t.Description = *in.Description
-		}
-		if in.Cover != nil {
-			if *in.Cover == "" {
-				t.Cover = nil
-			} else {
-				t.Cover = in.Cover
-			}
-		}
-		if in.Status != nil {
-			t.ChangeStatus(*in.Status)
-		}
-		if in.Importance != nil {
-			t.Importance = *in.Importance
-		}
-		if in.Urgency != nil {
-			t.Urgency = *in.Urgency
-		}
-		if in.ClearDueAt {
-			t.DueAt = nil
-		} else if in.DueAt != nil {
-			t.DueAt = in.DueAt
-			if t.DueAt != nil && t.DueAt.Sub(time.Now().UTC()) <= 24*time.Hour && t.Status != TodoStatusDone {
-				t.Urgency = true
-			}
-		}
+		t.applyFullUpdate(in)
 	}
 	// Stamp UpdatedAt exactly once regardless of which branch ran.
 	t.UpdatedAt = time.Now().UTC().Truncate(time.Microsecond)
+}
+
+func (t *Todo) applyMaskedUpdate(in UpdateTodoInput) {
+	for _, field := range in.UpdateMask {
+		switch field {
+		case "title":
+			if in.Title != nil {
+				t.Title = *in.Title
+			} else {
+				t.Title = ""
+			}
+		case "description":
+			if in.Description != nil {
+				t.Description = *in.Description
+			} else {
+				t.Description = ""
+			}
+		case "cover":
+			if in.Cover != nil {
+				if *in.Cover == "" {
+					t.Cover = nil
+				} else {
+					t.Cover = in.Cover
+				}
+			} else {
+				t.Cover = nil
+			}
+		case "status":
+			if in.Status != nil {
+				t.ChangeStatus(*in.Status)
+			} else {
+				t.ChangeStatus(TodoStatusPending)
+			}
+		case "importance":
+			if in.Importance != nil {
+				t.Importance = *in.Importance
+			} else {
+				t.Importance = false
+			}
+		case "urgency":
+			if in.Urgency != nil {
+				t.Urgency = *in.Urgency
+			} else {
+				t.Urgency = false
+			}
+		case "due_at":
+			if in.ClearDueAt {
+				t.DueAt = nil
+			} else if in.DueAt != nil {
+				t.DueAt = in.DueAt
+				if t.DueAt != nil && t.DueAt.Sub(time.Now().UTC()) <= 24*time.Hour && t.Status != TodoStatusDone {
+					t.Urgency = true
+				}
+			}
+		}
+	}
+}
+
+func (t *Todo) applyFullUpdate(in UpdateTodoInput) {
+	if in.Title != nil {
+		t.Title = *in.Title
+	}
+	if in.Description != nil {
+		t.Description = *in.Description
+	}
+	if in.Cover != nil {
+		if *in.Cover == "" {
+			t.Cover = nil
+		} else {
+			t.Cover = in.Cover
+		}
+	}
+	if in.Status != nil {
+		t.ChangeStatus(*in.Status)
+	}
+	if in.Importance != nil {
+		t.Importance = *in.Importance
+	}
+	if in.Urgency != nil {
+		t.Urgency = *in.Urgency
+	}
+	if in.ClearDueAt {
+		t.DueAt = nil
+	} else if in.DueAt != nil {
+		t.DueAt = in.DueAt
+		if t.DueAt != nil && t.DueAt.Sub(time.Now().UTC()) <= 24*time.Hour && t.Status != TodoStatusDone {
+			t.Urgency = true
+		}
+	}
 }
 
 type DailyStat struct {
