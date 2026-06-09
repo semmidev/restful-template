@@ -282,8 +282,8 @@ export default function Todos() {
               <SidebarTrigger className="-ml-1" />
               <Separator orientation="vertical" className="mr-2 h-4" />
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <span className="font-medium hover:text-foreground transition-colors cursor-pointer" onClick={() => navigate('/')}>Workspace</span>
-                <ChevronRight size={12} className="text-muted-foreground/60" />
+                <span className="font-medium hover:text-foreground transition-colors cursor-pointer hidden sm:inline" onClick={() => navigate('/')}>Workspace</span>
+                <ChevronRight size={12} className="text-muted-foreground/60 hidden sm:inline" />
                 <span className="font-semibold text-foreground">Tasks</span>
               </div>
             </div>

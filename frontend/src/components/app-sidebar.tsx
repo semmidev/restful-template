@@ -241,36 +241,63 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  {/* Switch Role submenu — only shown when user has multiple roles */}
+                  {/* Switch Role — on desktop we use submenu, on mobile we list inline to prevent off-screen overflow */}
                   {roles.length > 1 && (
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger className="cursor-pointer font-semibold text-xs py-1.5">
-                        <Shield className="size-3.5 mr-2 text-muted-foreground" />
-                        <span>Switch Role</span>
-                      </DropdownMenuSubTrigger>
-                      <DropdownMenuPortal>
-                        <DropdownMenuSubContent className="w-48">
-                          {roles.map((r) => (
-                            <DropdownMenuItem
-                              key={r}
-                              onClick={() => handleSwitchRole(r)}
-                              disabled={r === activeRole || isSwitching}
-                              className="flex items-center justify-between font-medium cursor-pointer"
-                            >
-                              <div className="flex items-center gap-2">
-                                {r === "admin" ? (
-                                  <Shield className="size-3.5 text-indigo-500" />
-                                ) : (
-                                  <User className="size-3.5 text-slate-500" />
-                                )}
-                                <span className="capitalize text-xs">{r}</span>
-                              </div>
-                              {r === activeRole && <Check className="size-3.5 text-primary" />}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuSubContent>
-                      </DropdownMenuPortal>
-                    </DropdownMenuSub>
+                    isMobile ? (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuLabel className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground px-2 py-1">
+                          Switch Role
+                        </DropdownMenuLabel>
+                        {roles.map((r) => (
+                          <DropdownMenuItem
+                            key={r}
+                            onClick={() => handleSwitchRole(r)}
+                            disabled={r === activeRole || isSwitching}
+                            className="flex items-center justify-between font-medium cursor-pointer pl-6 text-xs"
+                          >
+                            <div className="flex items-center gap-2">
+                              {r === "admin" ? (
+                                <Shield className="size-3.5 text-indigo-500" />
+                              ) : (
+                                <User className="size-3.5 text-slate-500" />
+                              )}
+                              <span className="capitalize">{r}</span>
+                            </div>
+                            {r === activeRole && <Check className="size-3.5 text-primary" />}
+                          </DropdownMenuItem>
+                        ))}
+                      </>
+                    ) : (
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger className="cursor-pointer font-semibold text-xs py-1.5">
+                          <Shield className="size-3.5 mr-2 text-muted-foreground" />
+                          <span>Switch Role</span>
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuPortal>
+                          <DropdownMenuSubContent className="w-48">
+                            {roles.map((r) => (
+                              <DropdownMenuItem
+                                key={r}
+                                onClick={() => handleSwitchRole(r)}
+                                disabled={r === activeRole || isSwitching}
+                                className="flex items-center justify-between font-medium cursor-pointer"
+                              >
+                                <div className="flex items-center gap-2">
+                                  {r === "admin" ? (
+                                    <Shield className="size-3.5 text-indigo-500" />
+                                  ) : (
+                                    <User className="size-3.5 text-slate-500" />
+                                  )}
+                                  <span className="capitalize text-xs">{r}</span>
+                                </div>
+                                {r === activeRole && <Check className="size-3.5 text-primary" />}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenuSub>
+                    )
                   )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} className="text-destructive font-semibold">

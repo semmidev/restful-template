@@ -501,12 +501,12 @@ export default function EisenhowerMatrix() {
 
             <div className="flex-1 flex items-center gap-1.5 text-xs text-muted-foreground">
               <span
-                className="font-medium hover:text-foreground transition-colors cursor-pointer"
+                className="font-medium hover:text-foreground transition-colors cursor-pointer hidden sm:inline"
                 onClick={() => navigate('/')}
               >
                 Workspace
               </span>
-              <ChevronRight size={12} className="text-muted-foreground/60" />
+              <ChevronRight size={12} className="text-muted-foreground/60 hidden sm:inline" />
               <span className="font-semibold text-foreground">Eisenhower Matrix</span>
             </div>
 
