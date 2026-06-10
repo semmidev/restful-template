@@ -495,6 +495,12 @@ Projek ini menerapkan **Secure Idiomatic Error Handling**:
 | `make test-integration` | Menjalankan E2E integration tests (membutuhkan Docker) |
 | `make coverage` | Menghasilkan laporan code coverage |
 | `make build` | Build binary produksi |
+| `make migrate-create` | Membuat file migrasi baru (meminta input nama migrasi) |
+| `make migrate-up` | Menjalankan seluruh migrasi ke atas (up) |
+| `make migrate-down` | Menjalankan seluruh migrasi ke bawah (down) |
+| `make migrate-rollback` | Membatalkan satu migrasi terakhir (down 1) |
+| `make migrate-force` | Memaksa database ke versi migrasi tertentu (meminta input versi) |
+| `make migrate-version` | Melihat versi migrasi saat ini di database |
 
 ### Linter & Isolasi Workspace
 
@@ -503,7 +509,18 @@ Projek Go ini menggunakan `golangci-lint` untuk menjaga kualitas kode backend.
 
 ### Migrasi Database
 
-Semua skrip SQL migrasi sudah di-*embed* langsung ke dalam binary aplikasi (menggunakan paket `embed` bawaan Go) dan **otomatis dieksekusi** saat server dijalankan atau *integration tests* berjalan. Tidak diperlukan perintah atau CLI eksternal tambahan.
+Semua skrip SQL migrasi sudah di-*embed* langsung ke dalam binary aplikasi (menggunakan paket `embed` bawaan Go) dan **otomatis dieksekusi** saat server dijalankan (`DATABASE_RUN_MIGRATIONS=true` pada `.env`) atau *integration tests* berjalan.
+
+Untuk manajemen migrasi secara manual atau pembuatan file migrasi baru pada environment development lokal, Anda dapat menggunakan perintah Make berikut (secara default terhubung ke database di `localhost:5432`):
+
+- **Membuat Migrasi Baru**: `make migrate-create` (akan meminta input nama file migrasi)
+- **Menjalankan Migrasi (Up)**: `make migrate-up` (menjalankan semua migrasi pending)
+- **Membatalkan Semua Migrasi (Down)**: `make migrate-down`
+- **Membatalkan Satu Migrasi Terakhir**: `make migrate-rollback`
+- **Force Version**: `make migrate-force` (memaksa database ke versi tertentu jika terjadi status dirty)
+- **Cek Versi Saat Ini**: `make migrate-version`
+
+*Tips: Jika DSN database berbeda dari default, Anda dapat mengirimkannya sebagai parameter, contoh: `make migrate-up DB_DSN=postgres://user:pass@host:port/dbname?sslmode=disable`*
 
 ### Integration Testing
 

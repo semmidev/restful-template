@@ -1,4 +1,4 @@
-.PHONY: run test test-integration lint migrate-up migrate-down docker-up docker-down docker-clean format tidy vet
+.PHONY: run test test-integration lint migrate-create migrate-up migrate-down migrate-rollback migrate-force migrate-version docker-up docker-down docker-clean format tidy vet
 
 # ── Dev ───────────────────────────────────────────────────────────────────────
 run:
@@ -28,6 +28,33 @@ vet:
 
 tidy:
 	go mod tidy
+
+# ── Database Migrations ────────────────────────────────────────────────────────
+DB_DSN ?= postgres://todo:todo@localhost:5432/todo?sslmode=disable
+MIGRATIONS_DIR = internal/shared/database/migrations
+MIGRATE = go run -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
+migrate-create:
+	@printf "Enter migration name: "; \
+	read name; \
+	$(MIGRATE) create -ext sql -dir $(MIGRATIONS_DIR) -seq -digits 6 $$name
+
+migrate-up:
+	$(MIGRATE) -path $(MIGRATIONS_DIR) -database "$(DB_DSN)" up
+
+migrate-down:
+	$(MIGRATE) -path $(MIGRATIONS_DIR) -database "$(DB_DSN)" down
+
+migrate-rollback:
+	$(MIGRATE) -path $(MIGRATIONS_DIR) -database "$(DB_DSN)" down 1
+
+migrate-force:
+	@printf "Enter migration version: "; \
+	read version; \
+	$(MIGRATE) -path $(MIGRATIONS_DIR) -database "$(DB_DSN)" force $$version
+
+migrate-version:
+	$(MIGRATE) -path $(MIGRATIONS_DIR) -database "$(DB_DSN)" version
 
 # ── Docker ────────────────────────────────────────────────────────────────────
 docker-up:

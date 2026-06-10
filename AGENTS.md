@@ -327,6 +327,14 @@ make lint
 
 # Format code
 make format
+
+# Run/manage database migrations
+make migrate-create      # Create a new migration file
+make migrate-up          # Run all pending up migrations
+make migrate-down        # Roll back all migrations
+make migrate-rollback    # Roll back last migration (down 1)
+make migrate-force       # Force set db schema version
+make migrate-version     # Print current db schema version
 ```
 
 #### Running the Frontend Separately
@@ -347,7 +355,7 @@ Follow these steps in order:
 5. Define HTTP request/response types in `<name>_http_types.go`, handlers in `<name>_http_handlers.go`, and register routes in `<name>_http_routes.go` using `huma.Register()`.
 6. Wire dependencies in `internal/app/app.go`: create the repository, then the service, then pass it to `delivery.NewServer()`.
 7. Add the route registration call to `internal/delivery/http/routes.go`.
-8. Create SQL migrations in `internal/shared/database/migrations/` using sequential numbering (`000004_...`).
+8. Create SQL migrations in `internal/shared/database/migrations/` using sequential numbering (`000006_...`). You can use `make migrate-create` to generate these files automatically with the correct sequence prefix.
 
 ### Writing Tests
 
