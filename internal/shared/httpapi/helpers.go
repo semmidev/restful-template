@@ -168,6 +168,24 @@ func ToHumaErr(ctx context.Context, err error) error {
 
 // sentinelStatus maps the error chain to an HTTP status code.
 func sentinelStatus(err error) int {
+	var safeErr *apperrors.SafeError
+	if errors.As(err, &safeErr) {
+		switch safeErr.Code {
+		case "NOT_FOUND":
+			return http.StatusNotFound
+		case "CONFLICT":
+			return http.StatusConflict
+		case "UNAUTHORIZED":
+			return http.StatusUnauthorized
+		case "FORBIDDEN":
+			return http.StatusForbidden
+		case "INVALID_INPUT":
+			return http.StatusBadRequest
+		case "INTERNAL_ERROR":
+			return http.StatusInternalServerError
+		}
+	}
+
 	switch {
 	case errors.Is(err, apperrors.ErrNotFound):
 		return http.StatusNotFound
