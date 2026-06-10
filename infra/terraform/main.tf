@@ -5,6 +5,10 @@ terraform {
       source  = "digitalocean/digitalocean"
       version = "~> 2.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
   }
 }
 
@@ -52,8 +56,12 @@ resource "digitalocean_reserved_ip_assignment" "app" {
 # ─────────────────────────────────────────
 # Firewall — hanya buka port yang diperlukan
 # ─────────────────────────────────────────
+resource "random_id" "fw_suffix" {
+  byte_length = 4
+}
+
 resource "digitalocean_firewall" "app" {
-  name        = "${var.project_name}-${var.environment}-fw"
+  name        = "${var.project_name}-${var.environment}-${random_id.fw_suffix.hex}-fw"
   droplet_ids = [digitalocean_droplet.app.id]
 
   # Inbound: SSH

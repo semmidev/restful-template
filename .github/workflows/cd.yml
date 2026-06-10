@@ -1,7 +1,9 @@
 name: CD
 
 env:
-  DOCKER_IMAGE: sammidev/restful-template
+  DOCKER_IMAGE_API: sammidev/restful-template
+  DOCKER_IMAGE_SCHEDULER: sammidev/restful-template-scheduler
+  DOCKER_IMAGE_WORKER: sammidev/restful-template-worker
 
 on:
   push:
@@ -40,22 +42,66 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Extract metadata
-        id: meta
+      # ── Build & Push API ──
+      - name: Extract metadata (API)
+        id: meta_api
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.DOCKER_IMAGE }}
+          images: ${{ env.DOCKER_IMAGE_API }}
           tags: |
             type=sha,prefix=,format=short
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build and push image
+      - name: Build and push API image
         uses: docker/build-push-action@v5
         with:
           context: .
+          file: Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta_api.outputs.tags }}
+          labels: ${{ steps.meta_api.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ── Build & Push Scheduler ──
+      - name: Extract metadata (Scheduler)
+        id: meta_scheduler
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_IMAGE_SCHEDULER }}
+          tags: |
+            type=sha,prefix=,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Scheduler image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.scheduler
+          push: true
+          tags: ${{ steps.meta_scheduler.outputs.tags }}
+          labels: ${{ steps.meta_scheduler.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ── Build & Push Worker ──
+      - name: Extract metadata (Worker)
+        id: meta_worker
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_IMAGE_WORKER }}
+          tags: |
+            type=sha,prefix=,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Worker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.worker
+          push: true
+          tags: ${{ steps.meta_worker.outputs.tags }}
+          labels: ${{ steps.meta_worker.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -63,7 +109,7 @@ jobs:
       - name: Run Trivy vulnerability scan
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: ${{ env.DOCKER_IMAGE }}:${{ steps.vars.outputs.short_sha }}
+          image-ref: ${{ env.DOCKER_IMAGE_API }}:${{ steps.vars.outputs.short_sha }}
           format: table
           exit-code: '1'
           severity: CRITICAL,HIGH
@@ -138,10 +184,10 @@ jobs:
             fi
 
             # Pull image baru
-            docker compose pull app
+            docker compose pull app scheduler worker
 
             # Rolling restart — db, redis, observability stack tetap berjalan
-            docker compose up -d --no-deps --remove-orphans app
+            docker compose up -d --no-deps --remove-orphans app scheduler worker
 
             # Hapus credential segera setelah selesai
             docker logout
@@ -216,8 +262,8 @@ jobs:
             # Kembalikan IMAGE_TAG ke versi sebelumnya
             sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=$PREV_TAG/" .env
 
-            docker compose pull app
-            docker compose up -d --no-deps --remove-orphans app
+            docker compose pull app scheduler worker
+            docker compose up -d --no-deps --remove-orphans app scheduler worker
 
             docker logout
             docker image prune -f
