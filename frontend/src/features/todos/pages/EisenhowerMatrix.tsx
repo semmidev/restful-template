@@ -127,11 +127,6 @@ function TodoCard({ todo, onDragStart, onDelete }: TodoCardProps) {
         <p className="text-sm font-semibold text-foreground leading-snug line-clamp-2">
           {todo.title}
         </p>
-        {todo.description && (
-          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-            {todo.description}
-          </p>
-        )}
         <div className="flex items-center gap-1.5 mt-1.5">
           {todo.status === 'done' ? (
             <CheckCircle2 size={11} className="text-emerald-500 shrink-0" />

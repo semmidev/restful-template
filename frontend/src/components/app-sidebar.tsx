@@ -86,7 +86,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const location = useLocation()
   const isDashboardActive = location.pathname === "/"
-  const isTasksActive = location.pathname === "/todos"
+  const isTasksActive = location.pathname === "/todos" || location.pathname.startsWith("/todos/")
   const isMatrixActive = location.pathname === "/matrix"
   const isUsersActive = location.pathname === "/users"
 

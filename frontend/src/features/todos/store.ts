@@ -5,7 +5,8 @@ import {
   updateTodoRequest,
   deleteTodoRequest,
   restoreTodoRequest,
-  fetchTodoStatsRequest
+  fetchTodoStatsRequest,
+  fetchTodoByIdRequest
 } from './api';
 
 export interface DailyStat {
@@ -54,8 +55,12 @@ interface TodoState {
   stats: TodoStats | null;
   statsLoading: boolean;
   statsError: string | null;
+  currentTodo: Todo | null;
+  currentTodoLoading: boolean;
+  currentTodoError: string | null;
 
   fetchTodos: () => Promise<void>;
+  fetchTodoById: (id: string, silent?: boolean) => Promise<Todo | null>;
   createTodo: (title: string, description: string, coverFile: File | null, importance?: boolean, urgency?: boolean, dueAt?: string | null) => Promise<boolean>;
   updateTodo: (id: string, title: string, description: string, coverFile: File | null, coverPreview: string, currentStatus: 'pending' | 'in_progress' | 'done', originalUpdatedAt: string, importance?: boolean, urgency?: boolean, dueAt?: string | null) => Promise<boolean>;
   updateTodoPriority: (todo: Todo, importance: boolean, urgency: boolean) => Promise<void>;
@@ -82,6 +87,9 @@ export const useTodoStore = create<TodoState>((set, get) => ({
   loading: false,
   error: null,
   editingTodo: null,
+  currentTodo: null,
+  currentTodoLoading: false,
+  currentTodoError: null,
 
   fetchTodos: async () => {
     set({ loading: true, error: null });
@@ -104,6 +112,23 @@ export const useTodoStore = create<TodoState>((set, get) => ({
     } catch (err: any) {
       console.error(err);
       set({ error: 'Failed to fetch todos. Please try again.', loading: false });
+    }
+  },
+
+  fetchTodoById: async (id, silent = false) => {
+    if (!silent) {
+      set({ currentTodoLoading: true });
+    }
+    set({ currentTodoError: null });
+    try {
+      const res = await fetchTodoByIdRequest(id);
+      const todo = res.data.data;
+      set({ currentTodo: todo, currentTodoLoading: false });
+      return todo;
+    } catch (err: any) {
+      console.error(err);
+      set({ currentTodoError: 'Failed to fetch todo details.', currentTodoLoading: false });
+      return null;
     }
   },
 

@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from 'next-themes';
+import { MarkdownToolbar } from '../components/MarkdownToolbar';
 import {
   Search,
   Plus,
@@ -44,6 +45,7 @@ import useTodoStore, { Todo } from '../store';
 import { todoSchema } from '../../../lib/schemas';
 import { formatToLocalISO, formatDueAtDisplay } from '@/lib/utils';
 import TodoSkeleton from '../components/TodoSkeleton';
+import { Comark } from '@comark/react';
 
 export default function Todos() {
   const navigate = useNavigate();
@@ -111,6 +113,11 @@ export default function Todos() {
 
   // Form validation errors
   const [validationErrors, setValidationErrors] = useState<{ title?: string; description?: string }>({});
+
+  const [createDescTab, setCreateDescTab] = useState<'write' | 'preview'>('write');
+  const [editDescTab, setEditDescTab] = useState<'write' | 'preview'>('write');
+  const createTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const editTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   // Local debounced keyword state
   const [searchKeyword, setSearchKeyword] = useState(keyword);
@@ -246,6 +253,8 @@ export default function Todos() {
     setDueAt('');
     setEditingTodo(null);
     setValidationErrors({});
+    setCreateDescTab('write');
+    setEditDescTab('write');
   };
 
   const totalPages = Math.max(1, Math.ceil(total / perPage));
@@ -434,19 +443,20 @@ export default function Todos() {
               </Card>
             ) : viewMode === 'list' ? (
               <div className="flex flex-col border border-border/60 rounded-lg bg-card/10 overflow-hidden divide-y divide-border/40">
-                {todos.map((todo) => (
-                  <div key={todo.id} className="group flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors gap-3 text-sm">
+                {todos.map((todo, index) => (
+                  <div
+                    key={todo.id}
+                    onClick={() => navigate(`/todos/${todo.id}`)}
+                    className={`group flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors gap-3 text-sm cursor-pointer ${
+                      index % 2 === 0 ? 'bg-transparent' : 'bg-muted/20'
+                    }`}
+                  >
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <span className="shrink-0">{getStatusIcon(todo)}</span>
                       <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-2.5 min-w-0 flex-1">
                         <span className={`font-semibold text-foreground truncate ${todo.status === 'done' ? 'line-through text-muted-foreground/60' : ''}`}>
                           {todo.title}
                         </span>
-                        {todo.description && (
-                          <span className="text-xs text-muted-foreground truncate max-w-md">
-                            — {todo.description}
-                          </span>
-                        )}
                       </div>
                     </div>
                     
@@ -475,7 +485,7 @@ export default function Todos() {
                       </div>
                       
                       {/* Actions Controls (aligned like Card View) */}
-                      <div className="flex items-center gap-1.5 min-w-[150px] justify-end">
+                      <div className="flex items-center gap-1.5 min-w-[150px] justify-end" onClick={(e) => e.stopPropagation()}>
                         {todo.deleted_at ? (
                           <Button
                             variant="default"
@@ -553,7 +563,8 @@ export default function Todos() {
                 {todos.map((todo) => (
                   <Card
                     key={todo.id}
-                    className="border border-border bg-card/25 hover:border-border/80 transition-all duration-200 rounded-lg overflow-hidden flex flex-col justify-between p-0 shadow-none hover:shadow-sm"
+                    onClick={() => navigate(`/todos/${todo.id}`)}
+                    className="border border-border bg-card/25 hover:border-border/80 transition-all duration-200 rounded-lg overflow-hidden flex flex-col justify-between p-0 shadow-none hover:shadow-sm cursor-pointer"
                   >
                     <div>
                       {/* Cover Image */}
@@ -575,7 +586,7 @@ export default function Todos() {
                               {todo.status === 'in_progress' ? 'in progress' : todo.status}
                             </span>
                           </div>
-                          <div className="flex gap-1">
+                          <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                             {!todo.deleted_at && (
                               <>
                                 <Button
@@ -610,7 +621,7 @@ export default function Todos() {
                       </CardContent>
                     </div>
 
-                    <CardFooter className="border-t border-border/60 pt-3 pb-3 px-5 flex items-center justify-between gap-4 mt-auto">
+                    <CardFooter className="border-t border-border/60 pt-3 pb-3 px-5 flex items-center justify-between gap-4 mt-auto" onClick={(e) => e.stopPropagation()}>
                       <div className="flex gap-1.5">
                         {todo.deleted_at ? (
                           <Button
@@ -739,19 +750,56 @@ export default function Todos() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Description</label>
-              <textarea
-                rows={4}
-                placeholder="Add task details & description..."
-                className="w-full p-3 rounded-md border border-border/80 focus:outline-none focus:ring-1 focus:ring-primary bg-transparent text-sm text-foreground resize-none leading-relaxed"
-                value={description}
-                onChange={(e) => {
-                  setDescription(e.target.value);
-                  if (validationErrors.description) {
-                    setValidationErrors((prev) => ({ ...prev, description: undefined }));
-                  }
-                }}
-              ></textarea>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Description</label>
+                <div className="flex border border-border/60 rounded-md p-0.5 bg-muted/20">
+                  <button
+                    type="button"
+                    onClick={() => setCreateDescTab('write')}
+                    className={`px-2 py-0.5 text-xs font-semibold rounded-sm transition-all border-none ${createDescTab === 'write' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    Write
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCreateDescTab('preview')}
+                    className={`px-2 py-0.5 text-xs font-semibold rounded-sm transition-all border-none ${createDescTab === 'preview' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    Preview
+                  </button>
+                </div>
+              </div>
+
+              {createDescTab === 'write' ? (
+                <div className="flex flex-col border border-border/80 rounded-md overflow-hidden bg-transparent">
+                  <MarkdownToolbar
+                    textareaRef={createTextareaRef}
+                    value={description}
+                    setValue={setDescription}
+                  />
+                  <textarea
+                    ref={createTextareaRef}
+                    rows={4}
+                    placeholder="Add task details & description (Markdown supported)..."
+                    className="w-full p-3 bg-transparent text-sm text-foreground border-none focus:outline-none focus:ring-0 resize-none leading-relaxed"
+                    value={description}
+                    onChange={(e) => {
+                      setDescription(e.target.value);
+                      if (validationErrors.description) {
+                        setValidationErrors((prev) => ({ ...prev, description: undefined }));
+                      }
+                    }}
+                  ></textarea>
+                </div>
+              ) : (
+                <div className="w-full h-[106px] p-3 rounded-md border border-border/80 bg-muted/10 text-sm text-foreground resize-none leading-relaxed overflow-y-auto markdown-content">
+                  {description.trim() ? (
+                    <Comark>{description}</Comark>
+                  ) : (
+                    <span className="text-muted-foreground/60 italic text-xs">Nothing to preview. Write something first!</span>
+                  )}
+                </div>
+              )}
               {validationErrors.description && (
                 <p className="text-destructive text-xs font-semibold mt-1">
                   ⚠️ {validationErrors.description}
@@ -877,19 +925,56 @@ export default function Todos() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Description</label>
-              <textarea
-                rows={4}
-                placeholder="Add task details & description..."
-                className="w-full p-3 rounded-md border border-border/80 focus:outline-none focus:ring-1 focus:ring-primary bg-transparent text-sm text-foreground resize-none leading-relaxed"
-                value={description}
-                onChange={(e) => {
-                  setDescription(e.target.value);
-                  if (validationErrors.description) {
-                    setValidationErrors((prev) => ({ ...prev, description: undefined }));
-                  }
-                }}
-              ></textarea>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Description</label>
+                <div className="flex border border-border/60 rounded-md p-0.5 bg-muted/20">
+                  <button
+                    type="button"
+                    onClick={() => setEditDescTab('write')}
+                    className={`px-2 py-0.5 text-xs font-semibold rounded-sm transition-all border-none ${editDescTab === 'write' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    Write
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditDescTab('preview')}
+                    className={`px-2 py-0.5 text-xs font-semibold rounded-sm transition-all border-none ${editDescTab === 'preview' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    Preview
+                  </button>
+                </div>
+              </div>
+
+              {editDescTab === 'write' ? (
+                <div className="flex flex-col border border-border/80 rounded-md overflow-hidden bg-transparent">
+                  <MarkdownToolbar
+                    textareaRef={editTextareaRef}
+                    value={description}
+                    setValue={setDescription}
+                  />
+                  <textarea
+                    ref={editTextareaRef}
+                    rows={4}
+                    placeholder="Add task details & description (Markdown supported)..."
+                    className="w-full p-3 bg-transparent text-sm text-foreground border-none focus:outline-none focus:ring-0 resize-none leading-relaxed"
+                    value={description}
+                    onChange={(e) => {
+                      setDescription(e.target.value);
+                      if (validationErrors.description) {
+                        setValidationErrors((prev) => ({ ...prev, description: undefined }));
+                      }
+                    }}
+                  ></textarea>
+                </div>
+              ) : (
+                <div className="w-full h-[106px] p-3 rounded-md border border-border/80 bg-muted/10 text-sm text-foreground resize-none leading-relaxed overflow-y-auto markdown-content">
+                  {description.trim() ? (
+                    <Comark>{description}</Comark>
+                  ) : (
+                    <span className="text-muted-foreground/60 italic text-xs">Nothing to preview. Write something first!</span>
+                  )}
+                </div>
+              )}
               {validationErrors.description && (
                 <p className="text-destructive text-xs font-semibold mt-1">
                   ⚠️ {validationErrors.description}

@@ -11,6 +11,7 @@ const Login = lazy(() => import('./features/auth/pages/Login'));
 const Register = lazy(() => import('./features/auth/pages/Register'));
 const GoogleCallback = lazy(() => import('./features/auth/pages/GoogleCallback'));
 const Todos = lazy(() => import('./features/todos/pages/Todos'));
+const TodoDetail = lazy(() => import('./features/todos/pages/TodoDetail'));
 const Dashboard = lazy(() => import('./features/todos/pages/Dashboard'));
 const EisenhowerMatrix = lazy(() => import('./features/todos/pages/EisenhowerMatrix'));
 const Users = lazy(() => import('./features/adm/users/pages/Users'));
@@ -74,6 +75,14 @@ function App() {
                 element={
                   <PrivateRoute>
                     <Todos />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/todos/:id"
+                element={
+                  <PrivateRoute>
+                    <TodoDetail />
                   </PrivateRoute>
                 }
               />

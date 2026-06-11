@@ -50,3 +50,8 @@ export async function restoreTodoRequest(id: string) {
 export async function fetchTodoStatsRequest() {
   return client.get('/todos/stats');
 }
+
+export async function fetchTodoByIdRequest(id: string) {
+  return client.get(`/todos/${id}`);
+}
+

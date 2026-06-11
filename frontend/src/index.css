@@ -114,3 +114,101 @@
     font-family: 'Inter', system-ui, sans-serif;
   }
 }
+
+/* Markdown preview styling */
+.markdown-content {
+  line-height: 1.6;
+}
+.markdown-content h1 {
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid hsl(var(--border));
+  padding-bottom: 0.3rem;
+  color: hsl(var(--foreground));
+}
+.markdown-content h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  color: hsl(var(--foreground));
+}
+.markdown-content h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  color: hsl(var(--foreground));
+}
+.markdown-content p {
+  margin-bottom: 0.75rem;
+  color: hsl(var(--foreground));
+}
+.markdown-content ul {
+  list-style-type: disc;
+  padding-left: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+.markdown-content ol {
+  list-style-type: decimal;
+  padding-left: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+.markdown-content li {
+  margin-bottom: 0.25rem;
+}
+.markdown-content blockquote {
+  border-left: 3px solid hsl(var(--primary));
+  padding-left: 1rem;
+  color: hsl(var(--muted-foreground));
+  margin: 1rem 0;
+  font-style: italic;
+}
+.markdown-content code {
+  font-family: monospace;
+  background-color: hsl(var(--muted));
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+}
+.markdown-content pre {
+  background-color: hsl(var(--muted)/40);
+  border: 1px solid hsl(var(--border));
+  padding: 0.75rem;
+  border-radius: var(--radius);
+  overflow-x: auto;
+  margin-bottom: 0.75rem;
+}
+.markdown-content pre code {
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-size: 0.85rem;
+}
+.markdown-content strong {
+  font-weight: 700;
+}
+.markdown-content em {
+  font-style: italic;
+}
+.markdown-content a {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.markdown-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+.markdown-content th, .markdown-content td {
+  border: 1px solid hsl(var(--border));
+  padding: 0.5rem;
+  text-align: left;
+}
+.markdown-content th {
+  background-color: hsl(var(--muted));
+  font-weight: 600;
+}
