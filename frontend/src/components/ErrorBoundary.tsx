@@ -55,7 +55,7 @@ export default class ErrorBoundary extends Component<Props, State> {
                     <span className="font-bold text-destructive">Error: </span>
                     {this.state.error.message}
                     {this.state.error.stack && (
-                      <div className="mt-2 text-muted-foreground whitespace-pre text-[10px] opacity-80 leading-normal">
+                      <div className="mt-2 text-muted-foreground whitespace-pre text-xs opacity-80 leading-normal">
                         {this.state.error.stack}
                       </div>
                     )}

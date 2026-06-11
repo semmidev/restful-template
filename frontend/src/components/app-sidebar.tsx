@@ -105,7 +105,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     <span className="text-sm font-extrabold tracking-tight text-sidebar-foreground">
                       TodoApp
                     </span>
-                    <span className="text-[10px] text-muted-foreground font-semibold">
+                    <span className="text-xs text-muted-foreground font-semibold">
                       v1.0.0
                     </span>
                   </div>
@@ -118,7 +118,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarContent>
           {/* General workspace navigation */}
           <SidebarGroup>
-            <SidebarGroupLabel className="px-2 font-bold uppercase tracking-wider text-[10px]">
+            <SidebarGroupLabel className="px-2 font-bold uppercase tracking-wider text-xs">
               Workspace
             </SidebarGroupLabel>
             <SidebarMenu className="gap-1">
@@ -131,7 +131,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 >
                   <Link to="/" className="flex items-center gap-2.5 px-2">
                     <LayoutDashboard className={`size-4 transition-colors ${isDashboardActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`} />
-                    <span className={`text-xs font-semibold ${isDashboardActive ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'}`}>Dashboard</span>
+                    <span className={`text-sm font-semibold ${isDashboardActive ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'}`}>Dashboard</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -144,7 +144,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 >
                   <Link to="/todos" className="flex items-center gap-2.5 px-2">
                     <CheckSquare className={`size-4 transition-colors ${isTasksActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`} />
-                    <span className={`text-xs font-semibold ${isTasksActive ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'}`}>All Tasks</span>
+                    <span className={`text-sm font-semibold ${isTasksActive ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'}`}>All Tasks</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -157,7 +157,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 >
                   <Link to="/matrix" className="flex items-center gap-2.5 px-2">
                     <LayoutGrid className={`size-4 transition-colors ${isMatrixActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`} />
-                    <span className={`text-xs font-semibold ${isMatrixActive ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'}`}>Eisenhower Matrix</span>
+                    <span className={`text-sm font-semibold ${isMatrixActive ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'}`}>Eisenhower Matrix</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -167,7 +167,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           {/* Administration section — only visible to admin users */}
           {canListUsers && (
             <SidebarGroup>
-              <SidebarGroupLabel className="px-2 font-bold uppercase tracking-wider text-[10px]">
+              <SidebarGroupLabel className="px-2 font-bold uppercase tracking-wider text-xs">
                 Administration
               </SidebarGroupLabel>
               <SidebarMenu className="gap-1">
@@ -180,7 +180,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   >
                     <Link to="/users" className="flex items-center gap-2.5 px-2">
                       <User className={`size-4 transition-colors ${isUsersActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'}`} />
-                      <span className={`text-xs font-semibold ${isUsersActive ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'}`}>User Management</span>
+                      <span className={`text-sm font-semibold ${isUsersActive ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'}`}>User Management</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -199,7 +199,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                   >
                     <Avatar className="h-8 w-8 rounded-lg">
-                      <AvatarFallback className="rounded-lg bg-primary/10 text-primary font-bold text-xs uppercase">
+                      <AvatarFallback className="rounded-lg bg-primary/10 text-primary font-bold text-sm uppercase">
                         {username.slice(0, 2)}
                       </AvatarFallback>
                     </Avatar>
@@ -207,10 +207,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       <span className="truncate font-semibold text-foreground">
                         {username}
                       </span>
-                      <span className="truncate text-xs text-muted-foreground font-medium">
+                      <span className="truncate text-sm text-muted-foreground font-medium">
                         {email}
                       </span>
-                      <span className="truncate text-[9px] text-primary/90 font-extrabold uppercase tracking-wider mt-0.5">
+                      <span className="truncate text-xs text-primary/90 font-extrabold uppercase tracking-wider mt-0.5">
                         {activeRole}
                       </span>
                     </div>
@@ -225,16 +225,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <DropdownMenuLabel className="p-0 font-normal">
                     <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                       <Avatar className="h-8 w-8 rounded-lg">
-                        <AvatarFallback className="rounded-lg bg-primary/10 text-primary font-bold text-xs uppercase">
+                        <AvatarFallback className="rounded-lg bg-primary/10 text-primary font-bold text-sm uppercase">
                           {username.slice(0, 2)}
                         </AvatarFallback>
                       </Avatar>
                       <div className="grid flex-1 text-left text-sm leading-tight">
                         <span className="truncate font-semibold">{username}</span>
-                        <span className="truncate text-xs text-muted-foreground font-medium">
+                        <span className="truncate text-sm text-muted-foreground font-medium">
                           {email}
                         </span>
-                        <span className="truncate text-[9px] text-primary/90 font-extrabold uppercase tracking-wider mt-0.5">
+                        <span className="truncate text-xs text-primary/90 font-extrabold uppercase tracking-wider mt-0.5">
                           {activeRole}
                         </span>
                       </div>
@@ -246,7 +246,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     isMobile ? (
                       <>
                         <DropdownMenuSeparator />
-                        <DropdownMenuLabel className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground px-2 py-1">
+                        <DropdownMenuLabel className="font-bold text-xs uppercase tracking-wider text-muted-foreground px-2 py-1">
                           Switch Role
                         </DropdownMenuLabel>
                         {roles.map((r) => (
@@ -254,7 +254,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                             key={r}
                             onClick={() => handleSwitchRole(r)}
                             disabled={r === activeRole || isSwitching}
-                            className="flex items-center justify-between font-medium cursor-pointer pl-6 text-xs"
+                            className="flex items-center justify-between font-medium cursor-pointer pl-6 text-sm"
                           >
                             <div className="flex items-center gap-2">
                               {r === "admin" ? (
@@ -270,7 +270,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       </>
                     ) : (
                       <DropdownMenuSub>
-                        <DropdownMenuSubTrigger className="cursor-pointer font-semibold text-xs py-1.5">
+                        <DropdownMenuSubTrigger className="cursor-pointer font-semibold text-sm py-1.5">
                           <Shield className="size-3.5 mr-2 text-muted-foreground" />
                           <span>Switch Role</span>
                         </DropdownMenuSubTrigger>
@@ -289,7 +289,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                   ) : (
                                     <User className="size-3.5 text-slate-500" />
                                   )}
-                                  <span className="capitalize text-xs">{r}</span>
+                                  <span className="capitalize text-sm">{r}</span>
                                 </div>
                                 {r === activeRole && <Check className="size-3.5 text-primary" />}
                               </DropdownMenuItem>

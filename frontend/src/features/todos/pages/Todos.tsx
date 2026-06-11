@@ -275,9 +275,9 @@ export default function Todos() {
             <div className="flex items-center gap-2">
               <SidebarTrigger className="-ml-1" />
               <Separator orientation="vertical" className="mr-2 h-4" />
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 <span className="font-medium hover:text-foreground transition-colors cursor-pointer hidden sm:inline" onClick={() => navigate('/')}>Workspace</span>
-                <ChevronRight size={12} className="text-muted-foreground/60 hidden sm:inline" />
+                <ChevronRight size={14} className="text-muted-foreground/60 hidden sm:inline" />
                 <span className="font-semibold text-foreground">Tasks</span>
               </div>
             </div>
@@ -289,7 +289,7 @@ export default function Todos() {
                 <Input
                   type="text"
                   placeholder="Search tasks..."
-                  className="w-full pl-8 h-7 rounded-md bg-muted/40 border border-border/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 text-xs"
+                  className="w-full pl-8 h-7 rounded-md bg-muted/40 border border-border/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 text-sm"
                   value={searchKeyword}
                   onChange={(e) => setSearchKeyword(e.target.value)}
                 />
@@ -305,7 +305,7 @@ export default function Todos() {
               </Button>
               <Button
                 onClick={() => setIsCreateOpen(true)}
-                className="h-7 px-2 sm:px-2.5 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all rounded-md flex items-center gap-1"
+                className="h-7 px-2 sm:px-2.5 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all rounded-md flex items-center gap-1"
               >
                 <Plus size={14} />
                 <span className="hidden sm:inline">New Task</span>
@@ -317,7 +317,7 @@ export default function Todos() {
           <main className="flex flex-col gap-6 p-6 lg:p-8 bg-background min-h-[calc(100vh-3.5rem)]">
             {/* Error Banner */}
             {error && (
-              <div className="bg-destructive/10 border border-destructive/20 text-destructive text-xs font-semibold p-4 rounded-lg flex justify-between items-center shadow-sm">
+              <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm font-semibold p-4 rounded-lg flex justify-between items-center shadow-sm">
                 <span>⚠️ {error}</span>
                 <Button variant="ghost" onClick={() => setError(null)} className="h-6 w-6 p-0 text-destructive hover:bg-destructive/10">
                   <X size={14} />
@@ -345,7 +345,7 @@ export default function Todos() {
                     <TabsTrigger
                       key={tab.value}
                       value={tab.value}
-                      className="px-3.5 h-7 text-xs font-semibold text-muted-foreground hover:text-foreground transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-md border-none bg-transparent shrink-0"
+                      className="px-3.5 h-7 text-sm font-semibold text-muted-foreground hover:text-foreground transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-md border-none bg-transparent shrink-0"
                     >
                       {tab.label}
                     </TabsTrigger>
@@ -379,7 +379,7 @@ export default function Todos() {
                 <Separator orientation="vertical" className="h-4 hidden sm:block" />
 
                 <select
-                  className="h-7 px-2 rounded-md border border-border/80 bg-background text-[11px] font-semibold focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
+                  className="h-7 px-2 rounded-md border border-border/80 bg-background text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
                   value={sortBy}
                   onChange={(e) => setFilters({ sortBy: e.target.value })}
                 >
@@ -393,7 +393,7 @@ export default function Todos() {
                   variant="outline"
                   size="sm"
                   onClick={() => setFilters({ sortDir: sortDir === 'asc' ? 'desc' : 'asc' })}
-                  className="h-7 text-[11px] font-semibold border-border/80 flex items-center gap-1 hover:bg-accent px-2 rounded-md"
+                  className="h-7 text-xs font-semibold border-border/80 flex items-center gap-1 hover:bg-accent px-2 rounded-md"
                 >
                   {sortDir === 'asc' ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />}
                   {sortDir === 'asc' ? 'Asc' : 'Desc'}
@@ -422,11 +422,11 @@ export default function Todos() {
                   <div className="w-10 h-10 border border-border rounded-full flex items-center justify-center text-muted-foreground mb-3">
                     <FileText size={18} />
                   </div>
-                  <h3 className="text-sm font-bold mb-1">No tasks in this view</h3>
-                  <p className="text-muted-foreground text-xs max-w-xs mb-4">Create a task to populate this category.</p>
+                  <h3 className="text-base font-bold mb-1">No tasks in this view</h3>
+                  <p className="text-muted-foreground text-sm max-w-xs mb-4">Create a task to populate this category.</p>
                   <Button
                     onClick={() => setIsCreateOpen(true)}
-                    className="h-8 text-xs font-semibold"
+                    className="h-8 text-sm font-semibold"
                   >
                     <Plus size={14} className="mr-1" /> New Task
                   </Button>
@@ -435,7 +435,7 @@ export default function Todos() {
             ) : viewMode === 'list' ? (
               <div className="flex flex-col border border-border/60 rounded-lg bg-card/10 overflow-hidden divide-y divide-border/40">
                 {todos.map((todo) => (
-                  <div key={todo.id} className="group flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors gap-3 text-xs">
+                  <div key={todo.id} className="group flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors gap-3 text-sm">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <span className="shrink-0">{getStatusIcon(todo)}</span>
                       <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-2.5 min-w-0 flex-1">
@@ -443,7 +443,7 @@ export default function Todos() {
                           {todo.title}
                         </span>
                         {todo.description && (
-                          <span className="text-[11px] text-muted-foreground truncate max-w-md">
+                          <span className="text-xs text-muted-foreground truncate max-w-md">
                             — {todo.description}
                           </span>
                         )}
@@ -452,7 +452,7 @@ export default function Todos() {
                     
                     <div className="flex flex-wrap items-center gap-4 shrink-0 justify-between sm:justify-end">
                       {/* Due date column */}
-                      <div className="w-32 flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium shrink-0">
+                      <div className="w-32 flex items-center gap-1.5 text-xs text-muted-foreground font-medium shrink-0">
                         {todo.due_at ? (
                           <>
                             <Calendar size={11} className="text-muted-foreground/60 shrink-0" />
@@ -466,7 +466,7 @@ export default function Todos() {
                       {/* Cover Image Indicator */}
                       <div className="w-14 shrink-0 flex justify-start">
                         {todo.cover ? (
-                          <div className="text-[9px] font-extrabold uppercase tracking-wider bg-primary/10 border border-primary/20 text-primary px-1.5 py-0.5 rounded">
+                          <div className="text-xs font-extrabold uppercase tracking-wider bg-primary/10 border border-primary/20 text-primary px-1.5 py-0.5 rounded">
                             Image
                           </div>
                         ) : (
@@ -481,7 +481,7 @@ export default function Todos() {
                             variant="default"
                             size="sm"
                             onClick={() => restoreTodo(todo.id)}
-                            className="h-6 text-[10px] font-semibold px-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white transition-colors border-none shadow-none"
+                            className="h-6 text-xs font-semibold px-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white transition-colors border-none shadow-none"
                           >
                             Restore
                           </Button>
@@ -492,7 +492,7 @@ export default function Todos() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleToggleStatus(todo, 'pending')}
-                                className="h-6 text-[10px] font-semibold px-2 rounded-md border border-border/80 hover:bg-accent text-foreground transition-colors"
+                                className="h-6 text-xs font-semibold px-2 rounded-md border border-border/80 hover:bg-accent text-foreground transition-colors"
                               >
                                 <Clock size={10} className="sm:mr-1 inline-block" />
                                 <span className="hidden sm:inline"> Reopen</span>
@@ -503,7 +503,7 @@ export default function Todos() {
                                 variant="default"
                                 size="sm"
                                 onClick={() => handleToggleStatus(todo, 'in_progress')}
-                                className="h-6 text-[10px] font-semibold px-2 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground transition-colors border-none shadow-none"
+                                className="h-6 text-xs font-semibold px-2 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground transition-colors border-none shadow-none"
                               >
                                 <Play size={10} className="sm:mr-1 inline-block" />
                                 <span className="hidden sm:inline"> Start</span>
@@ -514,7 +514,7 @@ export default function Todos() {
                                 variant="default"
                                 size="sm"
                                 onClick={() => handleToggleStatus(todo, 'done')}
-                                className="h-6 text-[10px] font-semibold px-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white transition-colors border-none shadow-none"
+                                className="h-6 text-xs font-semibold px-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white transition-colors border-none shadow-none"
                               >
                                 <CheckCircle size={10} className="sm:mr-1 inline-block" />
                                 <span className="hidden sm:inline"> Finish</span>
@@ -571,7 +571,7 @@ export default function Todos() {
                         <div className="flex justify-between items-center gap-2">
                           <div className="flex items-center gap-1.5">
                             {getStatusIcon(todo)}
-                            <span className="text-[10px] font-bold text-muted-foreground capitalize">
+                            <span className="text-xs font-bold text-muted-foreground capitalize">
                               {todo.status === 'in_progress' ? 'in progress' : todo.status}
                             </span>
                           </div>
@@ -598,13 +598,13 @@ export default function Todos() {
                             )}
                           </div>
                         </div>
-                        <CardTitle className="text-sm font-bold text-foreground line-clamp-1 leading-snug">
+                        <CardTitle className="text-base font-bold text-foreground line-clamp-1 leading-snug">
                           {todo.title}
                         </CardTitle>
                       </CardHeader>
 
                       <CardContent className="pb-4 px-5">
-                        <p className="text-muted-foreground text-xs leading-relaxed line-clamp-3">
+                        <p className="text-muted-foreground text-sm leading-relaxed line-clamp-3">
                           {todo.description || 'No description provided.'}
                         </p>
                       </CardContent>
@@ -614,10 +614,11 @@ export default function Todos() {
                       <div className="flex gap-1.5">
                         {todo.deleted_at ? (
                           <Button
+                            type="button"
                             variant="default"
                             size="sm"
                             onClick={() => restoreTodo(todo.id)}
-                            className="h-6 text-[10px] font-semibold px-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-none"
+                            className="h-6 text-xs font-semibold px-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-none"
                           >
                             Restore
                           </Button>
@@ -628,7 +629,7 @@ export default function Todos() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleToggleStatus(todo, 'pending')}
-                                className="h-6 text-[10px] font-semibold px-2 rounded-md border border-border/80 hover:bg-accent text-foreground transition-colors"
+                                className="h-6 text-xs font-semibold px-2 rounded-md border border-border/80 hover:bg-accent text-foreground transition-colors"
                               >
                                 <Clock size={10} className="mr-1 inline-block" /> Reopen
                               </Button>
@@ -638,7 +639,7 @@ export default function Todos() {
                                 variant="default"
                                 size="sm"
                                 onClick={() => handleToggleStatus(todo, 'in_progress')}
-                                className="h-6 text-[10px] font-semibold px-2 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground transition-colors shadow-none"
+                                className="h-6 text-xs font-semibold px-2 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground transition-colors shadow-none"
                               >
                                 <Play size={10} className="mr-1 inline-block" /> Start
                               </Button>
@@ -648,7 +649,7 @@ export default function Todos() {
                                 variant="default"
                                 size="sm"
                                 onClick={() => handleToggleStatus(todo, 'done')}
-                                className="h-6 text-[10px] font-semibold px-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-none"
+                                className="h-6 text-xs font-semibold px-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-none"
                               >
                                 <CheckCircle size={10} className="mr-1 inline-block" /> Finish
                               </Button>
@@ -656,7 +657,7 @@ export default function Todos() {
                           </>
                         )}
                       </div>
-                      <div className="flex items-center gap-1 text-[9px] text-muted-foreground font-medium">
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium">
                         <Calendar size={10} />
                         <span>{todo.due_at ? `Due: ${formatDueAtDisplay(todo.due_at)}` : new Date(todo.updated_at).toLocaleDateString()}</span>
                       </div>
@@ -677,7 +678,7 @@ export default function Todos() {
                 >
                   <ChevronLeft size={14} />
                 </Button>
-                <span className="text-xs font-semibold bg-card/25 border border-border px-3 py-1.5 rounded-md">
+                <span className="text-sm font-semibold bg-card/25 border border-border px-3 py-1.5 rounded-md">
                   Page {page} of {totalPages}
                 </span>
                 <Button
@@ -698,7 +699,7 @@ export default function Todos() {
       <Dialog open={isCreateOpen} onOpenChange={(open) => { if (!open) { setIsCreateOpen(false); resetForm(); } }}>
         <DialogContent className="bg-card w-full max-w-[92vw] sm:max-w-lg border border-border p-6 rounded-lg shadow-lg overflow-y-auto max-h-[90vh]" showCloseButton={false}>
           <DialogHeader className="border-b border-border/60 pb-3 mb-5 flex flex-row justify-between items-center gap-2">
-            <DialogTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-2 text-muted-foreground">
+            <DialogTitle className="text-sm font-bold uppercase tracking-wider flex items-center gap-2 text-muted-foreground">
               <Plus size={14} className="text-primary" /> Create New Task
             </DialogTitle>
             <Button
@@ -716,12 +717,12 @@ export default function Todos() {
 
           <form onSubmit={handleCreateTodo} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Title</label>
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Title</label>
               <Input
                 type="text"
                 required
                 placeholder="Task title..."
-                className="w-full h-9 rounded-md border border-border/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 bg-transparent text-xs text-foreground px-3"
+                className="w-full h-9 rounded-md border border-border/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 bg-transparent text-sm text-foreground px-3"
                 value={title}
                 onChange={(e) => {
                   setTitle(e.target.value);
@@ -731,18 +732,18 @@ export default function Todos() {
                 }}
               />
               {validationErrors.title && (
-                <p className="text-destructive text-[11px] font-semibold mt-1">
+                <p className="text-destructive text-xs font-semibold mt-1">
                   ⚠️ {validationErrors.title}
                 </p>
               )}
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Description</label>
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Description</label>
               <textarea
                 rows={4}
                 placeholder="Add task details & description..."
-                className="w-full p-3 rounded-md border border-border/80 focus:outline-none focus:ring-1 focus:ring-primary bg-transparent text-xs text-foreground resize-none leading-relaxed"
+                className="w-full p-3 rounded-md border border-border/80 focus:outline-none focus:ring-1 focus:ring-primary bg-transparent text-sm text-foreground resize-none leading-relaxed"
                 value={description}
                 onChange={(e) => {
                   setDescription(e.target.value);
@@ -752,7 +753,7 @@ export default function Todos() {
                 }}
               ></textarea>
               {validationErrors.description && (
-                <p className="text-destructive text-[11px] font-semibold mt-1">
+                <p className="text-destructive text-xs font-semibold mt-1">
                   ⚠️ {validationErrors.description}
                 </p>
               )}
@@ -761,12 +762,12 @@ export default function Todos() {
             {/* Metadata Attributes Section */}
             <div className="border-t border-border/50 pt-4 space-y-3">
               <div className="flex flex-col sm:grid sm:grid-cols-3 sm:items-center gap-1.5 sm:gap-2">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Due Date</span>
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Due Date</span>
                 <div className="sm:col-span-2 relative">
                   <Calendar size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 pointer-events-none" />
                   <Input
                     type="datetime-local"
-                    className="w-full h-8 pl-8 pr-2 border border-border/60 rounded-md bg-muted/10 text-xs focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 [color-scheme:dark] text-foreground custom-datetime-input cursor-pointer"
+                    className="w-full h-8 pl-8 pr-2 border border-border/60 rounded-md bg-muted/10 text-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 [color-scheme:dark] text-foreground custom-datetime-input cursor-pointer"
                     value={dueAt}
                     onChange={(e) => setDueAt(e.target.value)}
                   />
@@ -774,9 +775,9 @@ export default function Todos() {
               </div>
 
               <div className="flex flex-col sm:grid sm:grid-cols-3 sm:items-center gap-1.5 sm:gap-2">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Cover Image</span>
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Cover Image</span>
                 <div className="sm:col-span-2 flex items-center gap-2">
-                  <label className="h-7 px-2.5 text-[11px] font-semibold border border-border/80 rounded-md hover:bg-accent cursor-pointer flex items-center gap-1 select-none text-foreground bg-muted/10">
+                  <label className="h-7 px-2.5 text-xs font-semibold border border-border/80 rounded-md hover:bg-accent cursor-pointer flex items-center gap-1 select-none text-foreground bg-muted/10">
                     <Upload size={12} /> Choose Image
                     <input
                       type="file"
@@ -793,7 +794,7 @@ export default function Todos() {
                         setCoverFile(null);
                         setCoverPreview('');
                       }}
-                      className="h-7 px-2 text-[10px] font-semibold text-destructive hover:bg-destructive/10 border-none"
+                      className="h-7 px-2 text-xs font-semibold text-destructive hover:bg-destructive/10 border-none"
                     >
                       Remove
                     </Button>
@@ -820,11 +821,11 @@ export default function Todos() {
                   setIsCreateOpen(false);
                   resetForm();
                 }}
-                className="h-8 text-xs font-semibold"
+                className="h-8 text-sm font-semibold"
               >
                 Cancel
               </Button>
-              <Button type="submit" className="h-8 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 rounded-md">
+              <Button type="submit" className="h-8 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 rounded-md">
                 Create Task
               </Button>
             </div>
@@ -836,7 +837,7 @@ export default function Todos() {
       <Dialog open={isEditOpen} onOpenChange={(open) => { if (!open) { setIsEditOpen(false); resetForm(); } }}>
         <DialogContent className="bg-card w-full max-w-[92vw] sm:max-w-lg border border-border p-6 rounded-lg shadow-lg overflow-y-auto max-h-[90vh]" showCloseButton={false}>
           <DialogHeader className="border-b border-border/60 pb-3 mb-5 flex flex-row justify-between items-center gap-2">
-            <DialogTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-2 text-muted-foreground">
+            <DialogTitle className="text-sm font-bold uppercase tracking-wider flex items-center gap-2 text-muted-foreground">
               <Edit2 size={13} className="text-primary" /> Edit Task Properties
             </DialogTitle>
             <Button
@@ -854,12 +855,12 @@ export default function Todos() {
 
           <form onSubmit={handleUpdateTodo} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Title</label>
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Title</label>
               <Input
                 type="text"
                 required
                 placeholder="Task title..."
-                className="w-full h-9 rounded-md border border-border/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 bg-transparent text-xs text-foreground px-3"
+                className="w-full h-9 rounded-md border border-border/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 bg-transparent text-sm text-foreground px-3"
                 value={title}
                 onChange={(e) => {
                   setTitle(e.target.value);
@@ -869,18 +870,18 @@ export default function Todos() {
                 }}
               />
               {validationErrors.title && (
-                <p className="text-destructive text-[11px] font-semibold mt-1">
+                <p className="text-destructive text-xs font-semibold mt-1">
                   ⚠️ {validationErrors.title}
                 </p>
               )}
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Description</label>
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Description</label>
               <textarea
                 rows={4}
                 placeholder="Add task details & description..."
-                className="w-full p-3 rounded-md border border-border/80 focus:outline-none focus:ring-1 focus:ring-primary bg-transparent text-xs text-foreground resize-none leading-relaxed"
+                className="w-full p-3 rounded-md border border-border/80 focus:outline-none focus:ring-1 focus:ring-primary bg-transparent text-sm text-foreground resize-none leading-relaxed"
                 value={description}
                 onChange={(e) => {
                   setDescription(e.target.value);
@@ -890,7 +891,7 @@ export default function Todos() {
                 }}
               ></textarea>
               {validationErrors.description && (
-                <p className="text-destructive text-[11px] font-semibold mt-1">
+                <p className="text-destructive text-xs font-semibold mt-1">
                   ⚠️ {validationErrors.description}
                 </p>
               )}
@@ -899,12 +900,12 @@ export default function Todos() {
             {/* Metadata Attributes Section */}
             <div className="border-t border-border/50 pt-4 space-y-3">
               <div className="flex flex-col sm:grid sm:grid-cols-3 sm:items-center gap-1.5 sm:gap-2">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Due Date</span>
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Due Date</span>
                 <div className="sm:col-span-2 relative">
                   <Calendar size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 pointer-events-none" />
                   <Input
                     type="datetime-local"
-                    className="w-full h-8 pl-8 pr-2 border border-border/60 rounded-md bg-muted/10 text-xs focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 [color-scheme:dark] text-foreground custom-datetime-input cursor-pointer"
+                    className="w-full h-8 pl-8 pr-2 border border-border/60 rounded-md bg-muted/10 text-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 [color-scheme:dark] text-foreground custom-datetime-input cursor-pointer"
                     value={dueAt}
                     onChange={(e) => setDueAt(e.target.value)}
                   />
@@ -912,9 +913,9 @@ export default function Todos() {
               </div>
 
               <div className="flex flex-col sm:grid sm:grid-cols-3 sm:items-center gap-1.5 sm:gap-2">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Cover Image</span>
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Cover Image</span>
                 <div className="sm:col-span-2 flex items-center gap-2">
-                  <label className="h-7 px-2.5 text-[11px] font-semibold border border-border/80 rounded-md hover:bg-accent cursor-pointer flex items-center gap-1 select-none text-foreground bg-muted/10">
+                  <label className="h-7 px-2.5 text-xs font-semibold border border-border/80 rounded-md hover:bg-accent cursor-pointer flex items-center gap-1 select-none text-foreground bg-muted/10">
                     <Upload size={12} /> Choose Image
                     <input
                       type="file"
@@ -931,7 +932,7 @@ export default function Todos() {
                         setCoverFile(null);
                         setCoverPreview('');
                       }}
-                      className="h-7 px-2 text-[10px] font-semibold text-destructive hover:bg-destructive/10 border-none"
+                      className="h-7 px-2 text-xs font-semibold text-destructive hover:bg-destructive/10 border-none"
                     >
                       Remove
                     </Button>
@@ -958,11 +959,11 @@ export default function Todos() {
                   setIsEditOpen(false);
                   resetForm();
                 }}
-                className="h-8 text-xs font-semibold"
+                className="h-8 text-sm font-semibold"
               >
                 Cancel
               </Button>
-              <Button type="submit" className="h-8 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 rounded-md">
+              <Button type="submit" className="h-8 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 rounded-md">
                 Save Changes
               </Button>
             </div>
@@ -974,7 +975,7 @@ export default function Todos() {
       <Dialog open={!!todoToDelete} onOpenChange={(open) => { if (!open) setTodoToDelete(null); }}>
         <DialogContent className="bg-card w-full max-w-[92vw] sm:max-w-md border border-border p-6 rounded-lg shadow-lg gap-3" showCloseButton={false}>
           <DialogHeader className="border-b border-border/60 pb-3 flex flex-row justify-between items-center gap-2">
-            <DialogTitle className="text-sm font-bold uppercase tracking-wider flex items-center gap-2 text-foreground">
+            <DialogTitle className="text-base font-bold uppercase tracking-wider flex items-center gap-2 text-foreground">
               <Trash2 size={16} className="text-destructive" /> Archive Task
             </DialogTitle>
             <Button
@@ -988,7 +989,7 @@ export default function Todos() {
           </DialogHeader>
 
           <div className="space-y-4">
-            <p className="text-muted-foreground text-xs leading-relaxed">
+            <p className="text-muted-foreground text-sm leading-relaxed">
               Are you sure you want to archive <span className="font-bold text-foreground">"{todoToDelete?.title}"</span>? You can view and restore it from the Archived tab later.
             </p>
 
@@ -997,14 +998,14 @@ export default function Todos() {
                 type="button"
                 variant="outline"
                 onClick={() => setTodoToDelete(null)}
-                className="h-8 text-xs font-semibold"
+                className="h-8 text-sm font-semibold"
               >
                 Cancel
               </Button>
               <Button
                 variant="destructive"
                 onClick={handleDeleteConfirm}
-                className="h-8 text-xs font-semibold px-4 rounded-md"
+                className="h-8 text-sm font-semibold px-4 rounded-md"
               >
                 Archive
               </Button>

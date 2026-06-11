@@ -98,9 +98,9 @@ export default function Dashboard() {
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-2 h-4" />
 
-            <div className="flex-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <div className="flex-1 flex items-center gap-1.5 text-sm text-muted-foreground">
               <span className="font-medium hover:text-foreground transition-colors cursor-pointer hidden sm:inline" onClick={() => navigate('/')}>Workspace</span>
-              <ChevronRight size={12} className="text-muted-foreground/60 hidden sm:inline" />
+              <ChevronRight size={14} className="text-muted-foreground/60 hidden sm:inline" />
               <span className="font-semibold text-foreground">Dashboard</span>
             </div>
 
@@ -118,7 +118,7 @@ export default function Dashboard() {
                 variant="outline"
                 size="sm"
                 onClick={() => navigate('/todos')}
-                className="h-7 px-2.5 text-[11px] font-semibold hover:bg-accent hover:text-accent-foreground border-border/80 transition-all rounded-md"
+                className="h-7 px-2.5 text-xs font-semibold hover:bg-accent hover:text-accent-foreground border-border/80 transition-all rounded-md"
               >
                 Manage Tasks
               </Button>
@@ -140,40 +140,40 @@ export default function Dashboard() {
             <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 relative z-10">
               <Card className="border border-border bg-card/25 shadow-none rounded-lg p-5 hover:border-border/80 transition-colors">
                 <div className="flex items-center justify-between text-muted-foreground mb-3">
-                  <span className="text-[10px] font-bold uppercase tracking-wider">Total Tasks</span>
+                  <span className="text-xs font-bold uppercase tracking-wider">Total Tasks</span>
                   <FileText size={15} />
                 </div>
                 <div className="text-2xl font-bold tracking-tight">
                   {statsLoading ? '...' : stats?.total ?? 0}
                 </div>
-                <div className="text-[10px] text-muted-foreground mt-1">Accumulated tasks in workspace</div>
+                <div className="text-xs text-muted-foreground mt-1">Accumulated tasks in workspace</div>
               </Card>
 
               <Card className="border border-border bg-card/25 shadow-none rounded-lg p-5 hover:border-border/80 transition-colors">
                 <div className="flex items-center justify-between text-muted-foreground mb-3">
-                  <span className="text-[10px] font-bold uppercase tracking-wider">Pending</span>
+                  <span className="text-xs font-bold uppercase tracking-wider">Pending</span>
                   <Clock size={15} />
                 </div>
                 <div className="text-2xl font-bold tracking-tight text-amber-500">
                   {statsLoading ? '...' : stats?.pending ?? 0}
                 </div>
-                <div className="text-[10px] text-muted-foreground mt-1">Task items yet to be started</div>
+                <div className="text-xs text-muted-foreground mt-1">Task items yet to be started</div>
               </Card>
 
               <Card className="border border-border bg-card/25 shadow-none rounded-lg p-5 hover:border-border/80 transition-colors">
                 <div className="flex items-center justify-between text-muted-foreground mb-3">
-                  <span className="text-[10px] font-bold uppercase tracking-wider">In Progress</span>
+                  <span className="text-xs font-bold uppercase tracking-wider">In Progress</span>
                   <Activity size={15} />
                 </div>
                 <div className="text-2xl font-bold tracking-tight text-primary">
                   {statsLoading ? '...' : stats?.in_progress ?? 0}
                 </div>
-                <div className="text-[10px] text-muted-foreground mt-1">Items currently being processed</div>
+                <div className="text-xs text-muted-foreground mt-1">Items currently being processed</div>
               </Card>
 
               <Card className="border border-border bg-card/25 shadow-none rounded-lg p-5 hover:border-border/80 transition-colors">
                 <div className="flex items-center justify-between text-muted-foreground mb-3">
-                  <span className="text-[10px] font-bold uppercase tracking-wider">Completion Rate</span>
+                  <span className="text-xs font-bold uppercase tracking-wider">Completion Rate</span>
                   <CheckCircle size={15} />
                 </div>
                 <div className="flex items-baseline gap-2">
@@ -187,7 +187,7 @@ export default function Dashboard() {
                     ></div>
                   </div>
                 </div>
-                <div className="text-[10px] text-muted-foreground mt-1">Ratio of completed tasks</div>
+                <div className="text-xs text-muted-foreground mt-1">Ratio of completed tasks</div>
               </Card>
             </section>
 
@@ -198,9 +198,9 @@ export default function Dashboard() {
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <PieChartIcon className="size-4 text-primary" />
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">Status Distribution</h3>
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">Status Distribution</h3>
                   </div>
-                  <p className="text-[10px] text-muted-foreground">Representation of task volume by state</p>
+                  <p className="text-xs text-muted-foreground">Representation of task volume by state</p>
                 </div>
 
                 <div className="flex flex-col items-center justify-center my-6 min-h-[220px]">
@@ -211,7 +211,7 @@ export default function Dashboard() {
                       <div className="size-16 mx-auto flex items-center justify-center rounded-full border border-dashed border-border mb-3">
                         <PieChartIcon size={20} className="text-muted-foreground" />
                       </div>
-                      <p className="text-[11px] font-bold text-muted-foreground">No tasks to display</p>
+                      <p className="text-xs font-bold text-muted-foreground">No tasks to display</p>
                     </div>
                   ) : (
                     <div className="w-full h-[200px] relative">
@@ -234,7 +234,7 @@ export default function Dashboard() {
                         </PieChart>
                       </ResponsiveContainer>
                       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Total</span>
+                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Total</span>
                         <div className="text-lg font-black text-foreground leading-none">{stats?.total}</div>
                       </div>
                     </div>
@@ -244,7 +244,7 @@ export default function Dashboard() {
                 {hasData && (
                   <div className="flex flex-wrap gap-x-4 gap-y-1 justify-center border-t border-border/40 pt-4">
                     {pieData.map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-1.5 text-[11px] font-medium">
+                      <div key={idx} className="flex items-center gap-1.5 text-xs font-medium">
                         <span className="size-2 rounded-full" style={{ backgroundColor: item.color }}></span>
                         <span className="text-muted-foreground">{item.name}</span>
                         <span className="text-foreground font-bold">{stats ? (stats as any)[item.name.toLowerCase().replace(' ', '_')] : 0}</span>
@@ -259,9 +259,9 @@ export default function Dashboard() {
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <TrendingUp className="size-4 text-primary" />
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">Task Velocity</h3>
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">Task Velocity</h3>
                   </div>
-                  <p className="text-[10px] text-muted-foreground">Daily creations vs completions over the last 7 days</p>
+                  <p className="text-xs text-muted-foreground">Daily creations vs completions over the last 7 days</p>
                 </div>
 
                 <div className="my-6 min-h-[220px] flex items-center justify-center">
@@ -272,7 +272,7 @@ export default function Dashboard() {
                       <div className="size-10 rounded-full border border-border flex items-center justify-center text-muted-foreground mb-3 mx-auto">
                         <TrendingUp size={16} />
                       </div>
-                      <p className="text-[11px] font-bold text-muted-foreground">No recent activity detected</p>
+                      <p className="text-xs font-bold text-muted-foreground">No recent activity detected</p>
                     </div>
                   ) : (
                     <div className="w-full h-[220px]">
@@ -316,7 +316,7 @@ export default function Dashboard() {
                             allowDecimals={false}
                           />
                           <Tooltip content={<ChartTooltip />} />
-                          <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '12px' }} />
+                          <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '12px' }} />
                           <Area
                             name="Created"
                             type="monotone"
@@ -349,9 +349,9 @@ export default function Dashboard() {
                 <div className="mb-4">
                   <div className="flex items-center gap-2 mb-1">
                     <BarChart2 className="size-4 text-primary" />
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">Task Productivity Balance</h3>
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">Task Productivity Balance</h3>
                   </div>
-                  <p className="text-[10px] text-muted-foreground">Side-by-side volume comparisons per day</p>
+                  <p className="text-xs text-muted-foreground">Side-by-side volume comparisons per day</p>
                 </div>
 
                 <div className="min-h-[200px] flex items-center justify-center">
@@ -362,7 +362,7 @@ export default function Dashboard() {
                       <div className="size-10 rounded-full border border-border flex items-center justify-center text-muted-foreground mb-3 mx-auto">
                         <BarChart2 size={16} />
                       </div>
-                      <p className="text-[11px] font-bold text-muted-foreground">No historical data found</p>
+                      <p className="text-xs font-bold text-muted-foreground">No historical data found</p>
                     </div>
                   ) : (
                     <div className="w-full h-[200px]">
@@ -397,7 +397,7 @@ export default function Dashboard() {
                             allowDecimals={false}
                           />
                           <Tooltip content={<ChartTooltip />} />
-                          <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '12px' }} />
+                          <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '12px' }} />
                           <Bar
                             name="Created"
                             dataKey="created"

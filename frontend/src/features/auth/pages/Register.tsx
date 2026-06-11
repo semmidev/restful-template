@@ -194,7 +194,7 @@ export default function Register() {
                       {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                     </button>
                   </div>
-                  <FieldDescription className="text-[10px] text-muted-foreground">
+                  <FieldDescription className="text-xs text-muted-foreground">
                     Must be at least 8 characters long.
                   </FieldDescription>
                   {validationErrors.password && (

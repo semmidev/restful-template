@@ -124,11 +124,11 @@ function TodoCard({ todo, onDragStart, onDelete }: TodoCardProps) {
         className="mt-0.5 shrink-0 text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors"
       />
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-semibold text-foreground leading-snug line-clamp-2">
+        <p className="text-sm font-semibold text-foreground leading-snug line-clamp-2">
           {todo.title}
         </p>
         {todo.description && (
-          <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">
+          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
             {todo.description}
           </p>
         )}
@@ -140,11 +140,11 @@ function TodoCard({ todo, onDragStart, onDelete }: TodoCardProps) {
           ) : (
             <Circle size={11} className="text-muted-foreground/50 shrink-0" />
           )}
-          <span className="text-[10px] text-muted-foreground/80 font-semibold capitalize">
+          <span className="text-xs text-muted-foreground/80 font-semibold capitalize">
             {todo.status === 'in_progress' ? 'in progress' : todo.status}
           </span>
-          <span className="text-muted-foreground/30 text-[9px]">•</span>
-          <span className="text-[9px] text-muted-foreground/60 font-medium">
+          <span className="text-muted-foreground/30 text-xs">•</span>
+          <span className="text-xs text-muted-foreground/60 font-medium">
             {todo.due_at ? `Due: ${formatDueAtDisplay(todo.due_at)}` : new Date(todo.updated_at).toLocaleDateString()}
           </span>
         </div>
@@ -208,16 +208,16 @@ function QuadrantPanel({
             {quadrant.icon}
           </div>
           <div>
-            <p className={`text-xs font-bold ${quadrant.accentText}`}>
+            <p className={`text-sm font-bold ${quadrant.accentText}`}>
               {quadrant.label}
             </p>
-            <p className="text-[9px] text-muted-foreground font-medium">
+            <p className="text-xs text-muted-foreground font-medium">
               {quadrant.sublabel}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px] font-bold text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded-md">
+          <span className="text-xs font-bold text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded-md">
             {todos.length}
           </span>
           <button
@@ -244,7 +244,7 @@ function QuadrantPanel({
             >
               <Layers size={12} style={{ color: quadrant.dotColor }} />
             </div>
-            <p className="text-[10px] text-muted-foreground font-semibold">
+            <p className="text-xs text-muted-foreground font-semibold">
               {isDragOver ? 'Drop here' : 'No tasks'}
             </p>
           </div>
@@ -313,7 +313,7 @@ function QuickAddDialog({ quadrant, open, onClose, onSubmit }: QuickAddDialogPro
         showCloseButton={false}
       >
         <DialogHeader className="border-b border-border/60 pb-3 mb-4 flex flex-row justify-between items-center gap-2">
-          <DialogTitle className="text-sm font-bold flex items-center gap-2">
+          <DialogTitle className="text-base font-bold flex items-center gap-2">
             <div
               className="flex items-center justify-center w-6 h-6 rounded-md"
               style={{ backgroundColor: `${quadrant.dotColor}20`, color: quadrant.dotColor }}
@@ -330,21 +330,21 @@ function QuickAddDialog({ quadrant, open, onClose, onSubmit }: QuickAddDialogPro
           </button>
         </DialogHeader>
 
-        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-[10px] font-semibold mb-4 ${quadrant.accentBg} ${quadrant.accentBorder} ${quadrant.accentText}`}>
+        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-semibold mb-4 ${quadrant.accentBg} ${quadrant.accentBorder} ${quadrant.accentText}`}>
           <AlertTriangle size={11} />
           {quadrant.sublabel}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
               Title <span className="text-destructive">*</span>
             </label>
             <Input
               ref={titleRef}
               type="text"
               placeholder="What needs to be done?"
-              className="h-9 text-xs border-border/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 bg-transparent"
+              className="h-9 text-sm border-border/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 bg-transparent"
               value={title}
               onChange={(e) => {
                 setTitle(e.target.value);
@@ -352,18 +352,18 @@ function QuickAddDialog({ quadrant, open, onClose, onSubmit }: QuickAddDialogPro
               }}
             />
             {titleError && (
-              <p className="text-destructive text-xs font-semibold">⚠️ {titleError}</p>
+              <p className="text-destructive text-sm font-semibold">⚠️ {titleError}</p>
             )}
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
               Description
             </label>
             <textarea
               rows={3}
               placeholder="Optional details..."
-              className="w-full p-2.5 rounded-md border border-border/80 focus:outline-none focus:ring-1 focus:ring-primary bg-transparent text-xs resize-none"
+              className="w-full p-2.5 rounded-md border border-border/80 focus:outline-none focus:ring-1 focus:ring-primary bg-transparent text-sm resize-none"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
@@ -374,14 +374,14 @@ function QuickAddDialog({ quadrant, open, onClose, onSubmit }: QuickAddDialogPro
               type="button"
               variant="outline"
               onClick={onClose}
-              className="h-8 text-xs font-semibold"
+              className="h-8 text-sm font-semibold"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={submitting}
-              className="h-8 text-xs font-semibold"
+              className="h-8 text-sm font-semibold"
               style={{ backgroundColor: quadrant.dotColor }}
             >
               {submitting ? 'Adding...' : 'Add Task'}
@@ -497,25 +497,25 @@ export default function EisenhowerMatrix() {
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-2 h-4" />
 
-            <div className="flex-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <div className="flex-1 flex items-center gap-1.5 text-sm text-muted-foreground">
               <span
                 className="font-medium hover:text-foreground transition-colors cursor-pointer hidden sm:inline"
                 onClick={() => navigate('/')}
               >
                 Workspace
               </span>
-              <ChevronRight size={12} className="text-muted-foreground/60 hidden sm:inline" />
+              <ChevronRight size={14} className="text-muted-foreground/60 hidden sm:inline" />
               <span className="font-semibold text-foreground">Eisenhower Matrix</span>
             </div>
 
             <div className="flex items-center gap-2">
               {/* Summary pills */}
               <div className="hidden sm:flex items-center gap-1.5">
-                <span className="text-[10px] font-bold bg-muted/60 border border-border/60 px-2 py-0.5 rounded-md text-muted-foreground">
+                <span className="text-xs font-bold bg-muted/60 border border-border/60 px-2 py-0.5 rounded-md text-muted-foreground">
                   {totalTasks} tasks
                 </span>
                 {doFirstCount > 0 && (
-                  <span className="text-[10px] font-bold bg-rose-500/10 border border-rose-500/20 text-rose-500 px-2 py-0.5 rounded-md">
+                  <span className="text-xs font-bold bg-rose-500/10 border border-rose-500/20 text-rose-500 px-2 py-0.5 rounded-md">
                     {doFirstCount} urgent
                   </span>
                 )}
@@ -536,7 +536,7 @@ export default function EisenhowerMatrix() {
           <main className="flex flex-col gap-0 p-0 bg-background min-h-[calc(100vh-3.5rem)] overflow-hidden">
             {/* Axis labels */}
             <div className="flex items-center justify-center pt-4 pb-2 px-6">
-              <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+              <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-wider">
                 <span>↑ Important</span>
                 <span className="text-border/80">·</span>
                 <span>→ Urgent</span>
@@ -580,7 +580,7 @@ export default function EisenhowerMatrix() {
                     className="w-2 h-2 rounded-full"
                     style={{ backgroundColor: q.dotColor }}
                   />
-                  <span className="text-[10px] font-semibold text-muted-foreground">
+                  <span className="text-xs font-semibold text-muted-foreground">
                     {q.label}
                   </span>
                 </div>
