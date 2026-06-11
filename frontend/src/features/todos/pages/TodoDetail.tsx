@@ -69,9 +69,13 @@ export default function TodoDetail() {
         }
       });
     }
+    return () => {
+      // Clear current todo when leaving the page or changing id to prevent stale data flash
+      useTodoStore.setState({ currentTodo: null, currentTodoError: null });
+    };
   }, [id, fetchTodoById]);
 
-  if (currentTodoLoading) {
+  if (currentTodoLoading || (!currentTodo && !currentTodoError) || (currentTodo && currentTodo.id !== id)) {
     return (
       <TooltipProvider>
         <SidebarProvider>
@@ -253,6 +257,7 @@ export default function TodoDetail() {
                 <div className="flex flex-wrap items-center gap-2">
                   {currentTodo.status !== 'pending' && (
                     <Button
+                      type="button"
                       variant="outline"
                       size="sm"
                       onClick={() => handleStatusChange('pending')}
@@ -263,6 +268,7 @@ export default function TodoDetail() {
                   )}
                   {currentTodo.status !== 'in_progress' && currentTodo.status !== 'done' && (
                     <Button
+                      type="button"
                       variant="default"
                       size="sm"
                       onClick={() => handleStatusChange('in_progress')}
@@ -273,6 +279,7 @@ export default function TodoDetail() {
                   )}
                   {currentTodo.status !== 'done' && (
                     <Button
+                      type="button"
                       variant="default"
                       size="sm"
                       onClick={() => handleStatusChange('done')}
@@ -283,9 +290,14 @@ export default function TodoDetail() {
                   )}
                   <Separator orientation="vertical" className="h-6 mx-1 hidden sm:block" />
                   <Button
+                    type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={handleDelete}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleDelete();
+                    }}
                     className="h-8 text-xs font-semibold px-3 text-destructive hover:bg-destructive/10 rounded-md"
                   >
                     <Trash2 size={12} className="mr-1.5" /> Archive
