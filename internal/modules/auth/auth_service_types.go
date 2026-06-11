@@ -20,12 +20,18 @@ type TokenPair struct {
 
 type RegisterInput struct {
 	Email    string `json:"email" format:"email" required:"true"`
-	Password string `json:"password" minLength:"8" required:"true"`
+	Password string `json:"password" minLength:"8" maxLength:"72" required:"true"`
 }
 
 func (in *RegisterInput) Validate() error {
 	if in.Email == "" || in.Password == "" {
 		return errors.NewInvalidInput("Email and password are required", errors.ErrInvalidInput)
+	}
+	if len(in.Password) < 8 {
+		return errors.NewInvalidInput("Password must be at least 8 characters long", errors.ErrInvalidInput)
+	}
+	if len(in.Password) > 72 {
+		return errors.NewInvalidInput("Password must not exceed 72 characters", errors.ErrInvalidInput)
 	}
 	return nil
 }
@@ -45,4 +51,11 @@ func (in *RegisterInput) ToUser() (*User, error) {
 type LoginInput struct {
 	Email    string `json:"email" format:"email" required:"true"`
 	Password string `json:"password" required:"true"`
+}
+
+func (in *LoginInput) Validate() error {
+	if in.Email == "" || in.Password == "" {
+		return errors.NewInvalidInput("Email and password are required", errors.ErrInvalidInput)
+	}
+	return nil
 }

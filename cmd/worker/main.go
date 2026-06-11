@@ -30,6 +30,11 @@ func run(ctx context.Context) error {
 	logger := observability.NewLogger(cfg.Log.Level, cfg.Log.Format, cfg.App.Env)
 	slog.SetDefault(logger)
 
+	if err := cfg.Validate(); err != nil {
+		logger.Error("configuration validation failed", "err", err)
+		return fmt.Errorf("config validation: %w", err)
+	}
+
 	shutdownTelemetry, err := observability.InitTelemetry(ctx, cfg.App.Name+"-worker", cfg.App.Version, cfg.Telemetry.OTLPEndpoint)
 	if err != nil {
 		logger.Error("failed to initialize telemetry", "err", err)

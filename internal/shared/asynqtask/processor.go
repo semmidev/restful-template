@@ -63,7 +63,6 @@ func NewProcessor(redisOpt asynq.RedisClientOpt, logger *slog.Logger) Processor 
 				logger.ErrorContext(ctx, "process task failed",
 					slog.Any("error", err),
 					slog.String("type", task.Type()),
-					slog.String("payload", string(task.Payload())),
 				)
 			}),
 		},

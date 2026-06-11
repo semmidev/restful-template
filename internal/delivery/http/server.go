@@ -95,7 +95,14 @@ func NewServer(
 	// API + docs group: strict security headers and rate limiting.
 	r.Group(func(r chi.Router) {
 		r.Use(sharedmw.SecurityHeaders())
-		// r.Use(sharedmw.RateLimiter(limiter, rateLimitSkipPaths))
+
+		rateLimitSkipPaths := map[string]struct{}{
+			"/api/v1/health": {},
+			"/metrics":       {},
+			"/docs":          {},
+			"/openapi.yaml":  {},
+		}
+		r.Use(sharedmw.RateLimiter(limiter, rateLimitSkipPaths))
 
 		humaConfig := huma.DefaultConfig(cfg.App.Name, cfg.App.Version)
 		humaConfig.Info.Description = cfg.App.Description

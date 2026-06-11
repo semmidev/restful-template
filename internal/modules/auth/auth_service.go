@@ -95,6 +95,10 @@ func (s *Service) Register(ctx context.Context, in RegisterInput) (TokenPair, er
 }
 
 func (s *Service) Login(ctx context.Context, in LoginInput) (TokenPair, error) {
+	if err := in.Validate(); err != nil {
+		return TokenPair{}, err
+	}
+
 	u, err := s.users.GetByEmail(ctx, in.Email)
 	if err != nil {
 		return TokenPair{}, apperrors.NewUnauthorized("Invalid credentials", apperrors.ErrUnauthorized)

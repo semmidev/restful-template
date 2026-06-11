@@ -242,3 +242,27 @@ func mustDuration(v *viper.Viper, key string) time.Duration {
 	}
 	return d
 }
+
+// Validate checks for security misconfigurations in production environments.
+func (c Config) Validate() error {
+	if c.App.Env == "production" {
+		if c.JWT.Secret == "change-me-in-production-min-32-bytes!" || c.JWT.Secret == "" {
+			return fmt.Errorf("JWT_SECRET must be customized in production")
+		}
+		if len(c.JWT.Secret) < 32 {
+			return fmt.Errorf("JWT_SECRET must be at least 32 characters long in production")
+		}
+		if c.Asynqmon.Password == "admin" || c.Asynqmon.Password == "" {
+			return fmt.Errorf("ASYNQMON_PASSWORD must be customized in production")
+		}
+		if len(c.Asynqmon.Password) < 8 {
+			return fmt.Errorf("ASYNQMON_PASSWORD must be at least 8 characters long in production")
+		}
+		for _, origin := range c.CORS.AllowedOrigins {
+			if origin == "*" {
+				return fmt.Errorf("CORS_ALLOWED_ORIGINS cannot be '*' in production")
+			}
+		}
+	}
+	return nil
+}
