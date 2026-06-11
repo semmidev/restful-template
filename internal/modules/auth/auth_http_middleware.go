@@ -56,15 +56,26 @@ func AuthMiddleware(api huma.API, tokens TokenService) func(ctx huma.Context, ne
 			}
 		}
 
-		rawCookie := ctx.Header("Cookie")
-		req := &http.Request{Header: http.Header{"Cookie": {rawCookie}}}
-		cookie, err := req.Cookie("access_token")
-		if err != nil {
-			httpapi.WriteHumaErr(api, ctx, httpapi.ToHumaErrUnauthorized("missing or malformed authorization cookie"))
+		token := ""
+		authHeader := ctx.Header("Authorization")
+		if strings.HasPrefix(authHeader, "Bearer ") {
+			token = strings.TrimPrefix(authHeader, "Bearer ")
+		}
+
+		if token == "" {
+			rawCookie := ctx.Header("Cookie")
+			req := &http.Request{Header: http.Header{"Cookie": {rawCookie}}}
+			cookie, err := req.Cookie("access_token")
+			if err == nil {
+				token = cookie.Value
+			}
+		}
+
+		if token == "" {
+			httpapi.WriteHumaErr(api, ctx, httpapi.ToHumaErrUnauthorized("missing or malformed authorization credentials"))
 			return
 		}
 
-		token := cookie.Value
 		claims, err := tokens.ParseAccess(ctx.Context(), token)
 		if err != nil {
 			httpapi.WriteHumaErr(api, ctx, httpapi.ToHumaErrUnauthorized("invalid or expired token"))

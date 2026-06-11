@@ -5,16 +5,16 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jmoiron/sqlx"
 	"github.com/semmidev/restful-template/internal/shared/database"
 	apperrors "github.com/semmidev/restful-template/internal/shared/errors"
 )
 
 type tokenRepository struct {
-	db *pgxpool.Pool
+	db *sqlx.DB
 }
 
-func NewTokenRepository(db *pgxpool.Pool) TokenRepository {
+func NewTokenRepository(db *sqlx.DB) TokenRepository {
 	return &tokenRepository{db: db}
 }
 
@@ -27,7 +27,7 @@ func (r *tokenRepository) StoreRefreshToken(ctx context.Context, userID uuid.UUI
 		return err
 	}
 
-	_, err = database.GetDB(ctx, r.db).Exec(ctx, sql, args...)
+	_, err = database.GetDB(ctx, r.db).ExecContext(ctx, sql, args...)
 	return err
 }
 
@@ -39,20 +39,31 @@ func (r *tokenRepository) DeleteRefreshToken(ctx context.Context, tokenHash stri
 		return err
 	}
 
-	res, err := database.GetDB(ctx, r.db).Exec(ctx, sql, args...)
+	res, err := database.GetDB(ctx, r.db).ExecContext(ctx, sql, args...)
 	if err != nil {
 		return err
 	}
-	if res.RowsAffected() == 0 {
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
 		return apperrors.ErrNotFound
 	}
 	return nil
 }
 
 func (r *tokenRepository) DeleteExpiredRefreshTokens(ctx context.Context) (int64, error) {
-	tag, err := database.GetDB(ctx, r.db).Exec(ctx, "DELETE FROM refresh_tokens WHERE expires_at < NOW()")
+	sql, args, err := database.QB.Delete("refresh_tokens").
+		Where("expires_at < NOW()").
+		ToSql()
 	if err != nil {
 		return 0, err
 	}
-	return tag.RowsAffected(), nil
+
+	res, err := database.GetDB(ctx, r.db).ExecContext(ctx, sql, args...)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
 }

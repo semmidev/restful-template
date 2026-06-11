@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-co-op/gocron/v2"
 	redisclient "github.com/redis/go-redis/v9"
+	"github.com/semmidev/restful-template/internal/shared/infrastructure"
 )
 
 // ErrFailedToAcquireLock is returned when the locker fails to acquire a lock via Redis
@@ -35,12 +36,17 @@ func NewRedisLocker(client *redisclient.Client, prefix string, ttl time.Duration
 func (l *RedisLocker) Lock(ctx context.Context, key string) (gocron.Lock, error) {
 	lockKey := fmt.Sprintf("%s%s", l.prefix, key)
 
-	// Use SetNX to acquire the lock only if it doesn't already exist
-	acquired, err := l.client.SetNX(ctx, lockKey, "locked", l.ttl).Result()
+	// Use SetNX to acquire the lock only if it doesn't already exist, wrapped in circuit breaker
+	res, err := infrastructure.RedisBreaker.Execute(func() (any, error) {
+		return l.client.SetNX(ctx, lockKey, "locked", l.ttl).Result()
+	})
 	if err != nil {
 		return nil, fmt.Errorf("redis error while acquiring lock: %w", err)
 	}
-
+	acquired, ok := res.(bool)
+	if !ok {
+		return nil, fmt.Errorf("unexpected lock acquisition result type: %T", res)
+	}
 	if !acquired {
 		return nil, ErrFailedToAcquireLock
 	}
@@ -59,7 +65,9 @@ type RedisLock struct {
 
 // Unlock releases the lock
 func (l *RedisLock) Unlock(ctx context.Context) error {
-	err := l.client.Del(ctx, l.key).Err()
+	_, err := infrastructure.RedisBreaker.Execute(func() (any, error) {
+		return nil, l.client.Del(ctx, l.key).Err()
+	})
 	if err != nil {
 		return fmt.Errorf("failed to release lock: %w", err)
 	}

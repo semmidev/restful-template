@@ -85,8 +85,8 @@ func run(ctx context.Context) error {
 	case <-done:
 		logger.Info("worker stopped gracefully")
 	case <-shutdownCtx.Done():
-		logger.Error("worker shutdown timed out, forcing exit")
-		os.Exit(1)
+		logger.Error("worker shutdown timed out")
+		return fmt.Errorf("graceful shutdown timed out")
 	}
 
 	return nil

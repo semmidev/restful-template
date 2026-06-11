@@ -3,19 +3,17 @@ package database
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-	apperrors "github.com/semmidev/restful-template/internal/shared/errors"
+	"github.com/jmoiron/sqlx"
 )
 
 type txKey struct{}
 
-func InjectTx(ctx context.Context, tx pgx.Tx) context.Context {
+func InjectTx(ctx context.Context, tx *sqlx.Tx) context.Context {
 	return context.WithValue(ctx, txKey{}, tx)
 }
 
-func ExtractTx(ctx context.Context) pgx.Tx {
-	if tx, ok := ctx.Value(txKey{}).(pgx.Tx); ok {
+func ExtractTx(ctx context.Context) *sqlx.Tx {
+	if tx, ok := ctx.Value(txKey{}).(*sqlx.Tx); ok {
 		return tx
 	}
 	return nil
@@ -27,29 +25,26 @@ type TxManager interface {
 }
 
 type PostgresTxManager struct {
-	pool *pgxpool.Pool
+	db *sqlx.DB
 }
 
-func NewPostgresTxManager(pool *pgxpool.Pool) *PostgresTxManager {
-	return &PostgresTxManager{pool: pool}
+func NewPostgresTxManager(db *sqlx.DB) *PostgresTxManager {
+	return &PostgresTxManager{db: db}
 }
 
 // RunInTx executes fn inside a database transaction.
-// The deferred Rollback is a no-op after a successful Commit, so it is safe
-// to defer unconditionally — this avoids the common mistake of forgetting
-// rollback on every early-return error path.
 func (tm *PostgresTxManager) RunInTx(ctx context.Context, fn func(ctx context.Context) error) (err error) {
-	tx, err := tm.pool.Begin(ctx)
+	tx, err := tm.db.BeginTxx(ctx, nil)
 	if err != nil {
 		return err
 	}
 
 	defer func() {
 		if p := recover(); p != nil {
-			err = apperrors.NewInternal("panic during transaction execution", nil)
-			_ = tx.Rollback(ctx)
-		} else {
-			_ = tx.Rollback(ctx)
+			_ = tx.Rollback()
+			panic(p) // re-panic so original debugging stack trace is not swallowed
+		} else if err != nil {
+			_ = tx.Rollback()
 		}
 	}()
 
@@ -59,5 +54,5 @@ func (tm *PostgresTxManager) RunInTx(ctx context.Context, fn func(ctx context.Co
 		return err
 	}
 
-	return tx.Commit(ctx)
+	return tx.Commit()
 }

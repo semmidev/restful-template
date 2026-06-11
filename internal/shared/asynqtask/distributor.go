@@ -53,3 +53,8 @@ func (d *Distributor) EnqueueTask(
 
 	return nil
 }
+
+// Close releases the resources held by the underlying asynq client.
+func (d *Distributor) Close() error {
+	return d.client.Close()
+}

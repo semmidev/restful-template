@@ -2,19 +2,23 @@ package auth
 
 import (
 	"context"
+	dbsql "database/sql"
 	"errors"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jmoiron/sqlx"
 	"github.com/semmidev/restful-template/internal/shared/database"
 	apperrors "github.com/semmidev/restful-template/internal/shared/errors"
 )
 
-type userRepository struct{ db *pgxpool.Pool }
+type userRepository struct {
+	db *sqlx.DB
+}
 
-func NewUserRepository(db *pgxpool.Pool) UserRepository { return &userRepository{db} }
+func NewUserRepository(db *sqlx.DB) UserRepository {
+	return &userRepository{db: db}
+}
 
 func (r *userRepository) Create(ctx context.Context, u *User) error {
 	sql, args, err := database.QB.Insert("users").
@@ -25,7 +29,7 @@ func (r *userRepository) Create(ctx context.Context, u *User) error {
 		return err
 	}
 
-	_, err = database.GetDB(ctx, r.db).Exec(ctx, sql, args...)
+	_, err = database.GetDB(ctx, r.db).ExecContext(ctx, sql, args...)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
@@ -42,7 +46,7 @@ func (r *userRepository) Create(ctx context.Context, u *User) error {
 		if err != nil {
 			return err
 		}
-		_, err = database.GetDB(ctx, r.db).Exec(ctx, roleSQL, roleArgs...)
+		_, err = database.GetDB(ctx, r.db).ExecContext(ctx, roleSQL, roleArgs...)
 		if err != nil {
 			return err
 		}
@@ -59,21 +63,9 @@ func (r *userRepository) loadRoles(ctx context.Context, u *User) error {
 		return err
 	}
 
-	rows, err := database.GetDB(ctx, r.db).Query(ctx, sql, args...)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-
 	var roles []string
-	for rows.Next() {
-		var role string
-		if err := rows.Scan(&role); err != nil {
-			return err
-		}
-		roles = append(roles, role)
-	}
-	if err := rows.Err(); err != nil {
+	err = database.GetDB(ctx, r.db).SelectContext(ctx, &roles, sql, args...)
+	if err != nil {
 		return err
 	}
 
@@ -90,10 +82,10 @@ func (r *userRepository) GetByEmail(ctx context.Context, email string) (*User, e
 		return nil, err
 	}
 
-	row := database.GetDB(ctx, r.db).QueryRow(ctx, sql, args...)
 	var u User
-	if err := row.Scan(&u.ID, &u.Email, &u.PasswordHash, &u.GoogleID, &u.ActiveRole, &u.CreatedAt, &u.UpdatedAt); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+	err = database.GetDB(ctx, r.db).GetContext(ctx, &u, sql, args...)
+	if err != nil {
+		if errors.Is(err, dbsql.ErrNoRows) {
 			return nil, apperrors.ErrNotFound
 		}
 		return nil, err
@@ -115,10 +107,10 @@ func (r *userRepository) GetByID(ctx context.Context, id uuid.UUID) (*User, erro
 		return nil, err
 	}
 
-	row := database.GetDB(ctx, r.db).QueryRow(ctx, sql, args...)
 	var u User
-	if err := row.Scan(&u.ID, &u.Email, &u.PasswordHash, &u.GoogleID, &u.ActiveRole, &u.CreatedAt, &u.UpdatedAt); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+	err = database.GetDB(ctx, r.db).GetContext(ctx, &u, sql, args...)
+	if err != nil {
+		if errors.Is(err, dbsql.ErrNoRows) {
 			return nil, apperrors.ErrNotFound
 		}
 		return nil, err
@@ -140,10 +132,10 @@ func (r *userRepository) GetByGoogleID(ctx context.Context, googleID string) (*U
 		return nil, err
 	}
 
-	row := database.GetDB(ctx, r.db).QueryRow(ctx, sql, args...)
 	var u User
-	if err := row.Scan(&u.ID, &u.Email, &u.PasswordHash, &u.GoogleID, &u.ActiveRole, &u.CreatedAt, &u.UpdatedAt); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+	err = database.GetDB(ctx, r.db).GetContext(ctx, &u, sql, args...)
+	if err != nil {
+		if errors.Is(err, dbsql.ErrNoRows) {
 			return nil, apperrors.ErrNotFound
 		}
 		return nil, err
@@ -169,11 +161,15 @@ func (r *userRepository) Update(ctx context.Context, u *User) error {
 		return err
 	}
 
-	res, err := database.GetDB(ctx, r.db).Exec(ctx, sql, args...)
+	res, err := database.GetDB(ctx, r.db).ExecContext(ctx, sql, args...)
 	if err != nil {
 		return err
 	}
-	if res.RowsAffected() == 0 {
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
 		return apperrors.ErrNotFound
 	}
 
@@ -183,7 +179,7 @@ func (r *userRepository) Update(ctx context.Context, u *User) error {
 	if err != nil {
 		return err
 	}
-	_, err = database.GetDB(ctx, r.db).Exec(ctx, delSQL, delArgs...)
+	_, err = database.GetDB(ctx, r.db).ExecContext(ctx, delSQL, delArgs...)
 	if err != nil {
 		return err
 	}
@@ -196,7 +192,7 @@ func (r *userRepository) Update(ctx context.Context, u *User) error {
 		if err != nil {
 			return err
 		}
-		_, err = database.GetDB(ctx, r.db).Exec(ctx, roleSQL, roleArgs...)
+		_, err = database.GetDB(ctx, r.db).ExecContext(ctx, roleSQL, roleArgs...)
 		if err != nil {
 			return err
 		}
@@ -213,11 +209,15 @@ func (r *userRepository) Delete(ctx context.Context, id uuid.UUID) error {
 		return err
 	}
 
-	res, err := database.GetDB(ctx, r.db).Exec(ctx, sql, args...)
+	res, err := database.GetDB(ctx, r.db).ExecContext(ctx, sql, args...)
 	if err != nil {
 		return err
 	}
-	if res.RowsAffected() == 0 {
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
 		return apperrors.ErrNotFound
 	}
 	return nil

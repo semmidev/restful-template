@@ -18,18 +18,18 @@ const (
 )
 
 type Todo struct {
-	ID          uuid.UUID  `json:"id"`
-	UserID      uuid.UUID  `json:"user_id"`
-	Title       string     `json:"title"`
-	Description string     `json:"description"`
-	Cover       *string    `json:"cover"`
-	Status      TodoStatus `json:"status"`
-	Importance  bool       `json:"importance"`
-	Urgency     bool       `json:"urgency"`
-	DueAt       *time.Time `json:"due_at"`
-	DeletedAt   *time.Time `json:"deleted_at"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
+	ID          uuid.UUID  `json:"id" db:"id"`
+	UserID      uuid.UUID  `json:"user_id" db:"user_id"`
+	Title       string     `json:"title" db:"title"`
+	Description string     `json:"description" db:"description"`
+	Cover       *string    `json:"cover" db:"cover"`
+	Status      TodoStatus `json:"status" db:"status"`
+	Importance  bool       `json:"importance" db:"importance"`
+	Urgency     bool       `json:"urgency" db:"urgency"`
+	DueAt       *time.Time `json:"due_at" db:"due_at"`
+	DeletedAt   *time.Time `json:"deleted_at" db:"deleted_at"`
+	CreatedAt   time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at" db:"updated_at"`
 }
 
 // Validate checks business invariants on a Todo entity.

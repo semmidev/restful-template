@@ -25,7 +25,7 @@ import (
 // Setup wires all application dependencies and returns an http.Handler
 // along with a cleanup function to close resources (like DB pools).
 func Setup(ctx context.Context, cfg config.Config, logger *slog.Logger) (http.Handler, func(), error) {
-	pool, err := database.NewPool(ctx, cfg.Database)
+	db, err := database.NewDB(ctx, cfg.Database)
 	if err != nil {
 		logger.Error("db connect failed", "err", err)
 		return nil, nil, err
@@ -36,34 +36,39 @@ func Setup(ctx context.Context, cfg config.Config, logger *slog.Logger) (http.Ha
 	if cfg.Database.RunMigrations {
 		if err := database.RunMigrations(cfg.Database.DSN, "up"); err != nil {
 			logger.Error("migrate failed", "err", err)
-			pool.Close()
+			_ = db.Close()
 			return nil, nil, err
 		}
 	}
 
 	if err := policy.Init(ctx); err != nil {
 		logger.Error("failed to init OPA policy engine", "err", err)
-		pool.Close()
+		_ = db.Close()
 		return nil, nil, err
 	}
 
 	rdb, limiter, err := redispkg.NewClient(ctx, cfg.Redis.DSN)
 	if err != nil {
 		logger.Error("redis connect failed", "err", err)
-		pool.Close()
+		_ = db.Close()
 		return nil, nil, err
 	}
 
+	var distributor *asynqtask.Distributor
+
 	cleanup := func() {
+		if distributor != nil {
+			_ = distributor.Close()
+		}
 		if rdb != nil {
 			_ = rdb.Close()
 		}
-		pool.Close()
+		_ = db.Close()
 	}
 
-	userRepo := auth.NewUserRepository(pool)
-	todoRepo := todos.NewTodoRepository(pool)
-	tokenRepo := auth.NewTokenRepository(pool)
+	userRepo := auth.NewUserRepository(db)
+	todoRepo := todos.NewTodoRepository(db)
+	tokenRepo := auth.NewTokenRepository(db)
 	cacheRepo := redispkg.NewCacheRepository(rdb)
 
 	// issuer and audience are embedded in JWT claims so tokens issued in one
@@ -76,7 +81,7 @@ func Setup(ctx context.Context, cfg config.Config, logger *slog.Logger) (http.Ha
 		cfg.JWT.Audience,
 	)
 	tracerAdapter := observability.NewOtelTracer("usecase")
-	txManager := database.NewPostgresTxManager(pool)
+	txManager := database.NewPostgresTxManager(db)
 
 	todoSvc := todos.NewTodoService(todoRepo, cacheRepo, tracerAdapter)
 
@@ -91,17 +96,17 @@ func Setup(ctx context.Context, cfg config.Config, logger *slog.Logger) (http.Ha
 		logger.Error("invalid redis opt type", "err", err)
 		return nil, nil, err
 	}
-	distributor := asynqtask.NewDistributor(clientOpt)
+	distributor = asynqtask.NewDistributor(clientOpt)
 	authDistributor := auth.NewTaskDistributor(distributor)
 
 	authSvc := auth.NewAuthService(userRepo, tokenSvc, tokenRepo, todoSvc, txManager, tracerAdapter, authDistributor, cfg.Google)
 
-	usersRepo := users.NewUserRepository(pool)
+	usersRepo := users.NewUserRepository(db)
 	usersSvc := users.NewUserService(usersRepo, txManager, tracerAdapter)
 
 	healthCheckers := map[string]delivery.HealthChecker{
 		"postgres": func(hctx context.Context) error {
-			return pool.Ping(hctx)
+			return db.PingContext(hctx)
 		},
 		"redis": func(hctx context.Context) error {
 			return rdb.Ping(hctx).Err()
@@ -134,7 +139,7 @@ func SetupWorker(cfg config.Config, logger *slog.Logger) (asynqtask.Processor, e
 	if err != nil {
 		return nil, fmt.Errorf("failed to init smtp sender: %w", err)
 	}
-	authWorker := auth.NewAuthWorker(logger, emailSender)
+	authWorker := auth.NewAuthWorker(logger, emailSender, cfg.App.URL)
 	processor.AddTask(auth.TaskSendWelcomeEmail, authWorker.HandleSendWelcomeEmail())
 
 	return processor, nil

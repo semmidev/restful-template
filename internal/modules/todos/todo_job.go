@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/semmidev/restful-template/internal/shared/cache"
+	"golang.org/x/sync/errgroup"
 )
 
 type TodoJob struct {
@@ -30,11 +31,19 @@ func (j *TodoJob) EscalateUrgency() {
 	}
 
 	if len(updated) > 0 {
+		g, groupCtx := errgroup.WithContext(ctx)
+		g.SetLimit(10) // Concurrency limit of 10 parallel deletes to avoid connection exhaustion
+
 		for _, t := range updated {
-			// Invalidate Redis cache so subsequent reads see the updated urgency
-			key := todoCacheKey(t.UserID, t.ID)
-			_ = j.cache.Delete(ctx, key)
+			t := t
+			g.Go(func() error {
+				key := todoCacheKey(t.UserID, t.ID)
+				_ = j.cache.Delete(groupCtx, key)
+				return nil
+			})
 		}
+		_ = g.Wait()
+
 		j.logger.Info("escalated urgency for close due-date todos", "count", len(updated))
 	}
 }

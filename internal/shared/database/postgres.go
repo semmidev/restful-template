@@ -2,41 +2,47 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"embed"
 	"errors"
-	"time"
 
 	"github.com/exaring/otelpgx"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
+	"github.com/jmoiron/sqlx"
 	"github.com/semmidev/restful-template/internal/config"
 )
 
 //go:embed migrations/*.sql
 var migrationsFS embed.FS
 
-func NewPool(ctx context.Context, cfg config.Database) (*pgxpool.Pool, error) {
-	pcfg, err := pgxpool.ParseConfig(cfg.DSN)
+func NewDB(ctx context.Context, cfg config.Database) (*sqlx.DB, error) {
+	connConfig, err := pgx.ParseConfig(cfg.DSN)
 	if err != nil {
 		return nil, err
 	}
-	pcfg.MaxConns = int32(cfg.MaxOpenConns)
-	pcfg.MinConns = int32(cfg.MaxIdleConns)
-	pcfg.MaxConnLifetime = cfg.ConnMaxLifetime
-	pcfg.HealthCheckPeriod = 30 * time.Second
 
-	pcfg.ConnConfig.Tracer = otelpgx.NewTracer()
+	connConfig.Tracer = otelpgx.NewTracer()
 
-	pool, err := pgxpool.NewWithConfig(ctx, pcfg)
+	connStr := stdlib.RegisterConnConfig(connConfig)
+	db, err := sql.Open("pgx", connStr)
 	if err != nil {
 		return nil, err
 	}
-	if err := pool.Ping(ctx); err != nil {
+
+	db.SetMaxOpenConns(cfg.MaxOpenConns)
+	db.SetMaxIdleConns(cfg.MaxIdleConns)
+	db.SetConnMaxLifetime(cfg.ConnMaxLifetime)
+
+	if err := db.PingContext(ctx); err != nil {
+		_ = db.Close()
 		return nil, err
 	}
-	return pool, nil
+
+	return sqlx.NewDb(db, "pgx"), nil
 }
 
 func RunMigrations(dsn string, direction string) error {

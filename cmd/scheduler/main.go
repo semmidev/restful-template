@@ -50,11 +50,13 @@ func run(ctx context.Context) error {
 		}()
 	}
 
-	pool, err := database.NewPool(ctx, cfg.Database)
+	db, err := database.NewDB(ctx, cfg.Database)
 	if err != nil {
 		return fmt.Errorf("db connect failed: %w", err)
 	}
-	defer pool.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	rdb, _, err := redis.NewClient(ctx, cfg.Redis.DSN)
 	if err != nil {
@@ -63,10 +65,10 @@ func run(ctx context.Context) error {
 	}
 	defer func() { _ = rdb.Close() }()
 
-	tokenRepo := auth.NewTokenRepository(pool)
+	tokenRepo := auth.NewTokenRepository(db)
 	authJob := auth.NewAuthJob(tokenRepo, logger)
 
-	todoRepo := todos.NewTodoRepository(pool)
+	todoRepo := todos.NewTodoRepository(db)
 	cacheRepo := redis.NewCacheRepository(rdb)
 	todoJob := todos.NewTodoJob(todoRepo, cacheRepo, logger)
 
@@ -109,10 +111,18 @@ func run(ctx context.Context) error {
 	s.Start()
 	logger.Info("scheduler started successfully", "jobs", len(s.Jobs()))
 
-	// Run once immediately so tokens/urgency that expired/changed while the scheduler was down
-	// are cleared/escalated without waiting.
-	authJob.CleanupExpiredTokens()
-	todoJob.EscalateUrgency()
+	// Run once immediately (distributed-safe using Redis lock) so tokens/urgency that expired/changed
+	// while the scheduler was down are cleared/escalated without waiting.
+	startupCtx, startupCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	if lock, err := locker.Lock(startupCtx, "startup-immediate-run"); err == nil {
+		logger.Info("acquired distributed lock for startup immediate run")
+		authJob.CleanupExpiredTokens()
+		todoJob.EscalateUrgency()
+		_ = lock.Unlock(startupCtx)
+	} else {
+		logger.Info("bypassing startup immediate run, lock already acquired by another replica")
+	}
+	startupCancel()
 
 	<-ctx.Done()
 	logger.Info("shutdown signal received")

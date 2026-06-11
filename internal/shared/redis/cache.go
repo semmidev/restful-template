@@ -2,11 +2,13 @@ package redis
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/semmidev/restful-template/internal/shared/cache"
-	"github.com/semmidev/restful-template/internal/shared/errors"
+	apperrors "github.com/semmidev/restful-template/internal/shared/errors"
+	"github.com/semmidev/restful-template/internal/shared/infrastructure"
 )
 
 type cacheRepository struct {
@@ -19,17 +21,32 @@ func NewCacheRepository(client *redis.Client) cache.CacheRepository {
 }
 
 func (r *cacheRepository) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
-	return r.client.Set(ctx, key, value, expiration).Err()
+	_, err := infrastructure.RedisBreaker.Execute(func() (any, error) {
+		return nil, r.client.Set(ctx, key, value, expiration).Err()
+	})
+	return err
 }
 
 func (r *cacheRepository) Get(ctx context.Context, key string) (string, error) {
-	val, err := r.client.Get(ctx, key).Result()
-	if err == redis.Nil {
-		return "", errors.ErrNotFound
+	res, err := infrastructure.RedisBreaker.Execute(func() (any, error) {
+		return r.client.Get(ctx, key).Result()
+	})
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return "", apperrors.ErrNotFound
+		}
+		return "", err
 	}
-	return val, err
+	val, ok := res.(string)
+	if !ok {
+		return "", errors.New("type assertion to string failed")
+	}
+	return val, nil
 }
 
 func (r *cacheRepository) Delete(ctx context.Context, key string) error {
-	return r.client.Del(ctx, key).Err()
+	_, err := infrastructure.RedisBreaker.Execute(func() (any, error) {
+		return nil, r.client.Del(ctx, key).Err()
+	})
+	return err
 }

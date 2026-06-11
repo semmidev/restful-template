@@ -2,13 +2,13 @@ package todos
 
 import (
 	"context"
+	dbsql "database/sql"
 	"errors"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jmoiron/sqlx"
 	"github.com/semmidev/restful-template/internal/shared/database"
 	apperrors "github.com/semmidev/restful-template/internal/shared/errors"
 )
@@ -22,9 +22,13 @@ var allowedSortCols = map[string]string{
 	"status":     "status",
 }
 
-type todoRepository struct{ db *pgxpool.Pool }
+type todoRepository struct {
+	db *sqlx.DB
+}
 
-func NewTodoRepository(db *pgxpool.Pool) TodoRepository { return &todoRepository{db} }
+func NewTodoRepository(db *sqlx.DB) TodoRepository {
+	return &todoRepository{db: db}
+}
 
 func (r *todoRepository) Create(ctx context.Context, t *Todo) error {
 	sql, args, err := database.QB.Insert("todos").
@@ -35,7 +39,7 @@ func (r *todoRepository) Create(ctx context.Context, t *Todo) error {
 		return err
 	}
 
-	_, err = database.GetDB(ctx, r.db).Exec(ctx, sql, args...)
+	_, err = database.GetDB(ctx, r.db).ExecContext(ctx, sql, args...)
 	return err
 }
 
@@ -48,10 +52,10 @@ func (r *todoRepository) GetByID(ctx context.Context, userID, id uuid.UUID) (*To
 		return nil, err
 	}
 
-	row := database.GetDB(ctx, r.db).QueryRow(ctx, sql, args...)
 	var t Todo
-	if err := row.Scan(&t.ID, &t.UserID, &t.Title, &t.Description, &t.Cover, &t.Status, &t.Importance, &t.Urgency, &t.DueAt, &t.DeletedAt, &t.CreatedAt, &t.UpdatedAt); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+	err = database.GetDB(ctx, r.db).GetContext(ctx, &t, sql, args...)
+	if err != nil {
+		if errors.Is(err, dbsql.ErrNoRows) {
 			return nil, apperrors.ErrNotFound
 		}
 		return nil, err
@@ -108,11 +112,13 @@ func (r *todoRepository) ListByUser(ctx context.Context, q ListTodosQuery) ([]*T
 		return nil, 0, err
 	}
 
-	rows, err := database.GetDB(ctx, r.db).Query(ctx, dataSQL, dataArgs...)
+	rows, err := database.GetDB(ctx, r.db).QueryContext(ctx, dataSQL, dataArgs...)
 	if err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
+	defer func() {
+		_ = rows.Close()
+	}()
 
 	var total int
 	out := make([]*Todo, 0)
@@ -135,9 +141,6 @@ func (r *todoRepository) ListByUser(ctx context.Context, q ListTodosQuery) ([]*T
 }
 
 // Update persists the mutated todo entity.
-// Checking RowsAffected == 0 catches concurrent deletes that happen between
-// the handler's ETag fetch and this write, returning ErrNotFound instead of
-// silently no-op'ing.
 func (r *todoRepository) Update(ctx context.Context, t *Todo) error {
 	sql, args, err := database.QB.Update("todos").
 		Set("title", t.Title).
@@ -155,11 +158,15 @@ func (r *todoRepository) Update(ctx context.Context, t *Todo) error {
 		return err
 	}
 
-	res, err := database.GetDB(ctx, r.db).Exec(ctx, sql, args...)
+	res, err := database.GetDB(ctx, r.db).ExecContext(ctx, sql, args...)
 	if err != nil {
 		return err
 	}
-	if res.RowsAffected() == 0 {
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
 		return apperrors.ErrNotFound
 	}
 	return nil
@@ -175,7 +182,7 @@ func (r *todoRepository) Delete(ctx context.Context, userID, id uuid.UUID) error
 		return err
 	}
 
-	_, err = database.GetDB(ctx, r.db).Exec(ctx, sql, args...)
+	_, err = database.GetDB(ctx, r.db).ExecContext(ctx, sql, args...)
 	return err
 }
 
@@ -189,7 +196,7 @@ func (r *todoRepository) Restore(ctx context.Context, userID, id uuid.UUID) erro
 		return err
 	}
 
-	_, err = database.GetDB(ctx, r.db).Exec(ctx, sql, args...)
+	_, err = database.GetDB(ctx, r.db).ExecContext(ctx, sql, args...)
 	return err
 }
 
@@ -201,7 +208,7 @@ func (r *todoRepository) DeleteAllByUserID(ctx context.Context, userID uuid.UUID
 		return err
 	}
 
-	_, err = database.GetDB(ctx, r.db).Exec(ctx, sql, args...)
+	_, err = database.GetDB(ctx, r.db).ExecContext(ctx, sql, args...)
 	return err
 }
 
@@ -218,7 +225,7 @@ func (r *todoRepository) GetStats(ctx context.Context, userID uuid.UUID) (*TodoS
 	}
 
 	var stats TodoStats
-	row := database.GetDB(ctx, r.db).QueryRow(ctx, countSQL, countArgs...)
+	row := database.GetDB(ctx, r.db).QueryRowContext(ctx, countSQL, countArgs...)
 	err = row.Scan(&stats.Total, &stats.Pending, &stats.InProgress, &stats.Completed)
 	if err != nil {
 		return nil, err
@@ -257,11 +264,13 @@ func (r *todoRepository) GetStats(ctx context.Context, userID uuid.UUID) (*TodoS
 		return nil, err
 	}
 
-	createdRows, err := database.GetDB(ctx, r.db).Query(ctx, createdSQL, createdArgs...)
+	createdRows, err := database.GetDB(ctx, r.db).QueryContext(ctx, createdSQL, createdArgs...)
 	if err != nil {
 		return nil, err
 	}
-	defer createdRows.Close()
+	defer func() {
+		_ = createdRows.Close()
+	}()
 
 	for createdRows.Next() {
 		var dateVal time.Time
@@ -290,11 +299,13 @@ func (r *todoRepository) GetStats(ctx context.Context, userID uuid.UUID) (*TodoS
 		return nil, err
 	}
 
-	completedRows, err := database.GetDB(ctx, r.db).Query(ctx, completedSQL, completedArgs...)
+	completedRows, err := database.GetDB(ctx, r.db).QueryContext(ctx, completedSQL, completedArgs...)
 	if err != nil {
 		return nil, err
 	}
-	defer completedRows.Close()
+	defer func() {
+		_ = completedRows.Close()
+	}()
 
 	for completedRows.Next() {
 		var dateVal time.Time
@@ -315,9 +326,6 @@ func (r *todoRepository) GetStats(ctx context.Context, userID uuid.UUID) (*TodoS
 }
 
 func (r *todoRepository) EscalateUrgency(ctx context.Context, threshold time.Time) ([]*Todo, error) {
-	// Query to find and update todos matching:
-	// status != 'done' AND urgency = false AND due_at <= threshold AND deleted_at IS NULL
-	// Set urgency = true, updated_at = NOW()
 	sql, args, err := database.QB.Update("todos").
 		Set("urgency", true).
 		Set("updated_at", time.Now().UTC()).
@@ -333,11 +341,13 @@ func (r *todoRepository) EscalateUrgency(ctx context.Context, threshold time.Tim
 		return nil, err
 	}
 
-	rows, err := database.GetDB(ctx, r.db).Query(ctx, sql, args...)
+	rows, err := database.GetDB(ctx, r.db).QueryContext(ctx, sql, args...)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		_ = rows.Close()
+	}()
 
 	updated := make([]*Todo, 0)
 	for rows.Next() {

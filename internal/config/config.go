@@ -57,6 +57,7 @@ type App struct {
 	Name        string
 	Description string
 	Version     string
+	URL         string
 }
 
 type HTTP struct {
@@ -120,6 +121,7 @@ func Load() Config {
 	v.SetDefault("APP_NAME", "restful-template")
 	v.SetDefault("APP_DESCRIPTION", "Production-ready Todo REST API built with Huma v2 + Chi.")
 	v.SetDefault("APP_VERSION", "1.0.0")
+	v.SetDefault("APP_URL", "http://localhost:8080")
 
 	v.SetDefault("HTTP_PORT", "8080")
 	v.SetDefault("HTTP_READ_TIMEOUT", "15s")
@@ -176,6 +178,7 @@ func Load() Config {
 			Name:        v.GetString("APP_NAME"),
 			Description: v.GetString("APP_DESCRIPTION"),
 			Version:     v.GetString("APP_VERSION"),
+			URL:         v.GetString("APP_URL"),
 		},
 		HTTP: HTTP{
 			Port:            v.GetString("HTTP_PORT"),

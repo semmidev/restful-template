@@ -27,13 +27,15 @@ type WelcomeData struct {
 type AuthWorker struct {
 	logger *slog.Logger
 	sender email.Sender
+	appURL string
 }
 
 // NewAuthWorker creates a new AuthWorker.
-func NewAuthWorker(logger *slog.Logger, sender email.Sender) *AuthWorker {
+func NewAuthWorker(logger *slog.Logger, sender email.Sender, appURL string) *AuthWorker {
 	return &AuthWorker{
 		logger: logger,
 		sender: sender,
+		appURL: appURL,
 	}
 }
 
@@ -59,8 +61,8 @@ func (w *AuthWorker) HandleSendWelcomeEmail() asynqtask.TaskHandler {
 
 		var buf bytes.Buffer
 		data := WelcomeData{
-			UserName: p.Email,                 // Fallback to email since User model only has email
-			AppURL:   "http://localhost:8080", // Hardcoded for demo; normally from config
+			UserName: p.Email, // Fallback to email since User model only has email
+			AppURL:   w.appURL,
 		}
 
 		if err := welcomeTmpl.Execute(&buf, data); err != nil {

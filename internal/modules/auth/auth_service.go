@@ -59,6 +59,9 @@ func NewAuthService(
 // A pre-check GetByEmail before INSERT would be a TOCTOU race: two concurrent
 // requests could both pass the check, then one fails with a raw 500.
 func (s *Service) Register(ctx context.Context, in RegisterInput) (TokenPair, error) {
+	ctx, span := s.tracer.Start(ctx, "auth.Register")
+	defer span.End()
+
 	if err := in.Validate(); err != nil {
 		return TokenPair{}, err
 	}
@@ -74,7 +77,17 @@ func (s *Service) Register(ctx context.Context, in RegisterInput) (TokenPair, er
 		u.Roles = append(u.Roles, "admin")
 	}
 
-	if err := s.users.Create(ctx, u); err != nil {
+	var pair TokenPair
+	err = s.txManager.RunInTx(ctx, func(txCtx context.Context) error {
+		if err := s.users.Create(txCtx, u); err != nil {
+			return err
+		}
+		var txErr error
+		pair, txErr = s.issuePair(txCtx, u)
+		return txErr
+	})
+
+	if err != nil {
 		if errors.Is(err, apperrors.ErrConflict) {
 			return TokenPair{}, apperrors.NewConflict("Email is already registered", err)
 		}
@@ -91,10 +104,13 @@ func (s *Service) Register(ctx context.Context, in RegisterInput) (TokenPair, er
 		})
 	}
 
-	return s.issuePair(ctx, u)
+	return pair, nil
 }
 
 func (s *Service) Login(ctx context.Context, in LoginInput) (TokenPair, error) {
+	ctx, span := s.tracer.Start(ctx, "auth.Login")
+	defer span.End()
+
 	if err := in.Validate(); err != nil {
 		return TokenPair{}, err
 	}
@@ -111,6 +127,9 @@ func (s *Service) Login(ctx context.Context, in LoginInput) (TokenPair, error) {
 }
 
 func (s *Service) Refresh(ctx context.Context, refreshToken string) (TokenPair, error) {
+	ctx, span := s.tracer.Start(ctx, "auth.Refresh")
+	defer span.End()
+
 	claims, err := s.tokens.ParseRefresh(ctx, refreshToken)
 	if err != nil {
 		return TokenPair{}, apperrors.NewUnauthorized("Invalid refresh token", apperrors.ErrUnauthorized)
@@ -157,6 +176,9 @@ func (s *Service) issuePair(ctx context.Context, u *User) (TokenPair, error) {
 }
 
 func (s *Service) DeleteAccount(ctx context.Context, userID uuid.UUID) error {
+	ctx, span := s.tracer.Start(ctx, "auth.DeleteAccount")
+	defer span.End()
+
 	return s.txManager.RunInTx(ctx, func(txCtx context.Context) error {
 		if err := s.todos.DeleteAllByUserID(txCtx, userID); err != nil {
 			return err

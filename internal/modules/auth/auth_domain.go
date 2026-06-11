@@ -10,14 +10,14 @@ import (
 )
 
 type User struct {
-	ID           uuid.UUID `json:"id"`
-	Email        string    `json:"email"`
-	PasswordHash *string   `json:"password_hash,omitempty"`
-	GoogleID     *string   `json:"google_id,omitempty"`
-	ActiveRole   string    `json:"active_role"`
-	Roles        []string  `json:"roles"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID           uuid.UUID `json:"id" db:"id"`
+	Email        string    `json:"email" db:"email"`
+	PasswordHash *string   `json:"password_hash,omitempty" db:"password_hash"`
+	GoogleID     *string   `json:"google_id,omitempty" db:"google_id"`
+	ActiveRole   string    `json:"active_role" db:"active_role"`
+	Roles        []string  `json:"roles" db:"-"`
+	CreatedAt    time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at" db:"updated_at"`
 }
 
 func (u *User) CheckPassword(plain string) bool {
