@@ -16,14 +16,14 @@ Untuk panduan detail bagi AI Agent/Copilot dalam memahami standar engineering da
 ### API Documentation
 
 <p align="center">
-  <img src="./github/assets/api-docs.png" alt="API Documentation" width="100%">
+  <img src=".github/assets/api-docs.png" alt="API Documentation" width="100%">
 </p>
 
 ## 🎨 Web UI
 
 <p align="center">
-  <a href="./github/assets/desktop-demo.webm">
-    <img src="./github/assets/desktop-demo-thumbnail.png" alt="Web UI Preview" width="100%">
+  <a href=".github/assets/desktop-demo.webm">
+    <img src=".github/assets/desktop-demo-thumbnail.png" alt="Web UI Preview" width="100%">
   </a>
   <br>
   <sub><i>Klik gambar di atas untuk memutar video demonstrasi lengkap.</i></sub>
@@ -33,7 +33,7 @@ Untuk panduan detail bagi AI Agent/Copilot dalam memahami standar engineering da
 ### API Monitoring
 
 <p align="center">
-  <img src="./github/assets/api-monitoring.png" alt="API Monitoring" width="100%">
+  <img src=".github/assets/api-monitoring.png" alt="API Monitoring" width="100%">
 </p>
 
 ## Tech Stack
