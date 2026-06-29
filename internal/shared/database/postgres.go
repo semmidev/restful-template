@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"database/sql"
-	"embed"
 	"errors"
 
 	"github.com/exaring/otelpgx"
@@ -14,10 +13,8 @@ import (
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
 	"github.com/semmidev/restful-template/internal/config"
+	"github.com/semmidev/restful-template/migrations"
 )
-
-//go:embed migrations/*.sql
-var migrationsFS embed.FS
 
 func NewDB(ctx context.Context, cfg config.Database) (*sqlx.DB, error) {
 	connConfig, err := pgx.ParseConfig(cfg.DSN)
@@ -46,7 +43,7 @@ func NewDB(ctx context.Context, cfg config.Database) (*sqlx.DB, error) {
 }
 
 func RunMigrations(dsn string, direction string) error {
-	d, err := iofs.New(migrationsFS, "migrations")
+	d, err := iofs.New(migrations.FS, ".")
 	if err != nil {
 		return err
 	}

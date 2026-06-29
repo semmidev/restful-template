@@ -1,11 +1,11 @@
-package delivery
+package http
 
 import (
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/semmidev/restful-template/internal/adm/user"
+	"github.com/semmidev/restful-template/internal/auth"
 	"github.com/semmidev/restful-template/internal/config"
-	"github.com/semmidev/restful-template/internal/modules/adm/users"
-	"github.com/semmidev/restful-template/internal/modules/auth"
-	"github.com/semmidev/restful-template/internal/modules/todos"
+	"github.com/semmidev/restful-template/internal/todo"
 )
 
 // RegisterRoutes wires all module routes onto the Huma API.
@@ -17,11 +17,11 @@ func RegisterRoutes(
 	cfg config.Config,
 	healthCheckers map[string]HealthChecker,
 	authService auth.AuthService,
-	todosService todos.TodoService,
-	usersService users.UserService,
+	todoService todo.TodoService,
+	usersService user.UserService,
 ) {
 	RegisterHealthRoutes(api, healthCheckers)
 	auth.RegisterAuthRoutes(api, authService, cfg)
-	todos.RegisterTodoRoutes(api, todosService)
-	users.RegisterUserRoutes(api, usersService)
+	todo.RegisterTodoRoutes(api, todoService)
+	user.RegisterUserRoutes(api, usersService)
 }

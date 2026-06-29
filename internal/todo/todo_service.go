@@ -1,4 +1,4 @@
-package todos
+package todo
 
 import (
 	"context"
@@ -66,6 +66,16 @@ func (s *Service) Get(ctx context.Context, userID, id uuid.UUID) (*Todo, error) 
 
 		// Cache writes are best-effort: a failure here must not degrade availability.
 		if b, jsonErr := json.Marshal(t); jsonErr == nil {
+			// Prevent overwriting a newer value in Redis written by a concurrent Update request.
+			if cached, err := s.cache.Get(ctx, key); err == nil {
+				var cachedTodo Todo
+				if jsonErr := json.Unmarshal([]byte(cached), &cachedTodo); jsonErr == nil {
+					if cachedTodo.UpdatedAt.After(t.UpdatedAt) {
+						// Cache already contains a newer version of the todo.
+						return t, nil
+					}
+				}
+			}
 			_ = s.cache.Set(ctx, key, string(b), todoCacheTTL)
 		}
 

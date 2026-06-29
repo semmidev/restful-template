@@ -1,8 +1,8 @@
-package delivery
+package http
 
 import (
 	"log/slog"
-	"net/http"
+	nethttp "net/http"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
@@ -15,11 +15,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/riandyrn/otelchi"
+	"github.com/semmidev/restful-template/internal/adm/user"
+	"github.com/semmidev/restful-template/internal/auth"
 	"github.com/semmidev/restful-template/internal/config"
-	"github.com/semmidev/restful-template/internal/modules/adm/users"
-	"github.com/semmidev/restful-template/internal/modules/auth"
-	"github.com/semmidev/restful-template/internal/modules/todos"
 	sharedmw "github.com/semmidev/restful-template/internal/shared/middleware"
+	"github.com/semmidev/restful-template/internal/todo"
 	"github.com/semmidev/restful-template/internal/web"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -42,8 +42,8 @@ func NewServer(
 	cfg config.Config,
 	log *slog.Logger,
 	authService auth.AuthService,
-	todosService todos.TodoService,
-	usersService users.UserService,
+	todoService todo.TodoService,
+	usersService user.UserService,
 	tokens auth.TokenService,
 	limiter *redis_rate.Limiter,
 	healthCheckers map[string]HealthChecker,
@@ -88,7 +88,7 @@ func NewServer(
 		// chi Mount strips the prefix which breaks asynqmon's internal
 		// ServeMux; Handle preserves the full path.
 		rootPath := asynqmonUI.RootPath()
-		r.Handle(rootPath, http.RedirectHandler(rootPath+"/", http.StatusMovedPermanently))
+		r.Handle(rootPath, nethttp.RedirectHandler(rootPath+"/", nethttp.StatusMovedPermanently))
 		r.Handle(rootPath+"/*", asynqmonUI)
 	})
 
@@ -119,7 +119,7 @@ func NewServer(
 		api := humachi.New(r, humaConfig)
 		api.UseMiddleware(auth.AuthMiddleware(api, tokens))
 
-		RegisterRoutes(api, cfg, healthCheckers, authService, todosService, usersService)
+		RegisterRoutes(api, cfg, healthCheckers, authService, todoService, usersService)
 	})
 
 	mountSPAHandler(r)
@@ -127,12 +127,12 @@ func NewServer(
 	return &Server{router: r, api: nil}
 }
 
-func (s *Server) Handler() http.Handler { return s.router }
+func (s *Server) Handler() nethttp.Handler { return s.router }
 
 // TraceIDMiddleware propagates the OpenTelemetry Trace ID into the response so
 // clients and proxies can correlate a request with its trace in Tempo/Jaeger.
-func TraceIDMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func TraceIDMiddleware(next nethttp.Handler) nethttp.Handler {
+	return nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
 		spanContext := trace.SpanContextFromContext(r.Context())
 		if spanContext.HasTraceID() {
 			w.Header().Set("X-Trace-Id", spanContext.TraceID().String())

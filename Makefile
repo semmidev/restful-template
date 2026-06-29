@@ -31,7 +31,7 @@ tidy:
 
 # ── Database Migrations ────────────────────────────────────────────────────────
 DB_DSN ?= postgres://todo:todo@localhost:5432/todo?sslmode=disable
-MIGRATIONS_DIR = internal/shared/database/migrations
+MIGRATIONS_DIR = migrations
 MIGRATE = go run -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 
 migrate-create:

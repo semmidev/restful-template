@@ -1,4 +1,4 @@
-package users
+package user
 
 import (
 	apperrors "github.com/semmidev/restful-template/internal/shared/errors"

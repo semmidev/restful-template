@@ -1,8 +1,8 @@
-package delivery
+package http
 
 import (
 	"context"
-	"net/http"
+	nethttp "net/http"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/semmidev/restful-template/internal/shared/httpapi"
@@ -28,7 +28,7 @@ type HealthResp struct {
 func RegisterHealthRoutes(api huma.API, checkers map[string]HealthChecker) {
 	huma.Register(api, huma.Operation{
 		OperationID: "health-check",
-		Method:      http.MethodGet,
+		Method:      nethttp.MethodGet,
 		Path:        "/api/v1/health",
 		Summary:     "Health check — probes all downstream dependencies",
 		Tags:        []string{"System"},
@@ -48,7 +48,7 @@ func RegisterHealthRoutes(api huma.API, checkers map[string]HealthChecker) {
 		if !allOK {
 			result["status"] = "degraded"
 			return nil, &httpapi.APIError{
-				Status: http.StatusServiceUnavailable,
+				Status: nethttp.StatusServiceUnavailable,
 				Title:  "Service Unavailable",
 				Code:   "SERVICE_DEGRADED",
 				Detail: "one or more dependencies are unhealthy",

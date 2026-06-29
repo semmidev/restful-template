@@ -16,14 +16,14 @@ Untuk panduan detail bagi AI Agent/Copilot dalam memahami standar engineering da
 ### API Documentation
 
 <p align="center">
-  <img src="assets/api-docs.png" alt="API Documentation" width="100%">
+  <img src="./github/assets/api-docs.png" alt="API Documentation" width="100%">
 </p>
 
 ## 🎨 Web UI
 
 <p align="center">
-  <a href="assets/desktop-demo.webm">
-    <img src="assets/desktop-demo-thumbnail.png" alt="Web UI Preview" width="100%">
+  <a href="./github/assets/desktop-demo.webm">
+    <img src="./github/assets/desktop-demo-thumbnail.png" alt="Web UI Preview" width="100%">
   </a>
   <br>
   <sub><i>Klik gambar di atas untuk memutar video demonstrasi lengkap.</i></sub>
@@ -33,7 +33,7 @@ Untuk panduan detail bagi AI Agent/Copilot dalam memahami standar engineering da
 ### API Monitoring
 
 <p align="center">
-  <img src="assets/api-monitoring.png" alt="API Monitoring" width="100%">
+  <img src="./github/assets/api-monitoring.png" alt="API Monitoring" width="100%">
 </p>
 
 ## Tech Stack
@@ -263,10 +263,9 @@ Template ini tidak sekadar menggunakan Huma sebagai generator OpenAPI, melainkan
 ├── internal/
 │   ├── app/          # Dependency injection & wiring terpusat (Setup)
 │   ├── config/       # Konfigurasi aplikasi (Viper)
-│   ├── delivery/     # Setup root HTTP server (Middleware & Router Utama)
-│   ├── modules/      # Seluruh fitur bisnis
-│   │   ├── auth/         # Auth: login, register, user management
-│   │   └── todos/        # Todo: operasi CRUD
+│   ├── http/         # Setup root HTTP server (Middleware & Router Utama)
+│   ├── auth/         # Auth: login, register, user management
+│   ├── todo/         # Todo: operasi CRUD
 │   ├── web/          # Embedded SPA server handler (go:embed)
 
 │   └── shared/       # Cross-cutting utilities
@@ -285,7 +284,7 @@ Projek ini menggunakan *pattern* **Package by Feature** — kode dikelompokkan b
 
 ### Aturan Main (Rules of Engagement)
 
-1. **Tidak ada *direct imports* antar modul** — `internal/modules/auth` dilarang meng-*import* `internal/modules/todos` secara langsung.
+1. **Tidak ada *direct imports* antar modul** — `internal/auth` dilarang meng-*import* `internal/todo` secara langsung.
 2. **Shared Kernel** — Kode generik yang dibutuhkan lebih dari satu modul diletakkan di `internal/shared`.
 3. **Encapsulation** — Semua struktur internal modul (handlers, service, repositories) bersifat *private*. Hanya *public constructors* (seperti `NewAuthService`) yang boleh di-*wire* dari `cmd/server/main.go`.
 
@@ -298,7 +297,7 @@ Ketika modul perlu berinteraksi dengan modul lain, kita gunakan **Synchronous In
 Modul `auth` harus menghapus data `todos` milik *user* saat akun dihapus. Alih-alih meng-*import* modul `todos`, modul `auth` mendefinisikan kontrak yang ia butuhkan:
 
 ```go
-// internal/modules/auth/auth_domain.go
+// internal/auth/auth_domain.go
 type TodoService interface {
     DeleteAllByUserID(ctx context.Context, userID uuid.UUID) error
 }
@@ -307,7 +306,7 @@ type TodoService interface {
 Modul `todos` mengimplementasikan kontrak ini, lalu di-*inject* ke `auth` saat inisialisasi di `cmd/server/main.go`. Hasilnya: `auth` memanggil `todos` tanpa pernah terhubung secara statis.
 
 **Mengapa Service/Usecase diekspos sebagai Interface?**
-- **Isolated Unit Testing**: Layer HTTP (`delivery/http`) bergantung pada *interface*, bukan *concrete struct*. Ini memungkinkan pembuatan unit test untuk HTTP Handler secara terisolasi menggunakan *mock* (tanpa setup database/Redis).
+- **Isolated Unit Testing**: Layer HTTP (`internal/http`) bergantung pada *interface*, bukan *concrete struct*. Ini memungkinkan pembuatan unit test untuk HTTP Handler secara terisolasi menggunakan *mock* (tanpa setup database/Redis).
 - **Mencegah Circular Dependencies**: Jika modul `auth` bergantung pada konkrit struktur `todos`, dan suatu saat `todos` butuh fungsi dari `auth`, akan terjadi *circular import* (yang dilarang keras di Go). Interface menjaga kedua modul tetap terisolasi.
 - **Architectural Boundary**: Compiler Go menjamin bahwa layer luar (seperti router/HTTP) hanya bisa memanggil fungsi yang terdaftar secara eksplisit di kontrak *interface*, mencegah kebocoran logika internal *service*.
 

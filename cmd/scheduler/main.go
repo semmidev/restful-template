@@ -10,13 +10,13 @@ import (
 	"time"
 
 	"github.com/go-co-op/gocron/v2"
+	"github.com/semmidev/restful-template/internal/auth"
 	"github.com/semmidev/restful-template/internal/config"
-	"github.com/semmidev/restful-template/internal/modules/auth"
-	"github.com/semmidev/restful-template/internal/modules/todos"
 	"github.com/semmidev/restful-template/internal/shared/banner"
 	"github.com/semmidev/restful-template/internal/shared/database"
 	"github.com/semmidev/restful-template/internal/shared/observability"
 	"github.com/semmidev/restful-template/internal/shared/redis"
+	"github.com/semmidev/restful-template/internal/todo"
 )
 
 func main() {
@@ -68,9 +68,9 @@ func run(ctx context.Context) error {
 	tokenRepo := auth.NewTokenRepository(db)
 	authJob := auth.NewAuthJob(tokenRepo, logger)
 
-	todoRepo := todos.NewTodoRepository(db)
+	todoRepo := todo.NewTodoRepository(db)
 	cacheRepo := redis.NewCacheRepository(rdb)
-	todoJob := todos.NewTodoJob(todoRepo, cacheRepo, logger)
+	todoJob := todo.NewTodoJob(todoRepo, cacheRepo, logger)
 
 	// 5-minute TTL prevents a dead scheduler replica from holding a lock past a
 	// reasonable job window and blocking the next election.

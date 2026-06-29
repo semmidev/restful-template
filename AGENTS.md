@@ -51,12 +51,11 @@ cmd/
 internal/
 ├── app/             ← dependency injection root (app.Setup)
 ├── config/          ← Viper config loaded from .env + env vars
-├── delivery/http/   ← HTTP layer: server, routes, middleware (driven adapters)
-├── modules/
-│   ├── auth/        ← auth domain, repository, service, HTTP handler, middleware
-│   ├── todos/       ← todos domain, repository, service, HTTP handler
-│   └── adm/
-│       └── users/   ← users CRUD management domain, repository, service, HTTP handler
+├── http/            ← HTTP layer: server, routes, middleware (driven adapters)
+├── auth/            ← auth domain, repository, service, HTTP handler, middleware
+├── todo/            ← todo domain, repository, service, HTTP handler
+├── adm/
+│   └── user/        ← user CRUD management domain, repository, service, HTTP handler
 ├── web/             ← embedded static SPA web server handler (go:embed)
 └── shared/
     ├── asynqtask/   ← task type constants, payload structs, TaskDistributor (producer)
@@ -76,9 +75,9 @@ internal/
 
 ### Dependency Rules (never violate these)
 
-1. **`internal/modules/*`** may only import from `internal/shared/*`. Modules are **never** imported by other modules directly — cross-module calls happen via **interfaces defined in the domain file**.
-2. **`internal/delivery/http`** depends on module interfaces (`AuthService`, `TodoService`), not on concrete `*Service` structs — except in `NewServer()` where wiring happens explicitly.
-3. **`internal/shared/*`** has **zero imports** from `internal/modules/*` or `internal/delivery/*`.
+1. **`internal/auth`, `internal/todo`, `internal/adm`** may only import from `internal/shared/*`. Domains/modules are **never** imported by other modules directly — cross-module calls happen via **interfaces defined in the domain file**.
+2. **`internal/http`** depends on module interfaces (`AuthService`, `TodoService`), not on concrete `*Service` structs — except in `NewServer()` where wiring happens explicitly.
+3. **`internal/shared/*`** has **zero imports** from `internal/auth/*`, `internal/todo/*`, `internal/adm/*` or `internal/delivery/*` (or `internal/http/*`).
 4. **`internal/app/app.go`** is the **only place** where concrete types are wired together. All other packages consume interfaces.
 5. **`cmd/*`** only calls `app.Setup()` and manages the OS signal lifecycle.
 
@@ -88,7 +87,7 @@ internal/
 
 ### Module Layout (follow exactly for new modules)
 
-Each module in `internal/modules/<name>/` has exactly these files:
+Each module in `internal/<name>/` has exactly these files:
 
 | File                         | Responsibility                                                                  |
 |------------------------------|---------------------------------------------------------------------------------|
@@ -120,7 +119,7 @@ Each frontend feature lives in `frontend/src/features/<name>/`:
 ### Naming Conventions
 
 - Interfaces: named after their role, **not** their implementation — `TodoRepository`, `TodoService`, `TokenService`, `TxManager`.
-- Service struct: always named `Service` within its package (`todos.Service`, `auth.Service`).
+- Service struct: always named `Service` within its package (`todo.Service`, `auth.Service`).
 - Repository struct: always unexported (`todoRepository`, `userRepository`) — consumers only hold the interface.
 - Constructor: `New<Name>(deps...) <Interface>` for repositories, `New<Name>Service(deps...) *Service` for services.
 - HTTP handler struct: unexported (`todoHandler`), only `Register<Name>Routes(api, service)` is exported.
@@ -348,14 +347,14 @@ If you want to run the React application locally with Hot Module Replacement (HM
 
 Follow these steps in order:
 
-1. Create `internal/modules/<name>/` with the standard files (`_domain.go`, `_repository.go`, `_service.go`, etc).
+1. Create `internal/<name>/` with the standard files (`_domain.go`, `_repository.go`, `_service.go`, etc).
 2. Define the domain entity and business methods in `<name>_domain.go`. Define the **repository interface** and **service interface** in the same file.
 3. Implement the repository in `<name>_repository.go` using `database.QB` and `database.GetDB(ctx, r.db)`.
 4. Define service input/output types in `<name>_service_types.go` and implement the service in `<name>_service.go`. Inject `cache.CacheRepository` and `observability.Tracer`. Add spans to every public method.
 5. Define HTTP request/response types in `<name>_http_types.go`, handlers in `<name>_http_handlers.go`, and register routes in `<name>_http_routes.go` using `huma.Register()`.
-6. Wire dependencies in `internal/app/app.go`: create the repository, then the service, then pass it to `delivery.NewServer()`.
-7. Add the route registration call to `internal/delivery/http/routes.go`.
-8. Create SQL migrations in `internal/shared/database/migrations/` using sequential numbering (`000006_...`). You can use `make migrate-create` to generate these files automatically with the correct sequence prefix.
+6. Wire dependencies in `internal/app/app.go`: create the repository, then the service, then pass it to `http.NewServer()`.
+7. Add the route registration call to `internal/http/routes.go`.
+8. Create SQL migrations in `migrations/` using sequential numbering (`000006_...`). You can use `make migrate-create` to generate these files automatically with the correct sequence prefix.
 
 ### Writing Tests
 

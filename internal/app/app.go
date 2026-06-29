@@ -8,11 +8,10 @@ import (
 	"net/http"
 
 	"github.com/hibiken/asynq"
+	"github.com/semmidev/restful-template/internal/adm/user"
+	"github.com/semmidev/restful-template/internal/auth"
 	"github.com/semmidev/restful-template/internal/config"
-	delivery "github.com/semmidev/restful-template/internal/delivery/http"
-	"github.com/semmidev/restful-template/internal/modules/adm/users"
-	"github.com/semmidev/restful-template/internal/modules/auth"
-	"github.com/semmidev/restful-template/internal/modules/todos"
+	httpserver "github.com/semmidev/restful-template/internal/http"
 	"github.com/semmidev/restful-template/internal/shared/asynqtask"
 	"github.com/semmidev/restful-template/internal/shared/database"
 	"github.com/semmidev/restful-template/internal/shared/email/smtp"
@@ -20,6 +19,7 @@ import (
 	"github.com/semmidev/restful-template/internal/shared/observability"
 	"github.com/semmidev/restful-template/internal/shared/policy"
 	redispkg "github.com/semmidev/restful-template/internal/shared/redis"
+	"github.com/semmidev/restful-template/internal/todo"
 )
 
 // Setup wires all application dependencies and returns an http.Handler
@@ -67,7 +67,7 @@ func Setup(ctx context.Context, cfg config.Config, logger *slog.Logger) (http.Ha
 	}
 
 	userRepo := auth.NewUserRepository(db)
-	todoRepo := todos.NewTodoRepository(db)
+	todoRepo := todo.NewTodoRepository(db)
 	tokenRepo := auth.NewTokenRepository(db)
 	cacheRepo := redispkg.NewCacheRepository(rdb)
 
@@ -83,7 +83,7 @@ func Setup(ctx context.Context, cfg config.Config, logger *slog.Logger) (http.Ha
 	tracerAdapter := observability.NewOtelTracer("usecase")
 	txManager := database.NewPostgresTxManager(db)
 
-	todoSvc := todos.NewTodoService(todoRepo, cacheRepo, tracerAdapter)
+	todoSvc := todo.NewTodoService(todoRepo, cacheRepo, tracerAdapter)
 
 	redisOpt, err := asynq.ParseRedisURI(cfg.Redis.DSN)
 	if err != nil {
@@ -101,10 +101,10 @@ func Setup(ctx context.Context, cfg config.Config, logger *slog.Logger) (http.Ha
 
 	authSvc := auth.NewAuthService(userRepo, tokenSvc, tokenRepo, todoSvc, txManager, tracerAdapter, authDistributor, cfg.Google)
 
-	usersRepo := users.NewUserRepository(db)
-	usersSvc := users.NewUserService(usersRepo, txManager, tracerAdapter)
+	usersRepo := user.NewUserRepository(db)
+	usersSvc := user.NewUserService(usersRepo, txManager, tracerAdapter)
 
-	healthCheckers := map[string]delivery.HealthChecker{
+	healthCheckers := map[string]httpserver.HealthChecker{
 		"postgres": func(hctx context.Context) error {
 			return db.PingContext(hctx)
 		},
@@ -113,7 +113,7 @@ func Setup(ctx context.Context, cfg config.Config, logger *slog.Logger) (http.Ha
 		},
 	}
 
-	server := delivery.NewServer(cfg, logger, authSvc, todoSvc, usersSvc, tokenSvc, limiter, healthCheckers, clientOpt)
+	server := httpserver.NewServer(cfg, logger, authSvc, todoSvc, usersSvc, tokenSvc, limiter, healthCheckers, clientOpt)
 
 	return server.Handler(), cleanup, nil
 }

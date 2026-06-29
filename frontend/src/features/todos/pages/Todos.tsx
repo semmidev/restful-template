@@ -304,6 +304,7 @@ export default function Todos() {
                 />
               </div>
               <Button
+                type="button"
                 variant="ghost"
                 size="icon"
                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
@@ -313,6 +314,7 @@ export default function Todos() {
                 {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
               </Button>
               <Button
+                type="button"
                 onClick={() => setIsCreateOpen(true)}
                 className="h-7 px-2 sm:px-2.5 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all rounded-md flex items-center gap-1"
               >
@@ -534,6 +536,7 @@ export default function Todos() {
                             <Separator orientation="vertical" className="h-4 mx-1" />
 
                             <Button
+                              type="button"
                               variant="ghost"
                               size="icon"
                               onClick={() => handleEditClick(todo)}
@@ -543,6 +546,7 @@ export default function Todos() {
                               <Edit2 size={11} />
                             </Button>
                             <Button
+                              type="button"
                               variant="ghost"
                               size="icon"
                               onClick={() => handleDeleteClick(todo)}
@@ -590,6 +594,7 @@ export default function Todos() {
                             {!todo.deleted_at && (
                               <>
                                 <Button
+                                  type="button"
                                   variant="ghost"
                                   size="icon"
                                   onClick={() => handleEditClick(todo)}
@@ -598,6 +603,7 @@ export default function Todos() {
                                   <Edit2 size={12} />
                                 </Button>
                                 <Button
+                                  type="button"
                                   variant="ghost"
                                   size="icon"
                                   onClick={() => handleDeleteClick(todo)}
@@ -714,6 +720,7 @@ export default function Todos() {
               <Plus size={14} className="text-primary" /> Create New Task
             </DialogTitle>
             <Button
+              type="button"
               variant="ghost"
               size="icon"
               onClick={() => {
@@ -889,6 +896,7 @@ export default function Todos() {
               <Edit2 size={13} className="text-primary" /> Edit Task Properties
             </DialogTitle>
             <Button
+              type="button"
               variant="ghost"
               size="icon"
               onClick={() => {
@@ -1064,6 +1072,7 @@ export default function Todos() {
               <Trash2 size={16} className="text-destructive" /> Archive Task
             </DialogTitle>
             <Button
+              type="button"
               variant="ghost"
               size="icon"
               onClick={() => setTodoToDelete(null)}
@@ -1088,6 +1097,7 @@ export default function Todos() {
                 Cancel
               </Button>
               <Button
+                type="button"
                 variant="destructive"
                 onClick={handleDeleteConfirm}
                 className="h-8 text-sm font-semibold px-4 rounded-md"

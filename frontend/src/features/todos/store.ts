@@ -191,7 +191,14 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 
     try {
       const etag = `"${originalUpdatedAt}"`;
-      await updateTodoRequest(id, formData, maskFields.join(','), etag);
+      const res = await updateTodoRequest(id, formData, maskFields.join(','), etag);
+      const updatedTodo = res.data.data;
+
+      const currentTodo = get().currentTodo;
+      if (currentTodo && currentTodo.id === id) {
+        set({ currentTodo: updatedTodo });
+      }
+
       await get().fetchTodos();
       return true;
     } catch (err: any) {
@@ -209,7 +216,14 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 
     try {
       const etag = `"${todo.updated_at}"`;
-      await updateTodoRequest(todo.id, formData, 'importance,urgency', etag);
+      const res = await updateTodoRequest(todo.id, formData, 'importance,urgency', etag);
+      const updatedTodo = res.data.data;
+
+      const currentTodo = get().currentTodo;
+      if (currentTodo && currentTodo.id === todo.id) {
+        set({ currentTodo: updatedTodo });
+      }
+
       // Optimistically update local state for snappy UX
       set((state) => ({
         todos: state.todos.map((t) =>
@@ -230,7 +244,14 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 
     try {
       const etag = `"${todo.updated_at}"`;
-      await updateTodoRequest(todo.id, formData, 'status', etag);
+      const res = await updateTodoRequest(todo.id, formData, 'status', etag);
+      const updatedTodo = res.data.data;
+
+      const currentTodo = get().currentTodo;
+      if (currentTodo && currentTodo.id === todo.id) {
+        set({ currentTodo: updatedTodo });
+      }
+
       await get().fetchTodos();
     } catch (err: any) {
       console.error(err);
