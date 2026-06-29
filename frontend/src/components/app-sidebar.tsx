@@ -106,7 +106,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       TodoApp
                     </span>
                     <span className="text-xs text-muted-foreground font-semibold">
-                      v1.0.0
+                      v{import.meta.env.VITE_APP_VERSION || '1.0.0'}
                     </span>
                   </div>
                 </div>

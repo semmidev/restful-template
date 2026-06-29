@@ -382,16 +382,7 @@ export default function TodoDetail() {
                       <CheckCircle size={12} className="mr-1.5" /> Finish
                     </Button>
                   )}
-                  <Separator orientation="vertical" className="h-6 mx-1 hidden sm:block" />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleEditClick}
-                    className="h-8 text-xs font-semibold px-3 border-border/80 hover:bg-accent rounded-md text-foreground"
-                  >
-                    <Edit2 size={12} className="mr-1.5" /> Edit
-                  </Button>
+
                   <Separator orientation="vertical" className="h-6 mx-1 hidden sm:block" />
                   <Button
                     type="button"

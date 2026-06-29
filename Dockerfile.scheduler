@@ -1,5 +1,6 @@
 # ─── Stage 1: Build ───────────────────────────────────────────────────────────
 FROM golang:1.26-alpine AS builder
+ARG VERSION=1.0.0
 
 WORKDIR /app
 
@@ -15,7 +16,7 @@ RUN mkdir -p internal/web/dist && touch internal/web/dist/index.html
 
 # Build a fully static binary
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build -ldflags="-s -w -extldflags '-static'" \
+    go build -ldflags="-s -w -extldflags '-static' -X 'github.com/semmidev/restful-template/internal/config.Version=${VERSION}'" \
     -trimpath \
     -o /bin/scheduler ./cmd/scheduler
 

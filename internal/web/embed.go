@@ -67,12 +67,10 @@ func (h *SPAHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set proper cache headers for assets
-	if isAsset(urlPath) {
-		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-	} else if urlPath == "/index.html" || urlPath == "/" {
-		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-	}
+	// Disable caching of the UI and assets to prevent stale resources
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
 
 	// Serve the file
 	h.fileServer.ServeHTTP(w, r)
@@ -98,6 +96,8 @@ func (h *SPAHandler) serveIndex(w http.ResponseWriter, r *http.Request) {
 	// Set headers for HTML
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
 
 	// Read and serve the file
 	data, err := fs.ReadFile(h.fs, "index.html")

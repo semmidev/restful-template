@@ -224,10 +224,10 @@ export const useTodoStore = create<TodoState>((set, get) => ({
         set({ currentTodo: updatedTodo });
       }
 
-      // Optimistically update local state for snappy UX
+      // Update local state with the latest values from server
       set((state) => ({
         todos: state.todos.map((t) =>
-          t.id === todo.id ? { ...t, importance, urgency } : t
+          t.id === todo.id ? updatedTodo : t
         ),
       }));
     } catch (err: any) {
@@ -252,7 +252,12 @@ export const useTodoStore = create<TodoState>((set, get) => ({
         set({ currentTodo: updatedTodo });
       }
 
-      await get().fetchTodos();
+      // Update local list state immediately with the updatedTodo returned by server
+      set((state) => ({
+        todos: state.todos.map((t) =>
+          t.id === todo.id ? updatedTodo : t
+        ),
+      }));
     } catch (err: any) {
       console.error(err);
       set({ error: 'Concurrency conflict. Refreshing todos...' });

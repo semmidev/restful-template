@@ -1,5 +1,7 @@
 # ─── Stage 0: Frontend Build ──────────────────────────────────────────────────
 FROM node:20-alpine AS frontend-builder
+ARG VERSION=1.0.0
+ENV VITE_APP_VERSION=$VERSION
 WORKDIR /app/frontend
 
 COPY frontend/package*.json ./
@@ -10,6 +12,7 @@ RUN npm run build
 
 # ─── Stage 1: Build ───────────────────────────────────────────────────────────
 FROM golang:1.26-alpine AS builder
+ARG VERSION=1.0.0
 
 WORKDIR /app
 
@@ -25,7 +28,7 @@ COPY --from=frontend-builder /app/frontend/dist ./internal/web/dist
 
 # Build a fully static binary
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build -ldflags="-s -w -extldflags '-static'" \
+    go build -ldflags="-s -w -extldflags '-static' -X 'github.com/semmidev/restful-template/internal/config.Version=${VERSION}'" \
     -trimpath \
     -o /bin/server ./cmd/server
 

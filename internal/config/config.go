@@ -19,6 +19,10 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Version is the application version. It can be overridden at link-time
+// using -ldflags="-X 'github.com/semmidev/restful-template/internal/config.Version=v1.0.0'".
+var Version = "1.0.0"
+
 type Config struct {
 	App       App
 	HTTP      HTTP
@@ -120,7 +124,6 @@ func Load() Config {
 	v.SetDefault("APP_ENV", "development")
 	v.SetDefault("APP_NAME", "restful-template")
 	v.SetDefault("APP_DESCRIPTION", "Production-ready Todo REST API built with Huma v2 + Chi.")
-	v.SetDefault("APP_VERSION", "1.0.0")
 	v.SetDefault("APP_URL", "http://localhost:8080")
 
 	v.SetDefault("HTTP_PORT", "8080")
@@ -177,7 +180,7 @@ func Load() Config {
 			Env:         v.GetString("APP_ENV"),
 			Name:        v.GetString("APP_NAME"),
 			Description: v.GetString("APP_DESCRIPTION"),
-			Version:     v.GetString("APP_VERSION"),
+			Version:     Version,
 			URL:         v.GetString("APP_URL"),
 		},
 		HTTP: HTTP{

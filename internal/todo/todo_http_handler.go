@@ -191,11 +191,6 @@ func (h *todoHandler) handleUpdate(ctx context.Context, in *updateTodoReq) (*upd
 	if err := policy.Authorize(ctx, "todo:update", existing.UserID.String()); err != nil {
 		return nil, httpapi.ToHumaErr(ctx, err)
 	}
-	rawEtag := existing.UpdatedAt.Format(time.RFC3339Nano)
-	if err := in.PreconditionFailed(rawEtag, existing.UpdatedAt); err != nil {
-		return nil, err // Returns 412 Precondition Failed if If-Match doesn't match
-	}
-
 	data := in.RawBody.Data()
 
 	var title *string
